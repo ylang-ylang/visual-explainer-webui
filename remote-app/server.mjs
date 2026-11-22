@@ -29,7 +29,7 @@ const cjkLicense = await readFile(new URL('./static/LICENSE.fonts-wqy-zenhei', i
 const viewerKey = createHmac('sha256', token).update('viewer-access').digest('hex');
 const sessionLifetime = 7 * 24 * 60 * 60;
 const catalog = await createCatalog(outputDir);
-const history = await createHistory(outputDir);
+const history = await createHistory(outputDir, catalog);
 await catalog.run(() => history.snapshot('Snapshot existing pages'));
 
 function sessionSignature(expires) {

@@ -17,7 +17,7 @@ The earlier [ylang-ylang/visual-explainer fork](https://github.com/ylang-ylang/v
 ```sh
 git clone https://github.com/ylang-ylang/visual-explainer-webui.git
 cd visual-explainer-webui
-docker build --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" -t visual-explainer-webui:1.1.0 .
+docker build --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" -t visual-explainer-webui:1.2.0 .
 ```
 
 Create a persistent data directory owned by UID/GID `1000:1000` and a private service-token file containing at least 32 random characters, readable by UID 1000. Set these values in a private `.env`:
@@ -94,17 +94,28 @@ Back up the complete data directory, including HTML, `.src.html`, `.entities.jso
 
 ## Page version history
 
-The data directory is a Git repository on branch `main`, independent of this
-wrapper's source repository. Startup imports existing pages without changing
-their bytes or URLs. Successful API/MCP renders and Entity create/rename/delete
-or page reassignment record a snapshot before returning success. Source,
-rendered HTML and assignment changes from one publish share one commit.
-Identical content does not produce an empty commit.
+Page history is stored on branch `main`, independently of this wrapper's source
+repository. The repository mirrors the library's Entity groups:
 
-Only regular top-level `.html`/`.htm` files (including `.src.html`) and
-`.entities.json` are versioned. Screenshots, symlinks, credentials and unrelated
-files are excluded; unrelated staged entries are preserved. Direct filesystem
-edits are captured at the next startup or successful mutation, not immediately.
+- `<entity-id>/<filename>.html` and its companion source files.
+- `_unassigned/<filename>` for unassigned pages and orphan sources.
+- `.entities.json` at the root, retaining the exact Entity metadata and names.
+
+Directory names use stable Entity IDs. Renaming a display name does not rename
+its directory; moving a page moves its rendered HTML and source together in one
+commit. Empty Entity directories and the empty unassigned group are retained
+using generated empty `.gitkeep` markers, removed when content arrives.
+
+Successful API/MCP renders and Entity mutations snapshot and synchronize the
+directory layout before returning success. Identical content creates no empty
+commit. Screenshots, symlinks, credentials and unrelated files are excluded.
+Direct filesystem edits are captured at the next startup or successful mutation.
+
+The serving files remain canonical and flat, so page URLs, API basename IDs and
+file bytes do not change. `data/.git` is a bare object store, not a second writable
+copy of pages; clone the content repository to obtain real Entity directories
+and a normal clean worktree. Existing flat history is migrated with an additional
+commit, retaining all previous commits and unrelated legacy index bytes.
 
 Local history is enabled by default. Set `GIT_HISTORY_REMOTE` to push each
 snapshot to an independent **private** repository. TrueNAS uses
@@ -137,10 +148,11 @@ pull, automatic reset or rollback. A configured remote that is unavailable durin
 startup prevents startup until it is reachable or the configuration is corrected.
 
 Browse history on GitHub or clone the content repository. To restore a version,
-extract its source using `git show <commit>:<filename>.src.html` in that clone,
+extract its source using `git show <commit>:<entity-id>/<filename>.src.html` in that clone,
 then republish through the existing API/MCP with the intended `entityId`. This
 records the restoration as a new commit. Do not reset the running data repository.
 If a page has no source file, republish its saved `.html` instead.
+Versions before the folder migration retain their original root-level filenames.
 
 ## Following upstream
 

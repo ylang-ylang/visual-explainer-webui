@@ -4,12 +4,13 @@ import { lstat, mkdtemp, open, readdir, realpath, rm } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
-import { ApiError } from './catalog.mjs';
+import { ApiError, entityId } from './catalog.mjs';
 
 const execute = promisify(execFile);
 const author = 'Visual Explainer';
 const email = 'visual-explainer@localhost';
 const managed = name => name === '.entities.json' || (!name.includes('/') && /\.html?$/i.test(name));
+const source = name => /\.src\.html?$/i.test(name);
 const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
 
 async function exists(path) {
@@ -22,7 +23,8 @@ async function exists(path) {
 // Callers serialize snapshot with the catalog's existing mutation queue.
 // A private index built from regular-file blobs never reads the user's index,
 // applies clean filters, or includes any unrelated staged files.
-export async function createHistory(outputDir) {
+export async function createHistory(outputDir, catalog) {
+  const gitDir = join(outputDir, '.git');
   let phase = 'initialize';
   const remote = process.env.GIT_HISTORY_REMOTE || null;
   const key = process.env.GIT_HISTORY_SSH_KEY || null;
@@ -64,7 +66,7 @@ export async function createHistory(outputDir) {
   }
 
   async function git(args, { input, index, allowed = [0], timeout = 30000 } = {}) {
-    const pending = execute('git', [...config, ...args], {
+    const pending = execute('git', [`--git-dir=${gitDir}`, ...config, ...args], {
       cwd: outputDir,
       env: index ? { ...env, GIT_INDEX_FILE: index } : env,
       shell: false,
@@ -118,7 +120,6 @@ export async function createHistory(outputDir) {
       env.GIT_SSH_COMMAND += ` -i ${quote(identity)} -o ${quote(`UserKnownHostsFile=${hosts}`)} -o GlobalKnownHostsFile=/dev/null`;
     }
 
-    const gitDir = join(outputDir, '.git');
     const status = await exists(gitDir);
     if (status && (!status.isDirectory() || status.isSymbolicLink() || await realpath(gitDir) !== gitDir)) {
       throw new Error('Page Git metadata must be a local directory, not a symlink or worktree pointer');
@@ -127,12 +128,17 @@ export async function createHistory(outputDir) {
     if (await exists(join(gitDir, 'objects/info/alternates')) || await exists(join(gitDir, 'commondir'))) {
       throw new Error('Page Git repository must not share external metadata or objects');
     }
-    if (!status) await git(['init', '--initial-branch=main', '--template=', '.']);
-    const root = (await git(['rev-parse', '--show-toplevel'])).stdout.trimEnd();
+    if (!status) await git(['init', '--bare', '--initial-branch=main', '--template=', gitDir]);
     const actualGitDir = (await git(['rev-parse', '--absolute-git-dir'])).stdout.trimEnd();
     const common = (await git(['rev-parse', '--git-common-dir'])).stdout.trimEnd();
-    if (root !== outputDir || actualGitDir !== gitDir || resolve(outputDir, common) !== gitDir) {
+    if (actualGitDir !== gitDir || resolve(outputDir, common) !== gitDir) {
       throw new Error('Page Git repository must be rooted exactly at the output directory');
+    }
+    const bare = (await git(['rev-parse', '--is-bare-repository'])).stdout.trim() === 'true';
+    const worktree = await git(['config', '--get', 'core.worktree'], { allowed: [0, 1] });
+    if ((worktree.code === 0 && resolve(gitDir, worktree.stdout.trimEnd()) !== outputDir) ||
+        (!bare && (await git(['rev-parse', '--show-toplevel'])).stdout.trimEnd() !== outputDir)) {
+      throw new Error('Page Git worktree must not point outside the output directory');
     }
     if ((await git(['symbolic-ref', 'HEAD'])).stdout.trimEnd() !== 'refs/heads/main') {
       throw new Error('Page Git history must use the main branch');
@@ -140,13 +146,47 @@ export async function createHistory(outputDir) {
     const current = await git(['rev-parse', '--verify', '--quiet', 'refs/heads/main'], { allowed: [0, 1] });
     if (current.code === 0) {
       const tracked = (await git(['ls-tree', '-rz', '--full-tree', current.stdout.trim()])).stdout;
+      let legacy = false;
+      let projected = false;
+      let emptyBlob;
+      const folders = new Map();
       for (const entry of tracked.split('\0').filter(Boolean)) {
         const tab = entry.indexOf('\t');
-        if (!/^100(?:644|755) blob [0-9a-f]+$/.test(entry.slice(0, tab)) || !managed(entry.slice(tab + 1))) {
+        const header = entry.slice(0, tab);
+        const name = entry.slice(tab + 1);
+        if (!/^100(?:644|755) blob [0-9a-f]+$/.test(header)) {
           throw new Error('Existing page history must contain only managed regular files');
         }
+        if (name === '.entities.json') continue;
+        if (managed(name)) {
+          legacy = true;
+          continue;
+        }
+        const parts = name.split('/');
+        if (parts.length !== 2 || (parts[0] !== '_unassigned' && entityId(parts[0]) !== parts[0]) ||
+            (parts[1] !== '.gitkeep' && (!managed(parts[1]) || parts[1] === '.entities.json'))) {
+          throw new Error('Existing page history must contain only managed paths');
+        }
+        projected = true;
+        const folder = folders.get(parts[0]) ?? { marker: false, files: false };
+        if (parts[1] === '.gitkeep') {
+          emptyBlob ??= (await git(['hash-object', '--stdin'], { input: '' })).stdout.trim();
+          if (header !== `100644 blob ${emptyBlob}`) throw new Error('Directory markers must be empty regular files');
+          folder.marker = true;
+        } else {
+          folder.files = true;
+        }
+        folders.set(parts[0], folder);
+      }
+      if ((legacy && projected) || (projected && !folders.has('_unassigned')) ||
+          [...folders.values()].some(folder => folder.marker && folder.files)) {
+        throw new Error('Existing page history must use a complete legacy or entity-folder layout');
       }
     }
+    // Convert in place: retain all objects, refs, reflogs and the user's index.
+    // No Git command may interpret the flat serving directory as this tree's worktree.
+    await git(['config', 'core.bare', 'true']);
+    if (worktree.code === 0) await git(['config', '--unset-all', 'core.worktree']);
   } catch (error) {
     throw unavailable(error);
   }
@@ -160,10 +200,32 @@ export async function createHistory(outputDir) {
         const index = join(temporary, 'index');
         await git(['read-tree', '--empty'], { index });
         const entries = [];
-        const filenames = new Set();
-        for (const entry of await readdir(outputDir, { withFileTypes: true })) {
-          if (!entry.isFile() || !managed(entry.name)) continue;
-          const file = await open(join(outputDir, entry.name), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+        const folders = new Map([['_unassigned', 0], ...catalog.entities().map(entity => [entity.id, 0])]);
+        const filenames = (await readdir(outputDir, { withFileTypes: true }))
+          .filter(entry => entry.isFile() && managed(entry.name)).map(entry => entry.name).sort();
+        const compiled = new Map();
+        for (const name of filenames) {
+          if (name === '.entities.json' || source(name)) continue;
+          const [, stem, extension] = name.match(/^(.*)(\.html?)$/is);
+          const candidates = compiled.get(stem) ?? [];
+          candidates.push({ name, extension: extension.toLowerCase() });
+          compiled.set(stem, candidates);
+        }
+        for (const name of filenames) {
+          let path = name;
+          if (name !== '.entities.json') {
+            let page = name;
+            if (source(name)) {
+              const [, stem, extension] = name.match(/^(.*)\.src(\.html?)$/is);
+              const candidates = compiled.get(stem) ?? [];
+              page = (candidates.find(candidate => candidate.extension === extension.toLowerCase()) ?? candidates[0])?.name;
+            }
+            const folder = (page && catalog.assignment(page)) ?? '_unassigned';
+            if (!folders.has(folder)) throw new Error('Page assignment refers to an unknown entity');
+            folders.set(folder, folders.get(folder) + 1);
+            path = `${folder}/${name}`;
+          }
+          const file = await open(join(outputDir, name), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
           let bytes;
           try {
             if (!(await file.stat()).isFile()) throw new Error('Page snapshot requires regular files');
@@ -172,8 +234,13 @@ export async function createHistory(outputDir) {
             await file.close();
           }
           const oid = (await git(['hash-object', '-w', '--stdin'], { input: bytes })).stdout.trim();
-          entries.push(Buffer.from(`100644 ${oid}\t${entry.name}\0`));
-          filenames.add(entry.name);
+          entries.push(Buffer.from(`100644 ${oid}\t${path}\0`));
+        }
+        if ([...folders.values()].some(count => count === 0)) {
+          const emptyBlob = (await git(['hash-object', '-w', '--stdin'], { input: '' })).stdout.trim();
+          for (const [folder, count] of folders) {
+            if (count === 0) entries.push(Buffer.from(`100644 ${emptyBlob}\t${folder}/.gitkeep\0`));
+          }
         }
         if (entries.length) await git(['update-index', '-z', '--index-info'], { index, input: Buffer.concat(entries) });
         const tree = (await git(['write-tree'], { index })).stdout.trim();
@@ -187,13 +254,6 @@ export async function createHistory(outputDir) {
           const next = (await git(args, { input: `${message}\n` })).stdout.trim();
           await git(['update-ref', '-m', 'Page history snapshot', 'refs/heads/main', next, head ?? '0'.repeat(next.length)]);
           head = next;
-        }
-        // Keep native Git status coherent without disturbing unrelated staged files.
-        const staged = (await git(['ls-files', '-z'])).stdout.split('\0').filter(name => name && managed(name));
-        const removed = staged.filter(name => !filenames.has(name))
-          .map(name => Buffer.from(`0 ${'0'.repeat(tree.length)}\t${name}\0`));
-        if (entries.length || removed.length) {
-          await git(['update-index', '-z', '--index-info'], { input: Buffer.concat([...removed, ...entries]) });
         }
         // Also retry pending local commits when the current mutation changes no bytes.
         if (remote && head) {
