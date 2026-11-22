@@ -1,0 +1,1025 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>图解工作台 · Visual Explainer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c665d'/%3E%3Cpath d='M8 8h6v16H8zm10 0h6v7h-6zm0 11h6v5h-6z' fill='white'/%3E%3C/svg%3E">
+  <style>
+    @font-face {
+      font-family: VisualCJK;
+      src: url('/assets/cjk.woff2') format('woff2');
+      font-display: swap;
+    }
+
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", VisualCJK, "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-synthesis: none;
+      color: #26332f;
+      background: #fff;
+      --ink: #26332f;
+      --muted: #707a76;
+      --line: #e5e9e6;
+      --soft: #f6f8f6;
+      --accent: #2c665d;
+      --accent-soft: #eaf2ee;
+      --danger: #a13d32;
+      --bar-height: 54px;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { display: flex; flex-direction: column; height: 100dvh; font-size: 14px; }
+    button, input, select, a { font: inherit; -webkit-tap-highlight-color: transparent; }
+    button, a { touch-action: manipulation; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; opacity: .45; }
+    button, a, input, select { outline-offset: 3px; }
+    :focus-visible { outline: 2px solid var(--accent); }
+    button { color: inherit; }
+    svg { display: block; flex: none; }
+    h1, h2, p { margin: 0; }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.65;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 6px 10px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      text-decoration: none;
+      white-space: nowrap;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .button:hover:not(:disabled) { background: #edf1ee; }
+    .button.bordered { border-color: var(--line); background: #fff; }
+    .button.bordered:hover:not(:disabled) { background: var(--soft); }
+    .button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .button.primary:hover:not(:disabled) { background: #23564e; }
+    .icon-button { width: 34px; padding: 7px; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .appbar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex: 0 0 var(--bar-height);
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    .appbar-start, .appbar-actions, .brand { display: flex; align-items: center; }
+    .appbar-start { gap: 16px; min-width: 0; }
+    .brand { gap: 9px; white-space: nowrap; font-size: 14px; font-weight: 600; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      color: #fff;
+      background: var(--accent);
+    }
+    #nav-toggle { border-color: var(--line); }
+    #nav-toggle[aria-expanded="true"] { background: var(--soft); }
+    .appbar-actions { gap: 5px; flex-shrink: 0; }
+    .connection { display: inline-flex; align-items: center; gap: 7px; margin-right: 10px; color: var(--muted); font-size: 11px; }
+    .connection::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #a4aca7; }
+    .connection[data-state="online"]::before { background: #43816b; }
+    .connection[data-state="error"]::before { background: #b87540; }
+    #refresh[aria-busy="true"] .icon { animation: spin 1s linear infinite; }
+
+    .workspace { display: flex; flex: 1; min-height: 0; min-width: 0; }
+    .library {
+      display: flex;
+      flex-direction: column;
+      flex: 0 0 280px;
+      width: 280px;
+      min-height: 0;
+      border-right: 1px solid var(--line);
+      background: #fafbf9;
+    }
+    .library-top { padding: 22px 16px 12px; }
+    .library-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .library-heading h2 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
+    .count { flex-shrink: 0; min-width: 22px; padding: 1px 6px; border-radius: 5px; background: #eaf0eb; color: #647168; text-align: center; font-size: 11px; font-variant-numeric: tabular-nums; }
+    #close-library { flex-shrink: 0; margin: -7px -6px -7px auto; }
+    .entity-field { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; color: var(--muted); font-size: 12px; }
+    #entity-filter { flex: 1; min-width: 0; width: 100%; height: 34px; padding: 0 8px; border: 1px solid #dce3dc; border-radius: 6px; background: #fff; color: var(--ink); text-overflow: ellipsis; }
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 38px;
+      padding: 0 10px;
+      border: 1px solid #dce3dc;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--muted);
+    }
+    .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px #2c665d12; }
+    .search .icon { width: 15px; height: 15px; }
+    .search input { width: 100%; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font-size: 12px; }
+    .search input::placeholder { color: #89918d; }
+    .search-hint { margin: 11px 1px 0; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+    kbd { font: inherit; color: #8b948e; }
+    #list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 8px 12px; scrollbar-width: thin; scrollbar-color: #cbd3cc transparent; }
+    .report {
+      position: relative;
+      display: block;
+      width: 100%;
+      margin: 3px 0;
+      padding: 13px 12px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      text-align: left;
+    }
+    .report:hover { background: #f0f3ef; }
+    .report[aria-current="page"] { background: var(--accent-soft); }
+    .report[aria-current="page"]::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 3px; border-radius: 2px; background: var(--accent); }
+    .report-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: 13px; font-weight: 500; line-height: 1.65; }
+    .report[aria-current="page"] .report-title { color: #24594f; font-weight: 600; }
+    .report-file { display: block; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .report-date { display: block; margin-top: 8px; color: #7b857e; font-size: 10px; font-variant-numeric: tabular-nums; }
+    .list-message { padding: 34px 18px; text-align: center; }
+    .list-message strong { display: block; font-size: 13px; font-weight: 500; }
+    .list-message p { margin: 8px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+    .library-foot { flex: none; padding: 13px 18px 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.8; }
+    #sync { display: block; color: #58685e; font-size: 11px; }
+    #sync[data-state="error"] { color: var(--danger); }
+    .nav-backdrop { display: none; }
+
+    .viewer { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: #fff; }
+    .viewer-toolbar { display: flex; flex: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; min-height: 76px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
+    .viewer-title { flex: 1 1 200px; min-width: 0; }
+    .viewer-title h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600; line-height: 1.6; }
+    .viewer-title p { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .viewer-actions { display: flex; align-items: center; flex-shrink: 0; gap: 8px; }
+    .sizes { display: flex; gap: 2px; padding: 3px; border-radius: 7px; background: #f0f3f0; }
+    .sizes .button { min-height: 28px; padding: 4px 9px; gap: 5px; color: var(--muted); font-size: 11px; }
+    .sizes .icon { width: 14px; height: 14px; }
+    .sizes .button[aria-pressed="true"] { color: var(--ink); background: #fff; box-shadow: 0 1px 3px #23362c14; }
+    .tool-separator { width: 1px; height: 19px; margin: 0 2px; background: var(--line); }
+    .stage { position: relative; display: flex; justify-content: center; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: #fff; }
+    .stage[data-size="mobile"] { background: #edf0ed; }
+    #preview { display: block; flex: none; width: 100%; height: 100%; border: 0; background: #fff; }
+    .stage[data-size="mobile"] #preview { width: min(390px, 100%); box-shadow: 0 0 0 1px #dce2dc; }
+    .placeholder { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; padding: 28px; overflow-y: auto; background: #fff; text-align: center; }
+    .placeholder-icon { display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: 19px; border-radius: 12px; background: var(--soft); color: #829187; }
+    .placeholder-icon .icon { width: 24px; height: 24px; stroke-width: 1.4; }
+    .placeholder h2 { font-size: 17px; font-weight: 500; line-height: 1.6; }
+    .placeholder p { max-width: 330px; margin-top: 9px; color: var(--muted); font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; }
+    .placeholder .button { margin-top: 20px; }
+    .spinner { width: 22px; height: 22px; border: 2px solid #dce7df; border-top-color: var(--accent); border-radius: 50%; animation: spin .85s linear infinite; }
+    .placeholder[data-loading="true"] .placeholder-icon > .icon { display: none; }
+    .placeholder:not([data-loading="true"]) .spinner { display: none; }
+    .viewer-footer { display: flex; align-items: center; justify-content: space-between; flex: none; gap: 16px; min-height: 29px; padding: 5px 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+    #page-detail { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .share-hint { white-space: nowrap; color: #8a938c; }
+    .stage:fullscreen { width: 100%; height: 100%; }
+    #exit-fullscreen { position: absolute; right: 16px; top: 12px; z-index: 3; box-shadow: 0 2px 10px #26332f1a; }
+
+    dialog { width: 408px; max-width: calc(100% - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 32px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: #fff; box-shadow: 0 24px 90px #24372c26; }
+    dialog::backdrop { background: #e8ede8d9; backdrop-filter: blur(4px); }
+    .login-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 27px; color: var(--muted); font-size: 12px; }
+    dialog h2 { font-size: 22px; font-weight: 600; letter-spacing: -.4px; }
+    .login-description { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.9; }
+    dialog label { display: block; margin: 26px 0 9px; font-size: 12px; font-weight: 500; }
+    dialog input { width: 100%; height: 44px; padding: 10px 12px; border: 1px solid #d5ddd6; border-radius: 7px; color: var(--ink); background: #fff; font-size: 16px; }
+    dialog input[aria-invalid="true"] { border-color: var(--danger); }
+    dialog .primary { width: 100%; min-height: 43px; margin-top: 17px; font-size: 13px; }
+    #login-error { min-height: 19px; margin-top: 12px; color: var(--danger); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+    #notice { position: fixed; z-index: 50; bottom: 44px; left: 50%; width: max-content; max-width: calc(100% - 32px); transform: translateX(-50%); padding: 10px 16px; border: 1px solid #dce4dd; border-radius: 8px; background: #fff; color: var(--ink); box-shadow: 0 5px 22px #24372c1c; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 1100px) and (min-width: 761px) {
+      .library { flex-basis: 250px; width: 250px; }
+      .viewer-toolbar { padding: 12px 16px; }
+      .viewer-title { flex-basis: 100%; }
+      .viewer-actions { margin-left: auto; }
+    }
+    @media (max-width: 760px) {
+      :root { --bar-height: 52px; }
+      .appbar { gap: 8px; padding: 0 12px; }
+      .appbar-start { gap: 12px; }
+      .brand { gap: 7px; font-size: 13px; }
+      .brand-mark { width: 23px; height: 23px; border-radius: 6px; }
+      .brand-mark .icon { width: 16px; height: 16px; }
+      .connection { margin: 0 6px 0 0; }
+      .connection span, .refresh-label { display: none; }
+      #refresh { width: 34px; padding: 7px; }
+      .appbar-actions { gap: 2px; }
+      .library { position: fixed; z-index: 30; inset: 0 auto 0 0; width: min(340px, calc(100% - 40px)); border-right: 0; box-shadow: 8px 0 35px #26332f1a; }
+      .library-top { padding-top: 23px; }
+      .library-heading { margin-bottom: 20px; }
+      .library-heading h2 { font-size: 16px; }
+      #close-library { width: 40px; height: 40px; }
+      #entity-filter { height: 42px; font-size: 16px; }
+      .search { height: 42px; }
+      .search input { font-size: 16px; }
+      .search-hint kbd { display: none; }
+      .report { padding: 14px; }
+      .report-title { font-size: 14px; }
+      .report-file, .report-date { font-size: 11px; }
+      .library-foot { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      .nav-backdrop { position: fixed; z-index: 20; inset: 0; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: #26332f38; }
+      .viewer-toolbar { display: block; min-height: 0; padding: 12px 14px 10px; }
+      .viewer-title h1 { font-size: 14px; }
+      .viewer-title p { font-size: 10px; }
+      .viewer-actions { justify-content: flex-end; gap: 7px; margin-top: 11px; }
+      .sizes { margin-right: auto; }
+      .viewer-actions > .button { min-height: 36px; }
+      .viewer-footer { min-height: 28px; padding: 5px 14px max(5px, env(safe-area-inset-bottom)); }
+      .share-hint { display: none; }
+      .placeholder { padding: 24px; }
+      dialog { padding: 27px 24px; }
+    }
+    @media (max-width: 360px) {
+      .brand-mark, .connection { display: none; }
+      .appbar-start { gap: 9px; }
+      .viewer-actions { gap: 4px; }
+      .tool-separator { margin: 0; }
+      .viewer-actions .button { padding-left: 7px; padding-right: 7px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .spinner, #refresh[aria-busy="true"] .icon { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="appbar" id="appbar">
+    <div class="appbar-start">
+      <button id="nav-toggle" class="button" type="button" aria-label="收起图解列表" aria-controls="library" aria-expanded="true" title="展开或收起图解列表">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M5.5 8h1M5.5 12h1"/></svg>
+        <span>图解</span>
+      </button>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><path d="M14 15h6m-6 5h6"/></svg></span>
+        <span>图解工作台</span>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <span id="connection" class="connection" data-state="pending" title="正在连接服务"><span>连接中</span></span>
+      <button id="refresh" class="button" type="button" aria-label="刷新图解列表" title="刷新图解列表">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></svg>
+        <span class="refresh-label">刷新</span>
+      </button>
+      <button id="logout" class="button" type="button" hidden>退出</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <button id="nav-backdrop" class="nav-backdrop" type="button" aria-label="关闭图解列表" tabindex="-1" hidden></button>
+    <aside id="library" class="library" aria-labelledby="library-title">
+      <div class="library-top">
+        <div class="library-heading">
+          <h2 id="library-title">全部图解</h2>
+          <span id="count" class="count" aria-label="图解数量">—</span>
+          <button id="close-library" class="button icon-button" type="button" aria-label="收起图解列表" title="收起图解列表">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/></svg>
+          </button>
+        </div>
+        <label class="entity-field" for="entity-filter">
+          <span>实体</span>
+          <select id="entity-filter" disabled>
+            <option value="*">全部图解</option>
+          </select>
+        </label>
+        <label class="search">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+          <input id="search" type="search" placeholder="搜索标题或文件名" aria-label="搜索标题或文件名" aria-keyshortcuts="Control+k Meta+k" autocomplete="off">
+        </label>
+        <div class="search-hint"><span id="list-caption">按最近更新</span><kbd title="Ctrl K / ⌘ K 搜索">Ctrl K</kbd></div>
+      </div>
+      <nav id="list" aria-label="历史图解" aria-busy="true"></nav>
+      <div class="library-foot">
+        <span id="sync" role="status">正在读取图解…</span>
+        <span>页面可见时，每 15 秒自动更新</span>
+      </div>
+    </aside>
+
+    <section id="viewer" class="viewer" aria-label="图解阅读器">
+      <div class="viewer-toolbar">
+        <div class="viewer-title">
+          <h1 id="page-title" tabindex="-1">图解阅读器</h1>
+          <p id="page-meta">从列表中选择一份图解</p>
+        </div>
+        <div class="viewer-actions">
+          <div class="sizes" role="group" aria-label="预览宽度">
+            <button id="desktop" class="button" type="button" aria-pressed="true" title="桌面预览：填满阅读区">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4m-4 0h8"/></svg>
+              桌面
+            </button>
+            <button id="mobile" class="button" type="button" aria-pressed="false" title="手机预览：最大宽度 390 像素">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg>
+              手机
+            </button>
+          </div>
+          <span class="tool-separator" aria-hidden="true"></span>
+          <button id="fullscreen" class="button icon-button" type="button" aria-label="全屏阅读" aria-pressed="false" title="全屏阅读" disabled>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>
+          </button>
+          <a id="open" class="button bordered" target="_blank" rel="noopener noreferrer" title="在新标签页打开；持有链接的人可直接访问此图解" hidden>
+            独立打开
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7m0-7L10 14M10 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>
+          </a>
+        </div>
+      </div>
+      <div id="stage" class="stage" data-size="desktop" aria-busy="true">
+        <div id="placeholder" class="placeholder" data-loading="true" role="status">
+          <div class="placeholder-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg>
+            <span class="spinner"></span>
+          </div>
+          <h2 id="placeholder-title">正在读取图解</h2>
+          <p id="placeholder-description">稍候，正在获取图解列表。</p>
+          <button id="placeholder-action" class="button bordered" type="button" hidden></button>
+        </div>
+        <iframe id="preview" title="图解预览" sandbox="allow-scripts" hidden></iframe>
+        <button id="exit-fullscreen" class="button bordered" type="button" hidden>退出全屏</button>
+      </div>
+      <div class="viewer-footer">
+        <span id="page-detail">等待选择图解</span>
+        <span class="share-hint" title="持有独立链接的人无需登录即可访问对应图解">独立链接请谨慎分享</span>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="login" aria-labelledby="login-title" aria-describedby="login-description">
+    <form id="login-form">
+      <div class="login-brand">
+        <span class="brand-mark" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><path d="M14 15h6m-6 5h6"/></svg></span>
+        图解工作台
+      </div>
+      <h2 id="login-title">登录后开始阅读</h2>
+      <p id="login-description" class="login-description">输入访问密钥，或使用专属查看链接进入。</p>
+      <label for="key">访问密钥</label>
+      <input id="key" name="key" type="password" autocomplete="current-password" aria-describedby="login-error" required>
+      <button id="login-submit" class="button primary" type="submit">进入工作台</button>
+      <p id="login-error" role="alert"></p>
+    </form>
+  </dialog>
+  <div id="notice" role="status" hidden></div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const compact = window.matchMedia('(max-width: 760px)');
+    const dates = new Intl.DateTimeFormat('zh-CN', {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    const times = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    const POLL_INTERVAL = 15000;
+    const REQUEST_TIMEOUT = 15000;
+    let pages = [];
+    let entityCatalog = { entities: [], unassignedCount: 0, totalCount: 0 };
+    let selectedEntity = '*';
+    let libraryLoaded = false;
+    let pendingFilename = hashFilename();
+    let selected = null;
+    let authenticated = false;
+    let signingOut = false;
+    let listState = 'loading';
+    let listError = '';
+    let pageRequest = null;
+    let previewRequest = null;
+    let previewTimer;
+    let noticeTimer;
+    let placeholderAction = null;
+    let desktopNavOpen = true;
+    let mobileNavOpen = false;
+
+    function notify(message) {
+      clearTimeout(noticeTimer);
+      $('notice').textContent = message;
+      $('notice').hidden = false;
+      noticeTimer = setTimeout(() => { $('notice').hidden = true; }, 5000);
+    }
+
+    function applyNavigation() {
+      const open = compact.matches ? mobileNavOpen : desktopNavOpen;
+      const modal = compact.matches && open;
+      $('library').hidden = !open;
+      $('nav-backdrop').hidden = !modal;
+      $('nav-toggle').setAttribute('aria-expanded', String(open));
+      $('nav-toggle').setAttribute('aria-label', open ? '收起图解列表' : '打开图解列表');
+      $('appbar').inert = modal;
+      $('viewer').inert = modal;
+      if (modal) {
+        $('library').setAttribute('role', 'dialog');
+        $('library').setAttribute('aria-modal', 'true');
+      } else {
+        $('library').removeAttribute('role');
+        $('library').removeAttribute('aria-modal');
+      }
+    }
+
+    function setNavigation(open, restoreFocus = false) {
+      if (compact.matches) mobileNavOpen = open;
+      else desktopNavOpen = open;
+      applyNavigation();
+      if (open) $('search').focus();
+      else if (restoreFocus) $('nav-toggle').focus();
+    }
+
+    function showPlaceholder(title, description, action = null, actionLabel = '', loading = false) {
+      $('placeholder-title').textContent = title;
+      $('placeholder-description').textContent = description;
+      $('placeholder').dataset.loading = String(loading);
+      $('placeholder').hidden = false;
+      $('placeholder-action').hidden = !action;
+      $('placeholder-action').textContent = actionLabel;
+      placeholderAction = action;
+      $('stage').setAttribute('aria-busy', String(loading));
+    }
+
+    function clearPreview() {
+      previewRequest?.abort();
+      previewRequest = null;
+      clearTimeout(previewTimer);
+      $('preview').hidden = true;
+      $('preview').removeAttribute('src');
+      selected = null;
+      $('page-title').textContent = '图解阅读器';
+      $('page-title').removeAttribute('title');
+      $('page-meta').textContent = '从列表中选择一份图解';
+      $('page-meta').removeAttribute('title');
+      $('page-detail').textContent = '等待选择图解';
+      $('open').hidden = true;
+      $('open').removeAttribute('href');
+      $('fullscreen').disabled = true;
+      document.title = '图解工作台 · Visual Explainer';
+    }
+
+    function showLogin() {
+      authenticated = false;
+      pages = [];
+      entityCatalog = { entities: [], unassignedCount: 0, totalCount: 0 };
+      selectedEntity = '*';
+      libraryLoaded = false;
+      pendingFilename = hashFilename();
+      renderEntityFilter();
+      listState = 'locked';
+      $('logout').hidden = true;
+      $('sync').textContent = '登录后自动更新';
+      $('sync').dataset.state = '';
+      clearPreview();
+      renderList();
+      showPlaceholder('登录后查看图解', '使用访问密钥打开你的图解库。');
+      if (compact.matches) setNavigation(false);
+      if (!$('login').open) {
+        $('login-error').textContent = '';
+        $('key').removeAttribute('aria-invalid');
+        $('login').showModal();
+      }
+    }
+
+    function inSelectedEntity(page) {
+      return selectedEntity === '*' || (page.entityId ?? '') === selectedEntity;
+    }
+
+    function entityName() {
+      if (selectedEntity === '*') return '全部图解';
+      if (selectedEntity === '') return '未分配';
+      return entityCatalog.entities.find(entity => entity.id === selectedEntity)?.name || '全部图解';
+    }
+
+    function entityCount() {
+      if (selectedEntity === '*') return entityCatalog.totalCount;
+      if (selectedEntity === '') return entityCatalog.unassignedCount;
+      return entityCatalog.entities.find(entity => entity.id === selectedEntity)?.diagramCount ?? 0;
+    }
+
+    function renderEntityFilter() {
+      const options = [
+        ['*', '全部图解', entityCatalog.totalCount],
+        ['', '未分配', entityCatalog.unassignedCount],
+        ...entityCatalog.entities.map(entity => [entity.id, entity.name, entity.diagramCount]),
+      ];
+      $('entity-filter').replaceChildren(...options.map(([value, name, count]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = libraryLoaded ? `${name} (${count})` : name;
+        return option;
+      }));
+      $('entity-filter').value = selectedEntity;
+      $('entity-filter').disabled = !libraryLoaded;
+    }
+
+    function showEmptyEntity() {
+      clearPreview();
+      history.replaceState(null, '', location.pathname + location.search);
+      const title = selectedEntity === '*' ? '还没有图解'
+        : selectedEntity === '' ? '没有未分配的图解' : `“${entityName()}”还没有图解`;
+      const detail = selectedEntity === '*' ? '工作 agent 生成的图解会显示在这里，无需手动导入。'
+        : selectedEntity === '' ? '未分配实体的图解会显示在这里。' : '分配给这个实体的图解会显示在这里。';
+      showPlaceholder(title, detail, () => loadPages(true), '刷新列表');
+    }
+
+    function revealPage(page) {
+      if (!inSelectedEntity(page)) {
+        selectedEntity = entityCatalog.entities.some(entity => entity.id === page.entityId)
+          ? page.entityId : '*';
+        $('entity-filter').value = selectedEntity;
+      }
+      const query = $('search').value.trim().toLocaleLowerCase();
+      if (!(page.title + ' ' + page.filename).toLocaleLowerCase().includes(query)) $('search').value = '';
+      selectPage(page);
+    }
+
+    function renderList() {
+      const query = $('search').value.trim().toLocaleLowerCase();
+      const filtered = pages.filter(page => inSelectedEntity(page)
+        && (page.title + ' ' + page.filename).toLocaleLowerCase().includes(query));
+      const focused = $('list').contains(document.activeElement) ? document.activeElement.dataset.filename : null;
+      const scrollTop = $('list').scrollTop;
+      const fragment = document.createDocumentFragment();
+      $('library-title').textContent = entityName();
+      $('library-title').title = entityName();
+      $('count').textContent = !libraryLoaded ? '—' : String(entityCount());
+      $('list-caption').textContent = query ? `${filtered.length} 个搜索结果` : '按最近更新';
+
+      if (!filtered.length) {
+        const message = document.createElement('div');
+        message.className = 'list-message';
+        const title = document.createElement('strong');
+        const detail = document.createElement('p');
+        let action = null;
+        let actionLabel = '';
+        if (listState === 'locked') {
+          title.textContent = '尚未登录';
+          detail.textContent = '登录后查看全部图解。';
+        } else if (listState === 'loading') {
+          title.textContent = '正在读取…';
+          detail.textContent = '图解会按最近更新时间排列。';
+        } else if (listState === 'error' && !libraryLoaded) {
+          title.textContent = '暂时无法读取';
+          detail.textContent = listError;
+          action = () => loadPages(true);
+          actionLabel = '重新加载';
+        } else if (query) {
+          title.textContent = '没有匹配的图解';
+          detail.textContent = '试试其他标题或文件名。';
+          action = () => {
+            $('search').value = '';
+            renderList();
+            $('search').focus();
+          };
+          actionLabel = '清除搜索';
+        } else {
+          title.textContent = selectedEntity === '*' ? '还没有图解'
+            : selectedEntity === '' ? '没有未分配的图解' : '这个实体还没有图解';
+          detail.textContent = selectedEntity === '*' ? '新生成的图解会自动出现在这里。'
+            : selectedEntity === '' ? '未分配实体的图解会显示在这里。' : '分配给这个实体的图解会显示在这里。';
+        }
+        message.append(title, detail);
+        if (action) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'button bordered';
+          button.textContent = actionLabel;
+          button.addEventListener('click', action);
+          message.append(button);
+        }
+        fragment.append(message);
+      }
+
+      for (const page of filtered) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'report';
+        button.dataset.filename = page.filename;
+        button.title = page.title + '\n' + page.filename;
+        if (selected?.filename === page.filename) button.setAttribute('aria-current', 'page');
+        for (const [className, text] of [
+          ['report-title', page.title],
+          ['report-file', page.filename],
+          ['report-date', dates.format(new Date(page.modified))],
+        ]) {
+          const span = document.createElement('span');
+          span.className = className;
+          span.textContent = text;
+          button.append(span);
+        }
+        button.addEventListener('click', () => {
+          selectPage(page);
+          if (compact.matches) {
+            setNavigation(false);
+            $('page-title').focus({ preventScroll: true });
+          }
+        });
+        fragment.append(button);
+      }
+      $('list').replaceChildren(fragment);
+      if (focused) {
+        const replacement = Array.from($('list').querySelectorAll('.report'))
+          .find(button => button.dataset.filename === focused);
+        (replacement || $('search')).focus({ preventScroll: true });
+      }
+      $('list').scrollTop = scrollTop;
+    }
+
+    async function loadPreview(page) {
+      previewRequest?.abort();
+      clearTimeout(previewTimer);
+      const request = new AbortController();
+      previewRequest = request;
+      const timeout = setTimeout(() => request.abort(), REQUEST_TIMEOUT);
+      $('preview').hidden = true;
+      $('preview').removeAttribute('src');
+      showPlaceholder('正在打开图解', page.title, null, '', true);
+      const url = new URL(page.url);
+      url.searchParams.set('v', page.modified);
+      try {
+        // The sandbox is opaque. Check the HTTP status without reading or modifying its document.
+        const response = await fetch(url, { method: 'HEAD', cache: 'no-store', signal: request.signal });
+        if (previewRequest !== request) return;
+        if (response.status === 401) {
+          showLogin();
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(response.status === 404
+            ? '这份图解已不存在，请刷新列表或选择其他图解。'
+            : `服务器暂时无法打开这份图解（${response.status}）。`);
+        }
+        const frame = document.createElement('iframe');
+        frame.id = 'preview';
+        frame.title = page.title + ' · 图解预览';
+        frame.setAttribute('sandbox', 'allow-scripts');
+        frame.hidden = true;
+        frame.addEventListener('load', () => {
+          if (previewRequest !== request) return;
+          clearTimeout(previewTimer);
+          frame.hidden = false;
+          $('placeholder').hidden = true;
+          $('stage').setAttribute('aria-busy', 'false');
+        });
+        frame.addEventListener('error', () => {
+          if (previewRequest !== request) return;
+          clearTimeout(previewTimer);
+          showPlaceholder('无法打开图解', '请重试，或使用上方的“独立打开”。',
+            () => loadPreview(page), '重新打开');
+        });
+        frame.src = url.href;
+        $('preview').replaceWith(frame);
+        previewTimer = setTimeout(() => {
+          if (previewRequest !== request) return;
+          showPlaceholder('图解仍在加载', '可以继续等待、重新打开，或在新标签页阅读。',
+            () => loadPreview(page), '重新打开');
+        }, REQUEST_TIMEOUT);
+      } catch (error) {
+        if (previewRequest !== request) return;
+        const message = request.signal.aborted ? '连接超时，请检查网络后重试。'
+          : error instanceof TypeError ? '无法连接到服务，请检查网络后重试。' : error.message;
+        showPlaceholder('无法打开图解', message, () => loadPreview(page), '重新打开');
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    function selectPage(page) {
+      const changed = selected?.filename !== page.filename || selected?.modified !== page.modified;
+      selected = page;
+      $('page-title').textContent = page.title;
+      $('page-title').title = page.title;
+      $('page-meta').textContent = page.filename;
+      $('page-meta').title = page.filename;
+      $('page-detail').textContent = `更新于 ${dates.format(new Date(page.modified))} · ${Math.max(1, Math.round(page.bytes / 1024))} KB`;
+      $('open').href = page.url;
+      $('open').hidden = false;
+      $('fullscreen').disabled = false;
+      document.title = page.title + ' · 图解工作台';
+      history.replaceState(null, '', '#' + encodeURIComponent(page.filename));
+      for (const button of $('list').querySelectorAll('.report')) {
+        if (button.dataset.filename === page.filename) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+      }
+      if (changed) loadPreview(page);
+    }
+
+    function hashFilename() {
+      try {
+        return decodeURIComponent(location.hash.slice(1));
+      } catch {
+        return '';
+      }
+    }
+
+    async function loadPages(manual = false) {
+      if (pageRequest || signingOut) return false;
+      const request = new AbortController();
+      pageRequest = request;
+      const timeout = setTimeout(() => request.abort(), REQUEST_TIMEOUT);
+      $('refresh').disabled = true;
+      $('refresh').setAttribute('aria-busy', 'true');
+      $('list').setAttribute('aria-busy', 'true');
+      $('sync').textContent = '正在更新图解…';
+      $('sync').dataset.state = '';
+      if (!libraryLoaded) {
+        listState = 'loading';
+        renderList();
+        showPlaceholder('正在读取图解', '稍候，正在获取图解列表。', null, '', true);
+      }
+      try {
+        const responses = await Promise.all(['/api/pages', '/api/entities'].map(path =>
+          fetch(path, { cache: 'no-store', signal: request.signal })));
+        if (pageRequest !== request) return false;
+        if (responses.some(response => response.status === 401)) {
+          showLogin();
+          return false;
+        }
+        const [data, catalog] = await Promise.all(responses.map(async (response, index) => {
+          const label = index === 0 ? '读取图解' : '读取实体';
+          if (!response.ok) {
+            const detail = await response.json().catch(() => null);
+            throw new Error(`${label}失败（${response.status}）${detail?.error ? '：' + detail.error : '，请稍后重试。'}`);
+          }
+          return response.json();
+        }));
+        if (pageRequest !== request) return false;
+        const pagesChanged = pages.length !== data.pages.length || data.pages.some((page, index) => {
+          const previous = pages[index];
+          return previous.filename !== page.filename || previous.title !== page.title
+            || previous.modified !== page.modified || previous.bytes !== page.bytes || previous.url !== page.url
+            || previous.entityId !== page.entityId;
+        });
+        const entitiesChanged = entityCatalog.totalCount !== catalog.totalCount
+          || entityCatalog.unassignedCount !== catalog.unassignedCount
+          || entityCatalog.entities.length !== catalog.entities.length
+          || catalog.entities.some((entity, index) => {
+            const previous = entityCatalog.entities[index];
+            return previous.id !== entity.id || previous.name !== entity.name
+              || previous.diagramCount !== entity.diagramCount;
+          });
+        const previousState = listState;
+        pages = data.pages;
+        entityCatalog = catalog;
+        libraryLoaded = true;
+        authenticated = true;
+        listState = 'ready';
+        $('logout').hidden = false;
+        if ($('login').open) $('login').close();
+        if (selectedEntity !== '*' && selectedEntity !== ''
+          && !catalog.entities.some(entity => entity.id === selectedEntity)) selectedEntity = '*';
+        if (entitiesChanged || previousState !== 'ready') renderEntityFilter();
+        // Only a new deep link may reveal a page outside the chosen group.
+        const linked = pendingFilename && pages.find(page => page.filename === pendingFilename);
+        pendingFilename = '';
+        if (linked) revealPage(linked);
+        else {
+          const current = pages.find(page => page.filename === selected?.filename && inSelectedEntity(page))
+            || pages.find(inSelectedEntity);
+          if (current) selectPage(current);
+          else showEmptyEntity();
+        }
+        const changed = pagesChanged || entitiesChanged;
+        if (changed || linked || previousState !== 'ready') renderList();
+        $('sync').textContent = '已同步 ' + times.format(new Date());
+        if (manual) notify('图解列表已更新');
+        return true;
+      } catch (error) {
+        if (pageRequest !== request) return false;
+        listState = 'error';
+        listError = request.signal.aborted ? '连接超时，请检查网络后重试。'
+          : error instanceof TypeError ? '无法连接到服务，请检查网络后重试。' : error.message;
+        $('sync').textContent = '同步失败 · ' + listError;
+        $('sync').dataset.state = 'error';
+        if (!libraryLoaded) {
+          renderList();
+          showPlaceholder('暂时无法读取图解', listError, () => loadPages(true), '重新加载');
+        } else if (manual) notify(listError);
+        return false;
+      } finally {
+        clearTimeout(timeout);
+        if (pageRequest === request) {
+          pageRequest = null;
+          $('refresh').disabled = false;
+          $('refresh').setAttribute('aria-busy', 'false');
+          $('list').setAttribute('aria-busy', 'false');
+        }
+      }
+    }
+
+    async function checkConnection() {
+      try {
+        const response = await fetch('/health', { cache: 'no-store', signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
+        $('connection').dataset.state = response.ok ? 'online' : 'error';
+        $('connection').firstElementChild.textContent = response.ok ? '已连接' : '连接异常';
+        $('connection').title = response.ok ? '服务连接正常' : `服务返回异常（${response.status}）`;
+      } catch {
+        $('connection').dataset.state = 'error';
+        $('connection').firstElementChild.textContent = '连接中断';
+        $('connection').title = '无法连接服务';
+      }
+    }
+
+    function refresh() {
+      checkConnection();
+      loadPages(true);
+    }
+
+    $('login-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      $('login-error').textContent = '';
+      $('key').removeAttribute('aria-invalid');
+      $('login-submit').disabled = true;
+      $('login-submit').textContent = '正在登录…';
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          body: new URLSearchParams({ key: $('key').value }),
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+        });
+        if (!response.ok) {
+          if (response.status === 401) {
+            $('key').setAttribute('aria-invalid', 'true');
+            throw new Error('访问密钥不正确，请重新输入。');
+          }
+          throw new Error(`暂时无法登录（${response.status}），请稍后重试。`);
+        }
+        $('key').value = '';
+        authenticated = true;
+        $('logout').hidden = false;
+        $('login').close();
+        await loadPages();
+        checkConnection();
+      } catch (error) {
+        $('login-error').textContent = error.name === 'TimeoutError' ? '登录超时，请稍后重试。'
+          : error instanceof TypeError ? '无法连接服务，请检查网络后重试。' : error.message;
+        $('key').focus();
+      } finally {
+        $('login-submit').disabled = false;
+        $('login-submit').textContent = '进入工作台';
+      }
+    });
+    $('login').addEventListener('cancel', event => event.preventDefault());
+    $('key').addEventListener('input', () => {
+      $('key').removeAttribute('aria-invalid');
+      $('login-error').textContent = '';
+    });
+
+    $('logout').addEventListener('click', async () => {
+      signingOut = true;
+      pageRequest?.abort();
+      pageRequest = null;
+      $('refresh').disabled = true;
+      $('refresh').setAttribute('aria-busy', 'false');
+      $('list').setAttribute('aria-busy', 'false');
+      $('logout').disabled = true;
+      $('logout').textContent = '退出中…';
+      try {
+        const response = await fetch('/api/logout', {
+          method: 'POST', signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+        });
+        if (!response.ok) throw new Error(`退出失败（${response.status}），请重试。`);
+        $('search').value = '';
+        history.replaceState(null, '', location.pathname + location.search);
+        showLogin();
+      } catch (error) {
+        notify(error.name === 'TimeoutError' ? '退出超时，请重试。'
+          : error instanceof TypeError ? '无法连接服务，尚未确认退出，请重试。' : error.message);
+      } finally {
+        signingOut = false;
+        $('refresh').disabled = false;
+        $('logout').disabled = false;
+        $('logout').textContent = '退出';
+      }
+    });
+
+    $('search').addEventListener('input', renderList);
+    $('entity-filter').addEventListener('change', () => {
+      selectedEntity = $('entity-filter').value;
+      pendingFilename = '';
+      const first = pages.find(inSelectedEntity);
+      if (first) selectPage(first);
+      else showEmptyEntity();
+      renderList();
+    });
+    $('refresh').addEventListener('click', refresh);
+    $('placeholder-action').addEventListener('click', () => placeholderAction?.());
+    $('nav-toggle').addEventListener('click', () => {
+      const open = compact.matches ? mobileNavOpen : desktopNavOpen;
+      setNavigation(!open, open);
+    });
+    $('close-library').addEventListener('click', () => setNavigation(false, true));
+    $('nav-backdrop').addEventListener('click', () => setNavigation(false, true));
+    compact.addEventListener('change', () => {
+      const focusWasInLibrary = $('library').contains(document.activeElement);
+      applyNavigation();
+      if (compact.matches && mobileNavOpen) $('search').focus();
+      else if ($('library').hidden && focusWasInLibrary) $('nav-toggle').focus();
+    });
+    document.addEventListener('keydown', event => {
+      if ($('login').open) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setNavigation(true);
+        $('search').select();
+      }
+      if (!compact.matches || !mobileNavOpen) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setNavigation(false, true);
+      }
+      if (event.key === 'Tab') {
+        const controls = Array.from($('library').querySelectorAll('button:not(:disabled), input, select:not(:disabled)'))
+          .filter(control => control.offsetParent !== null);
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    });
+
+    function setSize(mobile) {
+      $('stage').dataset.size = mobile ? 'mobile' : 'desktop';
+      $('desktop').setAttribute('aria-pressed', String(!mobile));
+      $('mobile').setAttribute('aria-pressed', String(mobile));
+    }
+    $('desktop').addEventListener('click', () => setSize(false));
+    $('mobile').addEventListener('click', () => setSize(true));
+    $('fullscreen').addEventListener('click', async () => {
+      try {
+        await $('stage').requestFullscreen();
+      } catch {
+        notify('当前浏览器无法进入全屏，可以使用“独立打开”。');
+      }
+    });
+    $('exit-fullscreen').addEventListener('click', async () => {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        notify('请按 Esc 或使用浏览器的退出全屏功能。');
+      }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      const active = document.fullscreenElement === $('stage');
+      $('exit-fullscreen').hidden = !active;
+      $('fullscreen').setAttribute('aria-pressed', String(active));
+    });
+    window.addEventListener('hashchange', () => {
+      pendingFilename = hashFilename();
+      if (!authenticated) return;
+      const page = pages.find(item => item.filename === pendingFilename);
+      if (page) {
+        pendingFilename = '';
+        revealPage(page);
+        renderList();
+      } else loadPages();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && authenticated) {
+        loadPages();
+        checkConnection();
+      }
+    });
+    setInterval(() => {
+      if (!document.hidden && authenticated) {
+        loadPages();
+        checkConnection();
+      }
+    }, POLL_INTERVAL);
+
+    applyNavigation();
+    renderList();
+    checkConnection();
+    loadPages();
+  </script>
+</body>
+</html>

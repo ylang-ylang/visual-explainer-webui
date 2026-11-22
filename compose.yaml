@@ -1,0 +1,38 @@
+# Build from the wrapper root: docker build --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" -t visual-explainer-webui:1.0.0 .
+# Set PUBLIC_URL, DATA_PATH and TOKEN_PATH in a private .env or replace them in TrueNAS.
+# Data/token files must be readable by UID 1000; keep the token outside Git.
+services:
+  visual-explainer:
+    image: visual-explainer-webui:1.0.0
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL:?Set the externally reachable HTTP or HTTPS URL}
+      TOKEN_FILE: /run/secrets/api_token
+      VISUAL_EXPLAINER_OUTPUT_DIR: /data
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${PORT:-8080}:8080"
+    volumes:
+      - ${DATA_PATH:?Set the absolute persistent data directory}:/data
+      - ${TOKEN_PATH:?Set the absolute private token file}:/run/secrets/api_token:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    shm_size: 256m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 2g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

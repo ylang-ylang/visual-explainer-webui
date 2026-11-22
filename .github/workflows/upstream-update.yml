@@ -1,0 +1,69 @@
+name: Check official upstream
+
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Compare the pinned revision with official main
+        id: upstream
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          status=$(node scripts/update-upstream.mjs --check)
+          printf '%s\n' "$status"
+          echo "changed=$(jq -r '.updateAvailable' <<< "$status")" >> "$GITHUB_OUTPUT"
+          echo "before=$(jq -r '.currentRevision' <<< "$status")" >> "$GITHUB_OUTPUT"
+          echo "after=$(jq -r '.latestRevision' <<< "$status")" >> "$GITHUB_OUTPUT"
+      - name: Pin the exact revision and refresh the dependency lock
+        if: steps.upstream.outputs.changed == 'true'
+        env:
+          REVISION: ${{ steps.upstream.outputs.after }}
+        run: node scripts/update-upstream.mjs --revision "$REVISION"
+      # GITHUB_TOKEN-created PRs do not trigger pull_request workflows.
+      # Test the exact candidate here before creating or updating its PR.
+      - name: Build candidate, smoke, and restart persistence
+        if: steps.upstream.outputs.changed == 'true'
+        run: bash scripts/check-image.sh
+      - name: Open or update the reviewed upstream upgrade
+        if: steps.upstream.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8
+        with:
+          branch: automation/upstream
+          base: ${{ github.event.repository.default_branch }}
+          add-paths: |
+            remote-app/package.json
+            remote-app/package-lock.json
+          commit-message: 'chore: update official Visual Explainer to ${{ steps.upstream.outputs.after }}'
+          title: 'chore: update official Visual Explainer to ${{ steps.upstream.outputs.after }}'
+          body: |
+            Update the unmodified official npm dependency and its complete lockfile.
+
+            Before: `${{ steps.upstream.outputs.before }}`
+            After: `${{ steps.upstream.outputs.after }}`
+            Compare: https://github.com/nicobailon/visual-explainer/compare/${{ steps.upstream.outputs.before }}...${{ steps.upstream.outputs.after }}
+
+            The updater built the candidate container, ran the isolated API/MCP compatibility smoke, restarted it, and checked persistence before opening this PR.
+            Verification run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Review and merge manually. This workflow does not merge or deploy.
