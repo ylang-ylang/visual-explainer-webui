@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0 — 2026-11-22
+
+- Added automatic Git snapshots for existing HTML/source pages and Entity metadata, independent of the wrapper source repository.
+- Version API/MCP publications and grouping mutations atomically per operation; skip empty commits and exclude credentials, screenshots and symlinks.
+- Added optional synchronous private-repository pushes with dedicated deploy-key SSH, explicit failure reporting and preservation of pending local commits.
+- Added real Git import, revision, staged-file isolation, push-failure recovery and restart regression checks.
+
 ## 1.0.0 — 2026-11-22
 
 - Extracted the Web UI, entity library, HTTP API and remote MCP bridge into an independent repository, separate from the renderer fork.

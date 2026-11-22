@@ -18,21 +18,38 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir "$fixture/data"
-chmod 0777 "$fixture/data"
+mkdir "$fixture/data" "$fixture/remote"
+chmod 0777 "$fixture/data" "$fixture/remote"
 printf '%s\n' '<!doctype html><html><head><title>Legacy smoke fixture</title></head><body>Legacy smoke fixture</body></html>' > "$fixture/data/legacy.html"
 node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))' > "$fixture/token"
 chmod 0444 "$fixture/token"
+# Canary files and a symlink must never enter the content repository.
+cp "$fixture/token" "$fixture/data/token-canary.txt"
+printf '%s\n' 'HISTORY_SCREENSHOT_CANARY' > "$fixture/data/screenshot-canary.png"
+printf '%s\n' 'HISTORY_PRIVATE_KEY_CANARY' > "$fixture/data/private-key-canary"
+printf '%s\n' '<!-- HISTORY_SOURCE_CANARY -->' > "$fixture/data/LEGACY.src.HTM"
+mkdir "$fixture/data/nested"
+printf '%s\n' '<html>HISTORY_NESTED_CANARY</html>' > "$fixture/data/nested/private.html"
+ln -s /run/secrets/api_token "$fixture/data/secret.html"
+export VE_HISTORY_FIXTURE="$fixture"
+export VE_HISTORY_CONTAINER="$name"
 export VE_BASE_URL="$base_url"
 VE_TOKEN=$(cat "$fixture/token")
 export VE_TOKEN
 
 docker build --build-arg "SOURCE_REVISION=${GITHUB_SHA:-local}" --tag "$image" .
+# Match the documented UID 1000 data ownership, including on UID 1001 CI runners.
+docker run --rm --user 0 --mount "type=bind,src=$fixture/data,dst=/data" \
+  "$image" chown 1000:1000 /data
+docker run --rm --mount "type=bind,src=$fixture/remote,dst=/history-remote" \
+  "$image" git init --bare --initial-branch=main /history-remote/repo.git >/dev/null
 docker run --detach --name "$name" --publish "127.0.0.1:${port}:8080" \
   --env "PUBLIC_URL=$base_url" \
   --env VISUAL_EXPLAINER_OUTPUT_DIR=/data \
   --env TOKEN_FILE=/run/secrets/api_token \
+  --env GIT_HISTORY_REMOTE=/history-remote/repo.git \
   --mount "type=bind,src=$fixture/data,dst=/data" \
+  --mount "type=bind,src=$fixture/remote,dst=/history-remote" \
   --mount "type=bind,src=$fixture/token,dst=/run/secrets/api_token,readonly" \
   "$image" >/dev/null
 
@@ -52,7 +69,12 @@ NODE
 }
 
 wait_ready
+node scripts/history-smoke.mjs --initial
 node scripts/smoke.mjs
 docker restart "$name" >/dev/null
 wait_ready
 node scripts/smoke.mjs --persistence
+node scripts/history-smoke.mjs
+docker restart "$name" >/dev/null
+wait_ready
+node scripts/history-smoke.mjs --persistence

@@ -17,7 +17,7 @@ The earlier [ylang-ylang/visual-explainer fork](https://github.com/ylang-ylang/v
 ```sh
 git clone https://github.com/ylang-ylang/visual-explainer-webui.git
 cd visual-explainer-webui
-docker build --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" -t visual-explainer-webui:1.0.0 .
+docker build --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" -t visual-explainer-webui:1.1.0 .
 ```
 
 Create a persistent data directory owned by UID/GID `1000:1000` and a private service-token file containing at least 32 random characters, readable by UID 1000. Set these values in a private `.env`:
@@ -90,7 +90,57 @@ jq -n --rawfile html architecture.html '{html:$html,entityId:"cosmos"}' |
     -H "Authorization: Bearer $VE_TOKEN" -H 'Content-Type: application/json' --data-binary @-
 ```
 
-Back up the complete data directory, including HTML, `.src.html` and the atomic versioned `.entities.json` catalog, plus the private token separately. Invalid catalogs stop startup rather than silently discarding grouping.
+Back up the complete data directory, including HTML, `.src.html`, `.entities.json` and `.git`, plus the private token and deploy key separately. Invalid catalogs stop startup rather than silently discarding grouping.
+
+## Page version history
+
+The data directory is a Git repository on branch `main`, independent of this
+wrapper's source repository. Startup imports existing pages without changing
+their bytes or URLs. Successful API/MCP renders and Entity create/rename/delete
+or page reassignment record a snapshot before returning success. Source,
+rendered HTML and assignment changes from one publish share one commit.
+Identical content does not produce an empty commit.
+
+Only regular top-level `.html`/`.htm` files (including `.src.html`) and
+`.entities.json` are versioned. Screenshots, symlinks, credentials and unrelated
+files are excluded; unrelated staged entries are preserved. Direct filesystem
+edits are captured at the next startup or successful mutation, not immediately.
+
+Local history is enabled by default. Set `GIT_HISTORY_REMOTE` to push each
+snapshot to an independent **private** repository. TrueNAS uses
+[visual-explainer-pages](https://github.com/ylang-ylang/visual-explainer-pages).
+For SSH, use a write-enabled deploy key scoped only to that content repository,
+not a personal account key. Keep both credentials outside the page directory
+and source checkout. An example `compose.override.yaml`:
+
+```yaml
+services:
+  visual-explainer:
+    environment:
+      GIT_HISTORY_REMOTE: git@github.com:your-account/your-private-pages.git
+      GIT_HISTORY_SSH_KEY: /run/secrets/history_ssh_key
+      GIT_HISTORY_KNOWN_HOSTS: /run/secrets/history_known_hosts
+    volumes:
+      - /private/page-deploy-key:/run/secrets/history_ssh_key:ro
+      - /private/trusted-known-hosts:/run/secrets/history_known_hosts:ro
+```
+
+The key must be readable by UID 1000, with mode `0600`; the trusted known-hosts
+file must also be readable. SSH uses strict host verification and cannot prompt
+or use an agent. The image includes Git/OpenSSH; no runtime installation is needed.
+
+Commits are local-first and pushes synchronous. If Git fails, mutations report
+503 rather than claiming successful synchronization; content may already be
+saved, and a failed push preserves its local commit. The next mutation or startup
+pushes pending commits, even if it creates no new version. There is no force-push,
+pull, automatic reset or rollback. A configured remote that is unavailable during
+startup prevents startup until it is reachable or the configuration is corrected.
+
+Browse history on GitHub or clone the content repository. To restore a version,
+extract its source using `git show <commit>:<filename>.src.html` in that clone,
+then republish through the existing API/MCP with the intended `entityId`. This
+records the restoration as a new commit. Do not reset the running data repository.
+If a page has no source file, republish its saved `.html` instead.
 
 ## Following upstream
 

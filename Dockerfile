@@ -6,10 +6,12 @@ COPY remote-app/package.json remote-app/package-lock.json remote-app/.npmrc ./
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends git openssh-client && \
     ./node_modules/.bin/playwright-core install --with-deps chromium-headless-shell && \
     chmod -R a+rX /opt/browsers
 COPY LICENSE ./
-COPY remote-app/server.mjs remote-app/catalog.mjs remote-app/index.html ./
+COPY remote-app/server.mjs remote-app/catalog.mjs remote-app/history.mjs remote-app/index.html ./
 COPY remote-app/static/ ./static/
 ARG SOURCE_REVISION
 LABEL org.opencontainers.image.source="https://github.com/ylang-ylang/visual-explainer-webui" \

@@ -14,6 +14,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { parse } from 'node-html-parser';
 import { ApiError, canonicalFilename, createCatalog, pageFilename } from './catalog.mjs';
+import { createHistory } from './history.mjs';
 
 const publicUrl = new URL(process.env.PUBLIC_URL);
 const outputDir = resolve(process.env.VISUAL_EXPLAINER_OUTPUT_DIR ?? '/data');
@@ -28,6 +29,8 @@ const cjkLicense = await readFile(new URL('./static/LICENSE.fonts-wqy-zenhei', i
 const viewerKey = createHmac('sha256', token).update('viewer-access').digest('hex');
 const sessionLifetime = 7 * 24 * 60 * 60;
 const catalog = await createCatalog(outputDir);
+const history = await createHistory(outputDir);
+await catalog.run(() => history.snapshot('Snapshot existing pages'));
 
 function sessionSignature(expires) {
   return createHmac('sha256', token).update(`viewer-session:${expires}`).digest('hex');
@@ -182,6 +185,7 @@ function renderHtml(args, apiFilename = false, params = { name: 'visual_explaine
     const page = await requirePage(filename);
     const assigned = Object.hasOwn(args, 'entityId') ? args.entityId : existingFiles.has(filename) ? catalog.assignment(filename) : null;
     await catalog.assign(filename, assigned);
+    await history.snapshot(`Publish page ${filename}`);
     page.entityId = assigned;
     result.structuredContent = { ...result.structuredContent, url: page.url, entityId: assigned };
     result.content.push({ type: 'text', text: `View: ${page.url}\nThis link grants read access to this page. Reusing the filename replaces it; use unique filenames for immutable reports.` });
@@ -316,16 +320,27 @@ const http = createServer(async (req, res) => {
       if (resource === 'entities' && parts.length === 1 && req.method === 'POST') {
         const body = await readJson(req, 4096);
         fields(body, ['id', 'name'], ['id', 'name']);
-        return await catalog.run(async () => json(res, 201, { entity: withCount(await catalog.create(body.id, body.name), await listPages()) }));
+        return await catalog.run(async () => {
+          const entity = await catalog.create(body.id, body.name);
+          await history.snapshot(`Create entity ${entity.id}`);
+          return json(res, 201, { entity: withCount(entity, await listPages()) });
+        });
       }
       if (resource === 'entities' && parts.length === 2 && req.method === 'PATCH') {
         const body = await readJson(req, 4096);
         fields(body, ['name'], ['name']);
-        return await catalog.run(async () => json(res, 200, { entity: withCount(await catalog.rename(id, body.name), await listPages()) }));
+        return await catalog.run(async () => {
+          const current = catalog.entity(id);
+          const entity = typeof body.name === 'string' && body.name.trim() === current.name
+            ? current : await catalog.rename(id, body.name);
+          await history.snapshot(`Rename entity ${id}`);
+          return json(res, 200, { entity: withCount(entity, await listPages()) });
+        });
       }
       if (resource === 'entities' && parts.length === 2 && req.method === 'DELETE') {
         return await catalog.run(async () => {
           await catalog.remove(id, await listPages());
+          await history.snapshot(`Delete entity ${id}`);
           return send(res, 204, '');
         });
       }
@@ -346,6 +361,7 @@ const http = createServer(async (req, res) => {
         return await catalog.run(async () => {
           const page = await requirePage(id);
           await catalog.assign(id, body.entityId);
+          await history.snapshot(`Move page ${id}`);
           return json(res, 200, { page: { ...page, entityId: body.entityId } });
         });
       }
