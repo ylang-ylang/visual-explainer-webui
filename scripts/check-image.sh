@@ -12,6 +12,11 @@ cleanup() {
   trap - EXIT
   if (( status != 0 )); then docker logs "$name" 2>/dev/null || true; fi
   docker rm --force "$name" >/dev/null 2>&1 || true
+  if docker image inspect "$image" >/dev/null 2>&1; then
+    # Container-created Git metadata belongs to UID 1000, not necessarily the runner.
+    docker run --rm --user 0 --mount "type=bind,src=$fixture,dst=/fixture" \
+      "$image" chown -hR "$(id -u):$(id -g)" /fixture || status=1
+  fi
   docker image rm "$image" >/dev/null 2>&1 || true
   rm -rf "$fixture"
   exit "$status"
