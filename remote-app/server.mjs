@@ -34,37 +34,29 @@ const tokens = await createTokens(outputDir, catalog);
 const history = await createHistory(outputDir, catalog);
 await catalog.run(() => history.snapshot('Snapshot existing pages'));
 
-function sessionSignature(expires) {
-  return createHmac('sha256', token).update(`viewer-session:${expires}`).digest('hex');
+const sessionCookies = {
+  admin: { name: 've_admin', context: 'admin-session' },
+  viewer: { name: 've_reader', context: 'reader-session' },
+  legacy: { name: 've_viewer', context: 'viewer-session' },
+};
+function sessionSignature(expires, kind) {
+  return createHmac('sha256', token).update(`${sessionCookies[kind].context}:${expires}`).digest('hex');
 }
-function viewerSession(req) {
-  const value = (req.headers.cookie ?? '').split(';').map(v => v.trim()).find(v => v.startsWith('ve_viewer='))?.slice(10);
+function hasSession(req, kind) {
+  const prefix = `${sessionCookies[kind].name}=`;
+  const value = (req.headers.cookie ?? '').split(';').map(value => value.trim()).find(value => value.startsWith(prefix))?.slice(prefix.length);
   if (!value) return false;
   const [expires, sig] = value.split('.');
   const remaining = Number(expires) - Math.floor(Date.now() / 1000);
-  return remaining > 0 && remaining <= sessionLifetime && equal(sig ?? '', sessionSignature(expires));
+  return remaining > 0 && remaining <= sessionLifetime && equal(sig ?? '', sessionSignature(expires, kind));
 }
-function setViewerSession(res) {
+function setSession(res, kind) {
   const expires = Math.floor(Date.now() / 1000) + sessionLifetime;
   const secure = publicUrl.protocol === 'https:' ? '; Secure' : '';
-  res.setHeader('Set-Cookie', [
-    `ve_viewer=${expires}.${sessionSignature(expires)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${sessionLifetime}${secure}`,
-    `ve_admin=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`,
-  ]);
-}
-function adminSignature(expires) {
-  return createHmac('sha256', token).update(`admin-session:${expires}`).digest('hex');
-}
-function adminSession(req) {
-  const value = (req.headers.cookie ?? '').split(';').map(value => value.trim()).find(value => value.startsWith('ve_admin='))?.slice(9);
-  if (!value) return false;
-  const [expires, sig] = value.split('.');
-  const remaining = Number(expires) - Math.floor(Date.now() / 1000);
-  return remaining > 0 && remaining <= sessionLifetime && equal(sig ?? '', adminSignature(expires));
-}
-function setAdminSession(res) {
-  const expires = Math.floor(Date.now() / 1000) + sessionLifetime;
-  res.setHeader('Set-Cookie', `ve_admin=${expires}.${adminSignature(expires)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${sessionLifetime}${publicUrl.protocol === 'https:' ? '; Secure' : ''}`);
+  res.setHeader('Set-Cookie', [kind, ...Object.keys(sessionCookies).filter(role => role !== kind)].map(role => {
+    const { name } = sessionCookies[role];
+    return `${name}=${role === kind ? `${expires}.${sessionSignature(expires, kind)}` : ''}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${role === kind ? sessionLifetime : 0}${secure}`;
+  }));
 }
 function identity(req) {
   if (req.headers.authorization) {
@@ -74,8 +66,9 @@ function identity(req) {
     if (agent) return agent;
     throw new ApiError(401, 'Authentication required');
   }
-  if (adminSession(req)) return { role: 'admin' };
-  if (viewerSession(req)) return { role: 'viewer' };
+  if (hasSession(req, 'admin')) return { role: 'admin' };
+  if (hasSession(req, 'viewer')) return { role: 'viewer' };
+  if (hasSession(req, 'legacy')) return { role: 'admin', legacy: true };
   throw new ApiError(401, 'Authentication required');
 }
 function versionSignature(filename, revision) {
@@ -377,7 +370,7 @@ const http = createServer(async (req, res) => {
     if (url.pathname === '/' && req.method === 'GET') {
       if (url.searchParams.has('access')) {
         if (!equal(url.searchParams.get('access'), viewerKey)) return send(res, 403, 'Invalid viewer access link');
-        setViewerSession(res);
+        setSession(res, hasSession(req, 'admin') || hasSession(req, 'legacy') ? 'admin' : 'viewer');
         res.writeHead(303, { Location: '/', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
         return res.end();
       }
@@ -388,14 +381,13 @@ const http = createServer(async (req, res) => {
     if (url.pathname === '/api/login' && req.method === 'POST') {
       if (req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
       const key = new URLSearchParams(await readBody(req, 1024)).get('key') ?? '';
-      if (!equal(key, viewerKey) && !equal(key, token)) throw new ApiError(401, '访问密钥不正确');
-      if (equal(key, token)) setAdminSession(res);
-      else setViewerSession(res);
+      if (!equal(key, token)) throw new ApiError(401, '登录密钥不正确');
+      setSession(res, 'admin');
       return send(res, 200, 'ok');
     }
     if (url.pathname === '/api/logout' && req.method === 'POST') {
       if (req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
-      res.setHeader('Set-Cookie', ['ve_viewer', 've_admin'].map(name => `${name}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${publicUrl.protocol === 'https:' ? '; Secure' : ''}`));
+      res.setHeader('Set-Cookie', Object.values(sessionCookies).map(({ name }) => `${name}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${publicUrl.protocol === 'https:' ? '; Secure' : ''}`));
       return send(res, 200, 'ok');
     }
     if (url.pathname.startsWith('/api/')) {
@@ -407,6 +399,7 @@ const http = createServer(async (req, res) => {
         const parts = url.pathname.split('/').slice(2).map(decodeSegment);
         const [resource, id, action] = parts;
         if (resource === 'session' && parts.length === 1 && req.method === 'GET') {
+          if (auth.legacy) setSession(res, 'admin');
           return json(res, 200, { role: auth.role, ...(auth.entityId ? { entityId: auth.entityId } : {}) });
         }
         if (auth.role === 'agent') {

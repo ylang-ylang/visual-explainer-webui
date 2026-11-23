@@ -2,6 +2,7 @@
 
 ## 1.3.0 — 2026-11-23
 
+- Correct the browser login flow: existing valid legacy web sessions migrate directly to management without another credential prompt; fresh read-only links use a separate cookie and cannot be used as login passwords.
 - Organize each Entity as a workspace with nested folders, logical file paths and a matching content Git tree; preserve existing signed links and serving bytes during catalog migration.
 - Publish HTML directly through Entity-scoped HTTP endpoints, retain exact source companions, and issue revocable workspace API tokens without exposing the service credential.
 - Add signed administrator sessions, same-origin management, folder/file moves, and private hash-only token persistence outside content Git.

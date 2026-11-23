@@ -343,7 +343,7 @@
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></svg>
         <span class="refresh-label">刷新</span>
       </button>
-      <button id="admin-unlock" class="button" type="button" hidden>管理</button>
+      <button id="admin-unlock" class="button" type="button" title="当前为只读查看，登录后可编辑" hidden>登录</button>
       <button id="logout" class="button" type="button" hidden>退出</button>
     </div>
   </header>
@@ -445,8 +445,8 @@
         <span class="brand-mark" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><path d="M14 15h6m-6 5h6"/></svg></span>
         图解工作台
       </div>
-      <h2 id="login-title">登录后开始阅读</h2>
-      <p id="login-description" class="login-description">输入访问密钥，或使用专属查看链接进入。</p>
+      <h2 id="login-title">登录工作台</h2>
+      <p id="login-description" class="login-description">输入访问密钥。</p>
       <label for="key">访问密钥</label>
       <input id="key" name="key" type="password" autocomplete="off" aria-describedby="login-error" required>
       <button id="login-submit" class="button primary" type="submit">进入工作台</button>
@@ -486,7 +486,7 @@
       <button class="button icon-button" type="button" data-close="api-dialog" aria-label="关闭">×</button>
     </div>
     <p id="api-base" class="code-field"></p>
-    <button id="api-unlock" class="button bordered" type="button" hidden>解锁管理</button>
+    <button id="api-unlock" class="button bordered" type="button" hidden>登录</button>
     <section id="api-admin" hidden>
       <form id="token-form">
         <label for="token-name">API 令牌</label>
@@ -1107,7 +1107,7 @@
         role = session.role;
         authenticated = true;
         updateControls();
-        if (unlocking && role !== 'admin') throw new Error('此密钥仅可阅读，请输入管理密钥。');
+        if (unlocking && role !== 'admin') throw new Error('当前为只读查看，请使用网页登录凭据登录。');
         const resume = afterUnlock;
         afterUnlock = null;
         $('login').close();
@@ -1122,7 +1122,7 @@
         body.delete('key');
         $('login-submit').disabled = false;
         $('login-cancel').disabled = false;
-        $('login-submit').textContent = unlocking ? '解锁管理' : '进入工作台';
+        $('login-submit').textContent = '进入工作台';
       }
     });
     $('login').addEventListener('cancel', event => {
@@ -1306,21 +1306,21 @@
     }
     function updateControls() {
       $('admin-unlock').hidden = !authenticated || role === 'admin';
-      $('logout').hidden = !authenticated;
+      $('logout').hidden = !authenticated || role !== 'admin';
       $('space-create').disabled = !authenticated;
       $('space-api').disabled = !authenticated || !isSpaceSelected();
       $('folder-create').disabled = !authenticated || !isSpaceSelected();
       $('page-edit').disabled = !authenticated || !selected;
       $('page-versions').disabled = !authenticated || !selected;
-      $('history-restore').textContent = role === 'admin' ? '恢复此版' : '解锁恢复';
+      $('history-restore').textContent = role === 'admin' ? '恢复此版' : '登录后恢复';
       $('api-admin').hidden = role !== 'admin';
       $('api-unlock').hidden = role === 'admin';
     }
     function configureLogin(admin) {
       unlocking = admin;
-      $('login-title').textContent = admin ? '解锁管理' : '登录后开始阅读';
-      $('login-description').textContent = admin ? '输入管理密钥。' : '输入访问密钥，或使用专属查看链接进入。';
-      $('login-submit').textContent = admin ? '解锁管理' : '进入工作台';
+      $('login-title').textContent = '登录工作台';
+      $('login-description').textContent = admin ? '当前为只读查看，登录后可编辑。' : '输入访问密钥。';
+      $('login-submit').textContent = '进入工作台';
       $('login-cancel').hidden = !admin;
       $('login-error').textContent = '';
       $('key').value = '';

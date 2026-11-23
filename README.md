@@ -77,7 +77,11 @@ Workspace tokens can access only their Entity's file tree, folders, files and pe
 
 ### Viewers and security
 
-Open `${PUBLIC_URL}/` and log in using the service token for administrator access, or a read-only viewer key: `HMAC-SHA256(token, "viewer-access")`, hex encoded. A `/?access=<viewer-key>` link establishes a seven-day HttpOnly viewer session and redirects to a clean URL. Existing viewer sessions remain read-only. The reader's management action can upgrade a viewer session after service-token login; credentials are not stored in browser storage.
+Open `${PUBLIC_URL}/` and log in once using the existing service token. Successful web login grants management immediately; there is no separate management password or second unlock. API workspace tokens remain separate credentials for external agents, not browser passwords. Credentials are not stored in browser storage.
+
+Valid legacy `ve_viewer` browser sessions are accepted as management sessions and exchanged for an administrator cookie on the next library load, so existing users do not need to enter their credential again. **This migration upgrades all already-issued legacy browser sessions, including legacy read-only sessions, until they expire or are logged out.**
+
+Fresh `/?access=<viewer-key>` links use a separate read-only cookie and redirect to a clean URL. The viewer key is `HMAC-SHA256(token, "viewer-access")`, hex encoded; it is accepted only through the viewing link, not the login form. Opening a viewing link does not downgrade an already logged-in owner.
 
 A viewer session reads the whole library and its versions but cannot mutate it. Entity workspace tokens are scoped API credentials, not viewer sessions; the service token remains a global administrator credential. Signed current-page URLs grant read access only to the current diagram; historical previews use separate revision-specific signed URLs. Generated pages run in opaque sandboxed frames. Treat keys and page URLs as private; use TLS or an encrypted tunnel outside trusted networks. Rotating the service token invalidates signed links and sessions.
 

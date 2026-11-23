@@ -179,7 +179,7 @@ async function viewerChecks() {
   const access = await request(`/?access=${viewerKey}`, { auth: 'none', status: 303 });
   assert.equal(access.response.headers.get('location'), '/');
   const setCookie = access.response.headers.get('set-cookie');
-  assert.match(setCookie, /^ve_viewer=/);
+  assert.match(setCookie, /^ve_reader=/);
   assert.match(setCookie, /HttpOnly/);
   assert.match(setCookie, /SameSite=Strict/);
   const cookie = setCookie.split(';')[0];
@@ -201,12 +201,10 @@ async function viewerChecks() {
   await error('/api/entities', 401, { auth: 'none', headers: { Authorization: `Bearer ${viewerKey}` } });
   await error('/api/entities', 401, { auth: 'none', headers: { Cookie: 've_viewer=1.invalid' } });
   await request(`/?access=${'0'.repeat(64)}`, { auth: 'none', status: 403 });
-  const login = await request('/api/login', {
+  await error('/api/login', 401, {
     auth: 'none', method: 'POST', raw: new URLSearchParams({ key: viewerKey }).toString(),
     headers: { Origin: base.origin, 'Content-Type': 'application/x-www-form-urlencoded' },
   });
-  assert.equal((await api('/api/session', { auth: 'none', headers: { Cookie: login.response.headers.get('set-cookie').split(';')[0] } })).role, 'viewer');
-  assert.match(login.response.headers.get('set-cookie'), /^ve_viewer=/);
   const logout = await request('/api/logout', { ...viewer, method: 'POST', headers: { ...viewer.headers, Origin: base.origin } });
   assert.match(logout.response.headers.get('set-cookie'), /Max-Age=0/);
   await error('/api/entities', 403, { headers: { Origin: 'https://invalid.example' } });
