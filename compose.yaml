@@ -1,9 +1,9 @@
-# Build from the wrapper root: docker build --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" -t visual-explainer-webui:1.2.0 .
+# Build from the wrapper root: docker build --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" -t visual-explainer-webui:1.3.0 .
 # Set PUBLIC_URL, DATA_PATH and TOKEN_PATH in a private .env or replace them in TrueNAS.
 # Data/token files must be readable by UID 1000; keep the token outside Git.
 services:
   visual-explainer:
-    image: visual-explainer-webui:1.2.0
+    image: visual-explainer-webui:1.3.0
     pull_policy: never
     restart: unless-stopped
     init: true

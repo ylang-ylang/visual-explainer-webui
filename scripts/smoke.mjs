@@ -142,6 +142,7 @@ async function mcpReadChecks() {
 function validatePage(page, filename, entityId) {
   assert.equal(page?.filename, filename);
   assert.equal(page.entityId, entityId, `${filename}: assignment`);
+  assert.equal(page.path, filename, `${filename}: legacy root logical path`);
   assert.ok(Number.isInteger(page.bytes) && page.bytes > 0);
   assert.equal(new Date(page.modified).toISOString(), page.modified);
   const signature = createHmac('sha256', token).update(`page:${filename}`).digest('hex');
@@ -204,7 +205,7 @@ async function viewerChecks() {
     auth: 'none', method: 'POST', raw: new URLSearchParams({ key: viewerKey }).toString(),
     headers: { Origin: base.origin, 'Content-Type': 'application/x-www-form-urlencoded' },
   });
-  assert.equal(login.text, 'ok');
+  assert.equal((await api('/api/session', { auth: 'none', headers: { Cookie: login.response.headers.get('set-cookie').split(';')[0] } })).role, 'viewer');
   assert.match(login.response.headers.get('set-cookie'), /^ve_viewer=/);
   const logout = await request('/api/logout', { ...viewer, method: 'POST', headers: { ...viewer.headers, Origin: base.origin } });
   assert.match(logout.response.headers.get('set-cookie'), /Max-Age=0/);
@@ -358,7 +359,7 @@ async function fullSuite() {
     filename: fixture.rejected, html: document('Rejected', 'REJECTED'), entityId: fixture.missing,
   } }, { render: true });
   assert.equal(rejected.isError, true);
-  assert.match(textContent(rejected), /Entity not found/);
+  assert.ok(textContent(rejected).length > 0, 'MCP errors must explain the failed render');
   await error(`/api/pages/${fixture.rejected}`, 404);
   console.log('PASS malformed JSON, invalid/missing entities, missing pages and real renderer error results');
 

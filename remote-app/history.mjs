@@ -4,7 +4,7 @@ import { lstat, mkdtemp, open, readdir, realpath, rm } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
-import { ApiError, entityId } from './catalog.mjs';
+import { ApiError, entityId, logicalPath, pageFilename, sourceFilename, sourcePairs } from './catalog.mjs';
 
 const execute = promisify(execFile);
 const author = 'Visual Explainer';
@@ -72,7 +72,7 @@ export async function createHistory(outputDir, catalog) {
       shell: false,
       timeout,
       killSignal: 'SIGKILL',
-      maxBuffer: 1024 * 1024,
+      maxBuffer: 32 * 1024 * 1024,
       encoding: 'utf8',
     });
     pending.child.stdin.on('error', () => {}); // Early child exit is reported by execFile.
@@ -146,41 +146,22 @@ export async function createHistory(outputDir, catalog) {
     const current = await git(['rev-parse', '--verify', '--quiet', 'refs/heads/main'], { allowed: [0, 1] });
     if (current.code === 0) {
       const tracked = (await git(['ls-tree', '-rz', '--full-tree', current.stdout.trim()])).stdout;
-      let legacy = false;
-      let projected = false;
-      let emptyBlob;
-      const folders = new Map();
       for (const entry of tracked.split('\0').filter(Boolean)) {
-        const tab = entry.indexOf('\t');
-        const header = entry.slice(0, tab);
-        const name = entry.slice(tab + 1);
-        if (!/^100(?:644|755) blob [0-9a-f]+$/.test(header)) {
-          throw new Error('Existing page history must contain only managed regular files');
+        const tab = entry.indexOf('\t'), header = entry.slice(0, tab), name = entry.slice(tab + 1);
+        if (!/^100(?:644|755) blob [0-9a-f]+$/.test(header)) throw new Error('Existing page history must contain only regular files');
+        if (name === '.entities.json' || managed(name)) continue;
+        const [root, ...parts] = name.split('/');
+        if (root !== '_unassigned') entityId(root);
+        if (!parts.length) throw new Error('Invalid projected history path');
+        const leaf = parts.at(-1);
+        if (leaf === '.gitkeep') {
+          if (parts.length > 1) logicalPath(parts.slice(0, -1).join('/'));
+          const empty = (await git(['hash-object', '--stdin'], { input: '' })).stdout.trim();
+          if (header !== `100644 blob ${empty}`) throw new Error('Directory markers must be empty regular files');
+        } else if (parts.length !== 1 || !managed(leaf)) {
+          const logical = parts.join('/').replace(/\.src(\.html?)$/i, '$1');
+          logicalPath(logical, true);
         }
-        if (name === '.entities.json') continue;
-        if (managed(name)) {
-          legacy = true;
-          continue;
-        }
-        const parts = name.split('/');
-        if (parts.length !== 2 || (parts[0] !== '_unassigned' && entityId(parts[0]) !== parts[0]) ||
-            (parts[1] !== '.gitkeep' && (!managed(parts[1]) || parts[1] === '.entities.json'))) {
-          throw new Error('Existing page history must contain only managed paths');
-        }
-        projected = true;
-        const folder = folders.get(parts[0]) ?? { marker: false, files: false };
-        if (parts[1] === '.gitkeep') {
-          emptyBlob ??= (await git(['hash-object', '--stdin'], { input: '' })).stdout.trim();
-          if (header !== `100644 blob ${emptyBlob}`) throw new Error('Directory markers must be empty regular files');
-          folder.marker = true;
-        } else {
-          folder.files = true;
-        }
-        folders.set(parts[0], folder);
-      }
-      if ((legacy && projected) || (projected && !folders.has('_unassigned')) ||
-          [...folders.values()].some(folder => folder.marker && folder.files)) {
-        throw new Error('Existing page history must use a complete legacy or entity-folder layout');
       }
     }
     // Convert in place: retain all objects, refs, reflogs and the user's index.
@@ -191,7 +172,100 @@ export async function createHistory(outputDir, catalog) {
     throw unavailable(error);
   }
 
+  const records = new Map();
+  async function record(revision) {
+    if (records.has(revision)) return records.get(revision);
+    const tree = new Map();
+    for (const entry of (await git(['ls-tree', '-rz', '--full-tree', revision])).stdout.split('\0').filter(Boolean)) {
+      const tab = entry.indexOf('\t'), match = entry.slice(0, tab).match(/^100(?:644|755) blob ([0-9a-f]+)$/);
+      if (match) tree.set(entry.slice(tab + 1), match[1]);
+    }
+    let metadata = null;
+    if (tree.has('.entities.json')) {
+      metadata = JSON.parse((await git(['cat-file', 'blob', tree.get('.entities.json')])).stdout);
+      if (![1, 2].includes(metadata?.version) || !metadata.pages || typeof metadata.pages !== 'object') throw new Error('Invalid historical catalog');
+    }
+    const info = (await git(['show', '-s', '--format=%P%x00%cI%x00%s', revision])).stdout.trimEnd().split('\0');
+    const result = { tree, metadata, parent: info[0].split(' ')[0] || null, createdAt: info[1], message: info.slice(2).join('\0') };
+    // Bound retained metadata, not the available history.
+    if (records.size >= 256) records.delete(records.keys().next().value);
+    records.set(revision, result);
+    return result;
+  }
+  const fingerprint = version => JSON.stringify([version.path, version.entityId, version.blob, version.sourceBlob]);
+
+  async function locate(filename, revision) {
+    pageFilename(filename);
+    const saved = await record(revision), value = saved.metadata?.pages?.[filename];
+    let entity = null, path = filename;
+    if (value !== undefined) {
+      entity = saved.metadata.version === 1 ? value : value.entityId;
+      path = saved.metadata.version === 1 ? filename.normalize('NFC') : value.path;
+      entityId(entity); logicalPath(path, true);
+    }
+    const projected = `${entity ?? '_unassigned'}/${saved.metadata?.version === 1 ? filename : path}`;
+    // Stable physical identity comes from this revision's catalog, never a
+    // current logical path which could have belonged to a different page.
+    const storedPath = saved.tree.has(projected) ? projected : saved.tree.has(filename) ? filename : null;
+    if (!storedPath) throw new ApiError(404, 'Page version not found');
+    const sourcePath = sourcePairs([...saved.tree.keys()]).get(storedPath)?.[0] ?? sourceFilename(storedPath);
+    return {
+      revision, createdAt: saved.createdAt, message: saved.message, path, entityId: entity,
+      sourceAvailable: saved.tree.has(sourcePath), storedPath,
+      blob: saved.tree.get(storedPath), sourceBlob: saved.tree.get(sourcePath) ?? null,
+    };
+  }
+
+  async function reachable(revision) {
+    if (typeof revision !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(revision)) throw new ApiError(400, 'Expected a full commit revision');
+    const type = await git(['cat-file', '-t', revision], { allowed: [0, 128] });
+    if (type.code !== 0 || type.stdout.trim() !== 'commit' ||
+        (await git(['merge-base', '--is-ancestor', revision, 'refs/heads/main'], { allowed: [0, 1, 128] })).code !== 0) {
+      throw new ApiError(404, 'Revision not found');
+    }
+  }
+  const publicVersion = ({ storedPath, blob, sourceBlob, ...version }) => version;
+
   return {
+    async versions(filename, entity = undefined) {
+      try {
+        phase = 'read';
+        const revisions = (await git(['rev-list', 'refs/heads/main'])).stdout.trim().split('\n').filter(Boolean);
+        const snapshots = [];
+        let previous = null;
+        // Walk oldest first to attribute a snapshot to the commit which changed
+        // this identity, not the newest unrelated catalog mutation.
+        for (const revision of revisions.reverse()) {
+          let version;
+          try { version = await locate(filename, revision); }
+          catch (error) { if (error instanceof ApiError && error.status === 404) { previous = null; continue; } throw error; }
+          const current = fingerprint(version);
+          if (current !== previous && (entity === undefined || version.entityId === entity)) snapshots.push(publicVersion(version));
+          previous = current;
+        }
+        return snapshots.reverse().slice(0, 50);
+      } catch (error) { if (error instanceof ApiError) throw error; throw unavailable(error); }
+    },
+    async version(filename, revision, entity = undefined) {
+      try {
+        phase = 'read';
+        await reachable(revision);
+        const version = await locate(filename, revision);
+        if (entity !== undefined && version.entityId !== entity) throw new ApiError(403, 'Version belongs to another Entity');
+        const parent = (await record(revision)).parent;
+        if (parent) {
+          let previous;
+          try { previous = await locate(filename, parent); }
+          catch (error) { if (!(error instanceof ApiError && error.status === 404)) throw error; }
+          if (previous && fingerprint(previous) === fingerprint(version)) throw new ApiError(404, 'Page did not change in this revision');
+        }
+        return {
+          version: publicVersion(version),
+          html: (await git(['cat-file', 'blob', version.sourceBlob ?? version.blob])).stdout,
+          rendered: (await git(['cat-file', 'blob', version.blob])).stdout,
+        };
+      } catch (error) { if (error instanceof ApiError) throw error; throw unavailable(error); }
+    },
     async snapshot(message) {
       let temporary;
       try {
@@ -199,48 +273,45 @@ export async function createHistory(outputDir, catalog) {
         temporary = await mkdtemp(join(tmpdir(), 've-history-'));
         const index = join(temporary, 'index');
         await git(['read-tree', '--empty'], { index });
-        const entries = [];
-        const folders = new Map([['_unassigned', 0], ...catalog.entities().map(entity => [entity.id, 0])]);
+        const entries = [], paths = new Set();
+        const folders = new Set(['_unassigned', ...catalog.entities().map(entity => entity.id)]);
+        for (const entity of catalog.entities()) for (const folder of catalog.folders(entity.id)) folders.add(`${entity.id}/${folder.path}`);
         const filenames = (await readdir(outputDir, { withFileTypes: true }))
           .filter(entry => entry.isFile() && managed(entry.name)).map(entry => entry.name).sort();
-        const compiled = new Map();
-        for (const name of filenames) {
-          if (name === '.entities.json' || source(name)) continue;
-          const [, stem, extension] = name.match(/^(.*)(\.html?)$/is);
-          const candidates = compiled.get(stem) ?? [];
-          candidates.push({ name, extension: extension.toLowerCase() });
-          compiled.set(stem, candidates);
-        }
+        const pairs = sourcePairs(filenames), owners = new Map();
+        for (const [page, sources] of pairs) for (const name of sources) owners.set(name, page);
         for (const name of filenames) {
           let path = name;
           if (name !== '.entities.json') {
-            let page = name;
+            const page = source(name) ? owners.get(name) : name;
+            const location = page ? catalog.location(page) : { entityId: null, path: name.replace(/\.src(\.html?)$/i, '$1') };
+            let logical = location.path;
             if (source(name)) {
-              const [, stem, extension] = name.match(/^(.*)\.src(\.html?)$/is);
-              const candidates = compiled.get(stem) ?? [];
-              page = (candidates.find(candidate => candidate.extension === extension.toLowerCase()) ?? candidates[0])?.name;
+              if (!location.entityId) logical = name;
+              else {
+                const primary = pairs.get(page)[0];
+                // Preserve legacy alternate companions too, without conflating
+                // their bytes with the canonical source in the logical tree.
+                logical = name === primary ? sourceFilename(location.path) :
+                  location.path.replace(/\.html?$/i, /\.htm$/i.test(location.path) ? '.src.html' : '.src.htm');
+              }
             }
-            const folder = (page && catalog.assignment(page)) ?? '_unassigned';
-            if (!folders.has(folder)) throw new Error('Page assignment refers to an unknown entity');
-            folders.set(folder, folders.get(folder) + 1);
-            path = `${folder}/${name}`;
+            path = `${location.entityId ?? '_unassigned'}/${logical}`;
           }
+          if (paths.has(path)) throw new Error('Duplicate Git projection path');
+          paths.add(path);
           const file = await open(join(outputDir, name), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
           let bytes;
           try {
             if (!(await file.stat()).isFile()) throw new Error('Page snapshot requires regular files');
             bytes = await file.readFile();
-          } finally {
-            await file.close();
-          }
+          } finally { await file.close(); }
           const oid = (await git(['hash-object', '-w', '--stdin'], { input: bytes })).stdout.trim();
           entries.push(Buffer.from(`100644 ${oid}\t${path}\0`));
         }
-        if ([...folders.values()].some(count => count === 0)) {
-          const emptyBlob = (await git(['hash-object', '-w', '--stdin'], { input: '' })).stdout.trim();
-          for (const [folder, count] of folders) {
-            if (count === 0) entries.push(Buffer.from(`100644 ${emptyBlob}\t${folder}/.gitkeep\0`));
-          }
+        const emptyBlob = (await git(['hash-object', '-w', '--stdin'], { input: '' })).stdout.trim();
+        for (const folder of [...folders].sort()) {
+          if (![...paths, ...folders].some(path => path.startsWith(`${folder}/`))) entries.push(Buffer.from(`100644 ${emptyBlob}\t${folder}/.gitkeep\0`));
         }
         if (entries.length) await git(['update-index', '-z', '--index-info'], { index, input: Buffer.concat(entries) });
         const tree = (await git(['write-tree'], { index })).stdout.trim();
@@ -255,16 +326,13 @@ export async function createHistory(outputDir, catalog) {
           await git(['update-ref', '-m', 'Page history snapshot', 'refs/heads/main', next, head ?? '0'.repeat(next.length)]);
           head = next;
         }
-        // Also retry pending local commits when the current mutation changes no bytes.
         if (remote && head) {
           phase = 'push';
           await git(['-c', 'push.followTags=false', 'push', '--no-verify', '--recurse-submodules=no', '--', remote, 'refs/heads/main:refs/heads/main'], { timeout: 90000 });
         }
-      } catch (error) {
-        throw unavailable(error);
-      } finally {
-        if (temporary) await rm(temporary, { recursive: true, force: true }).catch(() => console.error('Page history temporary index cleanup failed'));
-      }
+        return head;
+      } catch (error) { throw unavailable(error); }
+      finally { if (temporary) await rm(temporary, { recursive: true, force: true }).catch(() => console.error('Page history temporary index cleanup failed')); }
     },
   };
 }

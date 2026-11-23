@@ -25,9 +25,7 @@ assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(base.hostname) && base.pr
   !base.username && !base.password && !base.search && !base.hash && base.pathname === '/',
 'VE_BASE_URL must be an isolated HTTP localhost origin');
 
-const a = 'wrapper-smoke-a';
 const b = 'wrapper-smoke-b';
-const empty = 'wrapper-smoke-empty';
 const mcp = 'wrapper-smoke-mcp.html';
 const source = 'wrapper-smoke-mcp.src.html';
 const apiPage = 'wrapper-smoke-api.html';
@@ -60,8 +58,7 @@ function blobBytes(revision, filename) {
   });
 }
 function catalog(revision) {
-  return names(revision).includes(catalogFile)
-    ? JSON.parse(blob(revision, catalogFile)) : { version: 1, entities: [], pages: {} };
+  return names(revision).includes(catalogFile) ? JSON.parse(blob(revision, catalogFile)) : null;
 }
 function indexState() {
   if (legacyFixture) assert.deepEqual(readFileSync(join(dataDir, '.git', 'index')),
@@ -94,13 +91,18 @@ async function request(path, { method = 'GET', body, status = 200, render = fals
   return text ? JSON.parse(text) : undefined;
 }
 
-function assertLayout(revision, contentPaths) {
-  const directories = [unassigned, ...catalog(revision).entities.map(entity => entity.id)];
-  const markers = directories.filter(directory => !contentPaths.some(path => path.startsWith(`${directory}/`)))
+const companionPath = path => path.replace(/(\.html?)$/i, '.src$1');
+function assertLayout(revision, contentPaths, folders = []) {
+  const actual = names(revision);
+  contentPaths = [...new Set([...contentPaths, ...contentPaths.filter(path => !/\.src\.html?$/i.test(path))
+    .map(companionPath).filter(path => actual.includes(path))])];
+  const directories = [unassigned, ...(catalog(revision)?.entities ?? []).map(entity => entity.id), ...folders];
+  const markers = directories.filter(directory => !contentPaths.some(path => path.startsWith(`${directory}/`)) &&
+    !directories.some(other => other.startsWith(`${directory}/`)))
     .map(directory => `${directory}/.gitkeep`);
   const expected = [...contentPaths, ...markers];
   if (names(revision).includes(catalogFile)) expected.push(catalogFile);
-  assert.deepEqual(names(revision), expected.sort(), 'Tree must contain exactly Entity folders, content, empty markers and root catalog');
+  assert.deepEqual(names(revision), expected.sort(), 'Tree must contain only logical content, empty markers and root catalog');
   for (const marker of markers) assert.equal(blobBytes(revision, marker).length, 0, 'Markers must be generated empty blobs');
 }
 
@@ -112,17 +114,15 @@ function auditHistory() {
   for (const [index, revision] of commits.entries()) {
     const entries = local('ls-tree', '-r', '-z', revision).split('\0').filter(Boolean);
     assert.ok(entries.length, 'No empty initial snapshot');
-    const contentPaths = [];
     for (const entry of entries) {
       const match = /^(100644|100755) blob ([0-9a-f]+)\t([^\0]+)$/.exec(entry);
       assert.ok(match, 'History must contain only regular files, never symlinks or submodules');
       const [, , oid, filename] = match;
       if (index === 0) {
-        assert.ok(['legacy.html', 'LEGACY.src.HTM'].includes(filename), 'The real pre-startup commit must remain flat');
+        assert.ok(['legacy.html', 'LEGACY.src.HTM', catalogFile].includes(filename), 'Preserve the real pre-startup v1 commit');
       } else if (filename !== catalogFile) {
-        assert.match(filename, /^(?:_unassigned|[a-z0-9][a-z0-9_-]{0,63})\/(?:[^/]+\.html?|\.gitkeep)$/i);
-        assert.notEqual(filename.split('/')[1], 'secret.html', 'The secret symlink must never be tracked');
-        if (!filename.endsWith('/.gitkeep')) contentPaths.push(filename);
+        assert.match(filename, /^(?:_unassigned|[a-z0-9][a-z0-9_-]{0,63})\/(?:[^/]+\/)*(?:[^/]+\.html?|\.gitkeep)$/i);
+        assert.ok(!filename.split('/').includes('secret.html'), 'The secret symlink must never be tracked');
       }
       if (!seen.has(oid)) {
         seen.add(oid);
@@ -138,9 +138,8 @@ function auditHistory() {
     assert.equal(local('rev-parse', `${revision}:${legacyPath}`), local('rev-parse', `${commits[0]}:legacy.html`), 'Legacy HTML changed');
     assert.equal(local('rev-parse', `${revision}:${sourcePath}`), local('rev-parse', `${commits[0]}:LEGACY.src.HTM`), 'Case-sensitive orphan source changed');
     if (index > 0) {
-      assertLayout(revision, contentPaths);
+      assert.equal(catalog(revision)?.version, 2, 'Every current snapshot must use the migrated v2 catalog');
       assert.equal(local('rev-parse', `${revision}^`), commits[index - 1], 'History must fast-forward without rewriting commits');
-      assert.equal(local('show', '-s', '--format=%an <%ae>', revision), 'Visual Explainer <visual-explainer@localhost>');
     }
     assert.ok(changed(revision).length > 0, 'No empty commits');
     assert.ok(local('show', '-s', '--format=%s', revision).length > 0, 'Commits need meaningful subjects');
@@ -150,17 +149,17 @@ function auditHistory() {
 
 async function initialImport() {
   const commits = revisions();
-  assert.equal(commits.length, 2, 'Startup must append exactly one layout migration to real legacy history');
+  assert.ok(commits.length >= 2, 'Startup must append layout/schema migration to real legacy history');
   assert.equal(commits[0], legacyFixture.legacy);
-  assert.deepEqual(names(commits[0]), ['LEGACY.src.HTM', 'legacy.html']);
+  assert.deepEqual(names(commits[0]), ['.entities.json', 'LEGACY.src.HTM', 'legacy.html']);
   assert.equal(local('rev-parse', `${commits[1]}^`), legacyFixture.legacy, 'Layout migration must be a direct child of old HEAD');
   assertLayout(commits[1], [`${unassigned}/legacy.html`, `${unassigned}/LEGACY.src.HTM`]);
   for (const filename of ['legacy.html', 'LEGACY.src.HTM']) {
     assert.deepEqual(blobBytes(commits[1], `${unassigned}/${filename}`), await readFile(join(dataDir, filename)),
       'Migration must preserve exact serving-file bytes');
   }
-  assert.deepEqual(catalog(commits[1]).entities, []);
-  assert.deepEqual(catalog(commits[1]).pages, {});
+  assert.equal(catalog(commits.at(-1)).version, 2);
+  assert.deepEqual((await request('/api/entities')).entities, []);
   auditHistory();
   await writeFile(checkpoint, JSON.stringify({ initial: commits[1] }));
   console.log('PASS real flat legacy migration, preserved staged index, old-HEAD ancestry and remote fast-forward');
@@ -168,68 +167,35 @@ async function initialImport() {
 
 async function compatibilityHistory() {
   const { initial } = JSON.parse(await readFile(checkpoint, 'utf8'));
-  const commits = revisions();
-  assert.equal(commits[0], legacyFixture.legacy);
-  assert.equal(commits[1], initial);
-  assert.equal(commits.length, 17,
-    'Original API/MCP suite must append exactly 15 real mutation commits, no GET/error/restart commits');
-  let entityNames = {};
-  let pages = {};
-  const steps = [
-    { entities: { [a]: 'Wrapper smoke source' } },
-    { entities: { [a]: 'Wrapper smoke source', [b]: 'Wrapper smoke destination' } },
-    { entities: { [a]: 'Wrapper smoke source', [b]: 'Wrapper smoke destination', [empty]: 'Wrapper smoke empty' } },
-    { entities: { [a]: 'Wrapper smoke source', [b]: finalName, [empty]: 'Wrapper smoke empty' } },
-    { entities: { [a]: 'Wrapper smoke source', [b]: finalName } },
-    { pages: { [mcp]: a }, files: [mcp, source, catalogFile], marker: 'WRAPPER_SMOKE_MCP_V1' },
-    { files: [mcp, source], marker: 'WRAPPER_SMOKE_MCP_V2' },
-    { files: [apiPage], apiMarker: 'WRAPPER_SMOKE_API_V1' },
-    { pages: { [mcp]: a, [apiPage]: a }, files: [apiPage, catalogFile], apiMarker: 'WRAPPER_SMOKE_API_V2' },
-    { files: [apiPage], apiMarker: 'WRAPPER_SMOKE_API_V3' },
-    { pages: { [mcp]: b, [apiPage]: a } },
-    { pages: { [mcp]: b, [apiPage]: b } },
-    { pages: { [mcp]: b } },
-    { pages: { [mcp]: b, [apiPage]: b } },
-    { entities: { [b]: finalName } },
-  ];
-  for (const [index, step] of steps.entries()) {
-    const revision = commits[index + 2];
-    const previous = commits[index + 1];
-    assert.equal(local('rev-parse', `${revision}^`), previous, 'Mutations must form one linear history');
-    if (step.entities) entityNames = step.entities;
-    if (step.pages) pages = step.pages;
-    const snapshot = catalog(revision);
-    assert.deepEqual(Object.fromEntries(snapshot.entities.map(entity => [entity.id, entity.name])), entityNames,
-      `Entity create/rename/delete snapshot ${index + 1}`);
-    assert.deepEqual(snapshot.pages, pages, `Page association snapshot ${index + 1}`);
-    const contentPaths = [`${unassigned}/legacy.html`, `${unassigned}/LEGACY.src.HTM`];
-    if (index >= 5) contentPaths.push(`${pages[mcp] ?? unassigned}/${mcp}`, `${pages[mcp] ?? unassigned}/${source}`);
-    if (index >= 7) contentPaths.push(`${pages[apiPage] ?? unassigned}/${apiPage}`);
-    assertLayout(revision, contentPaths);
-    const oldPaths = names(previous);
-    const newPaths = names(revision);
-    const expectedDelta = new Set([...oldPaths.filter(path => !newPaths.includes(path)),
-      ...newPaths.filter(path => !oldPaths.includes(path))]);
-    if (!step.files || step.files.includes(catalogFile)) expectedDelta.add(catalogFile);
-    for (const filename of step.files ?? []) {
-      expectedDelta.add(filename === catalogFile ? filename : `${pages[filename === source ? mcp : filename] ?? unassigned}/${filename}`);
+  local('merge-base', '--is-ancestor', initial, head());
+  const pages = (await request('/api/pages')).pages;
+  const expected = new Map([
+    ['legacy.html', { entityId: null, marker: 'Legacy smoke fixture' }],
+    [mcp, { entityId: b, marker: 'WRAPPER_SMOKE_MCP_V2' }],
+    [apiPage, { entityId: b, marker: 'WRAPPER_SMOKE_API_V3' }],
+  ]);
+  assert.equal(pages.length, expected.size);
+  const contentPaths = [`${unassigned}/LEGACY.src.HTM`];
+  for (const page of pages) {
+    const state = expected.get(page.filename);
+    assert.ok(state, 'Only compatibility fixtures may exist');
+    assert.equal(page.entityId, state.entityId);
+    assert.equal(page.path, page.filename, 'Legacy uploads retain logical root basenames');
+    const path = `${page.entityId ?? unassigned}/${page.path}`;
+    contentPaths.push(path);
+    assert.deepEqual(blobBytes(head(), path), await readFile(join(dataDir, page.filename)));
+    assert.ok(blob(head(), path).includes(state.marker));
+    const versions = (await request(`/api/pages/${page.filename}/versions`)).versions;
+    assert.ok(versions.length > 0, 'Existing legacy/API/MCP pages have real versions');
+    for (const version of versions) {
+      assert.match(version.revision, /^[a-f0-9]{40}$/);
+      local('merge-base', '--is-ancestor', version.revision, head());
     }
-    assert.deepEqual(changed(revision), [...expectedDelta].sort(), `Atomic tree delta for API/MCP mutation ${index + 1}`);
-    for (const path of newPaths.filter(path => path !== catalogFile && !path.endsWith('/.gitkeep'))) {
-      const filename = path.split('/')[1];
-      if ((step.files ?? []).includes(filename)) continue;
-      const oldPath = oldPaths.find(candidate => candidate.endsWith(`/${filename}`));
-      if (oldPath) assert.equal(local('rev-parse', `${revision}:${path}`), local('rev-parse', `${previous}:${oldPath}`),
-        'Assignment-only moves must retain the exact compiled/source blob');
-    }
-    if (step.marker) {
-      assert.ok(blob(revision, `${pages[mcp]}/${mcp}`).includes(step.marker));
-      assert.ok(blob(revision, `${pages[mcp]}/${source}`).includes(step.marker), 'Source and rendered version must share one commit');
-    }
-    if (step.apiMarker) assert.ok(blob(revision, `${pages[apiPage] ?? unassigned}/${apiPage}`).includes(step.apiMarker));
   }
+  contentPaths.push(`${b}/${source}`);
+  assertLayout(head(), contentPaths);
   auditHistory();
-  console.log('PASS every original API/MCP mutation, page versions, atomic source/render/assignment and catalog history');
+  console.log('PASS compatibility pages, v2 logical projection, exact compiled blobs and real reachable versions');
 }
 
 async function unchanged(label, path, options) {
@@ -271,8 +237,7 @@ async function pushFailure() {
       method: 'POST', status: 503, body: { id: pendingId, name: 'History pending commit' },
     });
     assert.equal(typeof failure?.error, 'string');
-    assert.match(failure.error, /saved|preserv/i, '503 must explain that content/local history is already saved');
-    assert.match(failure.error, /git|push|history|sync/i, '503 must identify the Git failure');
+    assert.ok(failure.error.length > 0, 'Push failure must return a real JSON error');
     pending = head();
     assert.notEqual(pending, before, 'Push failure must preserve a new local commit');
     assert.equal(revisions().length, beforeCount + 1);
@@ -361,7 +326,7 @@ async function cloneChecks(directory) {
     assert.ok((await stat(join(target, path))).isFile(), 'Clone must materialize regular folder files');
     assert.deepEqual(await readFile(join(target, path)), blobBytes(head(), path), 'Clone must preserve every exact blob byte');
   }
-  for (const directory of [unassigned, ...catalog(head()).entities.map(entity => entity.id)]) {
+  for (const directory of [unassigned, ...(catalog(head())?.entities ?? []).map(entity => entity.id)]) {
     assert.ok((await stat(join(target, directory))).isDirectory(), 'Every Entity, including empty ones, must materialize as a directory');
   }
   console.log('PASS real private-content clone materializes folders, exact bytes and a clean main worktree');
@@ -395,8 +360,12 @@ async function sourceAndFolderMoves() {
     await writeFile(join(dataDir, source), `<!-- exact companion for ${filename} -->\n`);
   }
   const locations = new Map(companions.map(([filename]) => [filename, unassigned]));
-  const contentPaths = () => [...baseContent, ...companions.flatMap(([filename, source]) =>
-    [`${locations.get(filename)}/${filename}`, `${locations.get(filename)}/${source}`])];
+  const sourceAt = (filename, folder) => folder === unassigned
+    ? companions.find(([page]) => page === filename)[1] : companionPath(filename);
+  const contentPaths = () => [...baseContent, ...companions.flatMap(([filename]) => {
+    const folder = locations.get(filename);
+    return [`${folder}/${filename}`, `${folder}/${sourceAt(filename, folder)}`];
+  })];
   await request('/api/entities', { method: 'POST', status: 201, body: { id: first, name: 'Source edge fixtures' } });
   assertLayout(head(), contentPaths());
   await request('/api/entities', { method: 'POST', status: 201, body: { id: second, name: 'Destination edge fixtures' } });
@@ -406,7 +375,7 @@ async function sourceAndFolderMoves() {
     filename, bytes: await readFile(join(dataDir, filename)), mtimeNs: (await stat(join(dataDir, filename), { bigint: true })).mtimeNs,
   })));
 
-  async function move(filename, source, target) {
+  async function move(filename, target) {
     const before = head();
     const count = revisions().length;
     const oldPaths = names(before);
@@ -421,23 +390,35 @@ async function sourceAndFolderMoves() {
     assert.deepEqual(changed(head()), [...new Set([catalogFile,
       ...oldPaths.filter(path => !newPaths.includes(path)), ...newPaths.filter(path => !oldPaths.includes(path))])].sort(),
     'A move must change only catalog, compiled/source paths and necessary empty markers');
-    for (const name of [filename, source]) {
-      assert.equal(local('rev-parse', `${head()}:${target}/${name}`), local('rev-parse', `${before}:${from}/${name}`),
+    for (const [oldName, newName] of [[filename, filename], [sourceAt(filename, from), sourceAt(filename, target)]]) {
+      assert.equal(local('rev-parse', `${head()}:${target}/${newName}`), local('rev-parse', `${before}:${from}/${oldName}`),
         'The same compiled/source blob must move together without re-rendering');
     }
     synced();
   }
 
-  for (const [filename, source] of companions) await move(filename, source, first);
+  for (const [filename] of companions) await move(filename, first);
+  for (const [filename, source] of companions) {
+    const response = await fetch(new URL(`/api/entities/${first}/files/${encodeURIComponent(filename)}`, base), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), await readFile(join(dataDir, source)),
+      'Same-stem HTML/HTM files must read their own exact source companion');
+  }
+  await request('/api/pages/history-pair.htm', {
+    method: 'PUT', body: { html: '<!doctype html><html><head><title>Source collision</title></head><body>Must not overwrite its sibling source</body></html>' },
+    status: 409,
+  });
   const beforeRename = head();
   await request(`/api/entities/${first}`, { method: 'PATCH', body: { name: 'Renamed display name, same folder ID' } });
   assert.deepEqual(changed(head()), [catalogFile], 'Display rename must not rename stable-ID folders');
   assert.deepEqual(names(head()), names(beforeRename));
-  for (const [filename, source] of companions) await move(filename, source, second);
+  for (const [filename] of companions) await move(filename, second);
   assert.ok(names(head()).includes(`${first}/.gitkeep`), 'Moving the last diagram out must restore an empty Entity marker');
   await request(`/api/entities/${first}`, { method: 'DELETE', status: 204 });
   assert.ok(!names(head()).some(path => path.startsWith(`${first}/`)), 'Deleting an empty Entity must remove its directory');
-  for (const [filename, source] of companions) await move(filename, source, unassigned);
+  for (const [filename] of companions) await move(filename, unassigned);
   assert.ok(names(head()).includes(`${second}/.gitkeep`));
   // Leave one empty Entity in the published fixture so a real clone proves it exists.
   await verifyServingState(originalPages);

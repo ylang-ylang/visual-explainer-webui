@@ -275,6 +275,54 @@
     @media (prefers-reduced-motion: reduce) {
       .spinner, #refresh[aria-busy="true"] .icon { animation: none; }
     }
+
+    .library-tools { display: flex; gap: 4px; margin: -2px 0 10px; }
+    .library-tools .button { flex: 1; padding-inline: 6px; }
+    .folder { margin: 3px 0; min-width: 0; }
+    .folder > summary { display: flex; align-items: center; gap: 5px; min-height: 36px; padding: 2px 4px; border-radius: 6px; cursor: pointer; list-style: none; }
+    .folder > summary::-webkit-details-marker { display: none; }
+    .folder > summary::before { content: "›"; width: 12px; flex: none; text-align: center; color: var(--muted); }
+    .folder[open] > summary::before { transform: rotate(90deg); }
+    .folder > summary:hover { background: #edf1ee; }
+    .folder-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+    .folder-children { margin-left: 9px; padding-left: 4px; border-left: 1px solid var(--line); }
+    .folder-empty { padding: 8px 12px; color: var(--muted); font-size: 11px; }
+    .folder-action { min-height: 28px; width: 28px; padding: 2px; }
+    .page-tools { display: flex; gap: 4px; margin-top: 5px; }
+    .page-tools .button { min-height: 27px; padding: 3px 7px; }
+    .history-banner { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 7px 16px; border-bottom: 1px solid var(--line); background: var(--accent-soft); font-size: 12px; }
+    #history-label { flex: 1; min-width: 100px; overflow-wrap: anywhere; }
+    dialog.panel { width: 560px; padding: 22px; }
+    .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .dialog-heading h2 { min-width: 0; font-size: 18px; overflow-wrap: anywhere; }
+    .dialog-heading .button { flex: none; }
+    .panel label { margin: 18px 0 7px; }
+    .panel input, .panel select { height: 40px; font-size: 14px; }
+    .panel select { width: 100%; padding: 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: #fff; }
+    .panel .primary { width: auto; min-height: 34px; margin: 0; font-size: 12px; }
+    .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .dialog-error { min-height: 18px; margin-top: 12px; color: var(--danger); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+    .subtle { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+    .danger { color: var(--danger); }
+    .code-field { display: block; width: 100%; max-width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--soft); color: var(--ink); font: 11px/1.7 ui-monospace, monospace; overflow-wrap: anywhere; }
+    textarea.code-field { resize: vertical; min-height: 105px; white-space: pre-wrap; }
+    #api-secret { font-family: ui-monospace, monospace; font-size: 12px; }
+    .inline-form { display: flex; align-items: center; gap: 8px; }
+    .inline-form input { min-width: 0; flex: 1; }
+    .inline-form .button { flex: none; }
+    .token-row, .version-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .row-copy { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 12px; line-height: 1.7; }
+    .row-copy small { display: block; color: var(--muted); font-size: 10px; }
+    #api-tokens, #versions-list { margin-top: 12px; }
+    #api-unlock { margin-top: 10px; }
+    #login-cancel { width: 100%; margin-top: 7px; }
+    @media (max-width: 760px) {
+      dialog.panel { padding: 18px; }
+      .viewer-actions { flex-wrap: wrap; }
+      .panel input, .panel select { font-size: 16px; }
+      .panel .code-field, #api-secret { font-size: 12px; }
+      .history-banner { padding-inline: 12px; }
+    }
   </style>
 </head>
 <body>
@@ -295,6 +343,7 @@
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></svg>
         <span class="refresh-label">刷新</span>
       </button>
+      <button id="admin-unlock" class="button" type="button" hidden>管理</button>
       <button id="logout" class="button" type="button" hidden>退出</button>
     </div>
   </header>
@@ -311,14 +360,19 @@
           </button>
         </div>
         <label class="entity-field" for="entity-filter">
-          <span>实体</span>
+          <span>空间</span>
           <select id="entity-filter" disabled>
             <option value="*">全部图解</option>
           </select>
         </label>
+        <div class="library-tools">
+          <button id="space-create" class="button bordered" type="button" title="新建空间" disabled>＋ 空间</button>
+          <button id="folder-create" class="button" type="button" title="新建目录" disabled>＋ 目录</button>
+          <button id="space-api" class="button bordered" type="button" title="当前空间 API 接入" disabled>API</button>
+        </div>
         <label class="search">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
-          <input id="search" type="search" placeholder="搜索标题或文件名" aria-label="搜索标题或文件名" aria-keyshortcuts="Control+k Meta+k" autocomplete="off">
+          <input id="search" type="search" placeholder="搜索标题或路径" aria-label="搜索标题或路径" aria-keyshortcuts="Control+k Meta+k" autocomplete="off">
         </label>
         <div class="search-hint"><span id="list-caption">按最近更新</span><kbd title="Ctrl K / ⌘ K 搜索">Ctrl K</kbd></div>
       </div>
@@ -334,6 +388,10 @@
         <div class="viewer-title">
           <h1 id="page-title" tabindex="-1">图解阅读器</h1>
           <p id="page-meta">从列表中选择一份图解</p>
+          <div class="page-tools">
+            <button id="page-edit" class="button" type="button" disabled>重命名 / 移动</button>
+            <button id="page-versions" class="button" type="button" disabled>版本</button>
+          </div>
         </div>
         <div class="viewer-actions">
           <div class="sizes" role="group" aria-label="预览宽度">
@@ -355,6 +413,11 @@
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7m0-7L10 14M10 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>
           </a>
         </div>
+      </div>
+      <div id="history-banner" class="history-banner" hidden>
+        <span id="history-label"></span>
+        <button id="history-current" class="button bordered" type="button">返回当前</button>
+        <button id="history-restore" class="button" type="button">恢复此版</button>
       </div>
       <div id="stage" class="stage" data-size="desktop" aria-busy="true">
         <div id="placeholder" class="placeholder" data-loading="true" role="status">
@@ -385,9 +448,94 @@
       <h2 id="login-title">登录后开始阅读</h2>
       <p id="login-description" class="login-description">输入访问密钥，或使用专属查看链接进入。</p>
       <label for="key">访问密钥</label>
-      <input id="key" name="key" type="password" autocomplete="current-password" aria-describedby="login-error" required>
+      <input id="key" name="key" type="password" autocomplete="off" aria-describedby="login-error" required>
       <button id="login-submit" class="button primary" type="submit">进入工作台</button>
+      <button id="login-cancel" class="button" type="button" hidden>取消</button>
       <p id="login-error" role="alert"></p>
+    </form>
+  </dialog>
+  <dialog id="edit-dialog" class="panel" aria-labelledby="edit-title">
+    <form id="edit-form">
+      <div class="dialog-heading">
+        <h2 id="edit-title"></h2>
+        <button class="button icon-button" type="button" data-close="edit-dialog" aria-label="关闭">×</button>
+      </div>
+      <div id="edit-name-field" hidden>
+        <label for="edit-name">空间名称</label>
+        <input id="edit-name" autocomplete="off" maxlength="120">
+      </div>
+      <div id="edit-path-field">
+        <label id="edit-path-label" for="edit-path">路径</label>
+        <input id="edit-path" autocomplete="off" spellcheck="false" required>
+      </div>
+      <div id="edit-entity-field" hidden>
+        <label for="edit-entity">移入空间</label>
+        <select id="edit-entity"></select>
+      </div>
+      <p id="edit-hint" class="subtle"></p>
+      <p id="edit-error" class="dialog-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button id="folder-delete" class="button danger" type="button" hidden>删除空目录</button>
+        <button id="edit-submit" class="button primary" type="submit">保存</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="api-dialog" class="panel" aria-labelledby="api-title">
+    <div class="dialog-heading">
+      <h2 id="api-title">空间 API</h2>
+      <button class="button icon-button" type="button" data-close="api-dialog" aria-label="关闭">×</button>
+    </div>
+    <p id="api-base" class="code-field"></p>
+    <button id="api-unlock" class="button bordered" type="button" hidden>解锁管理</button>
+    <section id="api-admin" hidden>
+      <form id="token-form">
+        <label for="token-name">API 令牌</label>
+        <div class="inline-form">
+          <input id="token-name" placeholder="名称，如 coding-agent" autocomplete="off" maxlength="120" required>
+          <button id="token-create" class="button bordered" type="submit">创建</button>
+        </div>
+      </form>
+      <div id="api-tokens" aria-live="polite"></div>
+    </section>
+    <section id="api-secret-section" hidden>
+      <label for="api-secret">新令牌 · 仅显示一次</label>
+      <div class="inline-form">
+        <input id="api-secret" readonly autocomplete="off" spellcheck="false">
+        <button id="copy-secret" class="button bordered" type="button">复制</button>
+      </div>
+    </section>
+    <label for="api-command">发布图解</label>
+    <textarea id="api-command" class="code-field" rows="5" readonly spellcheck="false"></textarea>
+    <p class="subtle">空间令牌仅访问此空间。将本地 HTML 发布到目录；同路径更新会保留 Git 版本。</p>
+    <div class="dialog-actions">
+      <button id="copy-command" class="button bordered" type="button">复制 curl</button>
+      <button id="copy-agent" class="button bordered" type="button">复制 Agent 说明</button>
+    </div>
+    <textarea id="api-agent" class="code-field" rows="8" readonly spellcheck="false" aria-label="Agent 接入说明" hidden></textarea>
+    <p id="api-status" class="dialog-error" role="status"></p>
+  </dialog>
+  <dialog id="versions-dialog" class="panel" aria-labelledby="versions-title">
+    <div class="dialog-heading">
+      <h2 id="versions-title">版本</h2>
+      <button class="button icon-button" type="button" data-close="versions-dialog" aria-label="关闭">×</button>
+    </div>
+    <p id="versions-path" class="subtle"></p>
+    <div id="versions-list"></div>
+    <p id="versions-error" class="dialog-error" role="alert"></p>
+    <button id="versions-retry" class="button bordered" type="button" hidden>重试</button>
+  </dialog>
+  <dialog id="confirm-dialog" class="panel" aria-labelledby="confirm-title">
+    <form id="confirm-form">
+      <div class="dialog-heading">
+        <h2 id="confirm-title"></h2>
+        <button class="button icon-button" type="button" data-close="confirm-dialog" aria-label="关闭">×</button>
+      </div>
+      <p id="confirm-detail" class="subtle"></p>
+      <p id="confirm-error" class="dialog-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="button bordered" type="button" data-close="confirm-dialog">取消</button>
+        <button id="confirm-submit" class="button primary" type="submit">确认</button>
+      </div>
     </form>
   </dialog>
   <div id="notice" role="status" hidden></div>
@@ -418,6 +566,19 @@
     let placeholderAction = null;
     let desktopNavOpen = true;
     let mobileNavOpen = false;
+    let role = 'viewer';
+    let unlocking = false;
+    let afterUnlock = null;
+    let treeEntity = '';
+    let treeFolders = [];
+    let treeRequest = null;
+    let treeError = '';
+    const folderExpansion = new Map();
+    let historical = null;
+    let editContext = null;
+    let confirmation = null;
+    let apiContext = null;
+    let versionsRequest = null;
 
     function notify(message) {
       clearTimeout(noticeTimer);
@@ -470,6 +631,10 @@
       $('preview').hidden = true;
       $('preview').removeAttribute('src');
       selected = null;
+      historical = null;
+      $('history-banner').hidden = true;
+      $('page-edit').disabled = true;
+      $('page-versions').disabled = true;
       $('page-title').textContent = '图解阅读器';
       $('page-title').removeAttribute('title');
       $('page-meta').textContent = '从列表中选择一份图解';
@@ -482,6 +647,15 @@
     }
 
     function showLogin() {
+      role = 'viewer';
+      unlocking = false;
+      afterUnlock = null;
+      treeRequest?.abort();
+      treeEntity = '';
+      treeFolders = [];
+      treeError = '';
+      for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
+      configureLogin(false);
       authenticated = false;
       pages = [];
       entityCatalog = { entities: [], unassignedCount: 0, totalCount: 0 };
@@ -542,7 +716,7 @@
       const title = selectedEntity === '*' ? '还没有图解'
         : selectedEntity === '' ? '没有未分配的图解' : `“${entityName()}”还没有图解`;
       const detail = selectedEntity === '*' ? '工作 agent 生成的图解会显示在这里，无需手动导入。'
-        : selectedEntity === '' ? '未分配实体的图解会显示在这里。' : '分配给这个实体的图解会显示在这里。';
+        : selectedEntity === '' ? '未分配空间的图解会显示在这里。' : '通过此空间的 API 发布图解。';
       showPlaceholder(title, detail, () => loadPages(true), '刷新列表');
     }
 
@@ -553,97 +727,149 @@
         $('entity-filter').value = selectedEntity;
       }
       const query = $('search').value.trim().toLocaleLowerCase();
-      if (!(page.title + ' ' + page.filename).toLocaleLowerCase().includes(query)) $('search').value = '';
-      selectPage(page);
+      if (!(page.title + ' ' + pagePath(page)).toLocaleLowerCase().includes(query)) $('search').value = '';
+      if (page.entityId) {
+        const path = pagePath(page);
+        expandPath(page.entityId, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
+      }
+      selectPage(page, true);
     }
 
     function renderList() {
       const query = $('search').value.trim().toLocaleLowerCase();
       const filtered = pages.filter(page => inSelectedEntity(page)
-        && (page.title + ' ' + page.filename).toLocaleLowerCase().includes(query));
-      const focused = $('list').contains(document.activeElement) ? document.activeElement.dataset.filename : null;
+        && (page.title + ' ' + pagePath(page)).toLocaleLowerCase().includes(query));
+      const active = $('list').contains(document.activeElement) ? document.activeElement : null;
+      const focusKey = active?.dataset.focusKey;
       const scrollTop = $('list').scrollTop;
       const fragment = document.createDocumentFragment();
       $('library-title').textContent = entityName();
       $('library-title').title = entityName();
       $('count').textContent = !libraryLoaded ? '—' : String(entityCount());
-      $('list-caption').textContent = query ? `${filtered.length} 个搜索结果` : '按最近更新';
+      $('list-caption').textContent = query ? `${filtered.length} 个搜索结果`
+        : isSpaceSelected() ? '目录 · 最近更新' : '按最近更新';
+      updateControls();
 
-      if (!filtered.length) {
-        const message = document.createElement('div');
-        message.className = 'list-message';
-        const title = document.createElement('strong');
-        const detail = document.createElement('p');
-        let action = null;
-        let actionLabel = '';
-        if (listState === 'locked') {
-          title.textContent = '尚未登录';
-          detail.textContent = '登录后查看全部图解。';
-        } else if (listState === 'loading') {
-          title.textContent = '正在读取…';
-          detail.textContent = '图解会按最近更新时间排列。';
-        } else if (listState === 'error' && !libraryLoaded) {
-          title.textContent = '暂时无法读取';
-          detail.textContent = listError;
-          action = () => loadPages(true);
-          actionLabel = '重新加载';
-        } else if (query) {
-          title.textContent = '没有匹配的图解';
-          detail.textContent = '试试其他标题或文件名。';
-          action = () => {
-            $('search').value = '';
-            renderList();
-            $('search').focus();
-          };
-          actionLabel = '清除搜索';
-        } else {
-          title.textContent = selectedEntity === '*' ? '还没有图解'
-            : selectedEntity === '' ? '没有未分配的图解' : '这个实体还没有图解';
-          detail.textContent = selectedEntity === '*' ? '新生成的图解会自动出现在这里。'
-            : selectedEntity === '' ? '未分配实体的图解会显示在这里。' : '分配给这个实体的图解会显示在这里。';
-        }
-        message.append(title, detail);
-        if (action) {
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'button bordered';
-          button.textContent = actionLabel;
-          button.addEventListener('click', action);
-          message.append(button);
-        }
-        fragment.append(message);
-      }
-
-      for (const page of filtered) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'report';
+      function pageButton(page) {
+        const button = makeButton('', () => {
+          selectPage(page, true);
+          if (compact.matches) {
+            setNavigation(false);
+            $('page-title').focus({ preventScroll: true });
+          }
+        }, 'report');
         button.dataset.filename = page.filename;
-        button.title = page.title + '\n' + page.filename;
+        button.dataset.focusKey = 'page:' + page.filename;
+        button.title = pageTitle(page) + '\n' + pagePath(page);
         if (selected?.filename === page.filename) button.setAttribute('aria-current', 'page');
         for (const [className, text] of [
-          ['report-title', page.title],
-          ['report-file', page.filename],
-          ['report-date', dates.format(new Date(page.modified))],
+          ['report-title', pageTitle(page)],
+          ['report-file', pagePath(page)],
+          ['report-date', formatDate(page.modified)],
         ]) {
           const span = document.createElement('span');
           span.className = className;
           span.textContent = text;
           button.append(span);
         }
-        button.addEventListener('click', () => {
-          selectPage(page);
-          if (compact.matches) {
-            setNavigation(false);
-            $('page-title').focus({ preventScroll: true });
+        return button;
+      }
+
+      if (isSpaceSelected()) {
+        const root = { folders: new Map(), pages: [] };
+        function directory(path) {
+          let node = root;
+          let prefix = '';
+          for (const name of path.split('/').filter(Boolean)) {
+            prefix = prefix ? prefix + '/' + name : name;
+            if (!node.folders.has(name)) node.folders.set(name, { path: prefix, folders: new Map(), pages: [] });
+            node = node.folders.get(name);
           }
-        });
-        fragment.append(button);
+          return node;
+        }
+        for (const folder of treeEntity === selectedEntity ? treeFolders : []) {
+          if (!query || folder.path.toLocaleLowerCase().includes(query)) directory(folder.path);
+        }
+        for (const page of filtered) {
+          const path = pagePath(page);
+          const parent = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+          directory(parent).pages.push(page);
+        }
+        function appendNode(node, container) {
+          for (const [name, child] of [...node.folders].sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))) {
+            const details = document.createElement('details');
+            details.className = 'folder';
+            details.dataset.path = child.path;
+            const key = selectedEntity + ':' + child.path;
+            details.open = query ? true : folderExpansion.get(key) ?? true;
+            const summary = document.createElement('summary');
+            summary.dataset.focusKey = 'folder:' + child.path;
+            summary.title = child.path;
+            const label = document.createElement('span');
+            label.className = 'folder-name';
+            label.textContent = name;
+            const manage = makeButton('⋯', event => {
+              event.preventDefault();
+              event.stopPropagation();
+              requireAdmin(() => openEditor('folder', { entityId: selectedEntity, path: child.path }));
+            }, 'button folder-action');
+            manage.setAttribute('aria-label', '管理目录 ' + child.path);
+            manage.title = '重命名 / 移动 / 删除空目录';
+            manage.dataset.focusKey = 'manage:' + child.path;
+            summary.append(label, manage);
+            details.append(summary);
+            const children = document.createElement('div');
+            children.className = 'folder-children';
+            appendNode(child, children);
+            if (!children.childElementCount) {
+              const empty = document.createElement('p');
+              empty.className = 'folder-empty';
+              empty.textContent = '空目录';
+              children.append(empty);
+            }
+            details.append(children);
+            details.addEventListener('toggle', () => {
+              if (!query && details.isConnected) folderExpansion.set(key, details.open);
+            });
+            container.append(details);
+          }
+          for (const page of node.pages) container.append(pageButton(page));
+        }
+        appendNode(root, fragment);
+      } else {
+        for (const page of filtered) fragment.append(pageButton(page));
+      }
+      if (treeError && isSpaceSelected()) {
+        const error = document.createElement('p');
+        error.className = 'dialog-error';
+        error.textContent = treeError;
+        fragment.prepend(error);
+      }
+      if (!fragment.childNodes.length) {
+        const message = document.createElement('div');
+        message.className = 'list-message';
+        const title = document.createElement('strong');
+        const detail = document.createElement('p');
+        title.textContent = listState === 'locked' ? '尚未登录'
+          : listState === 'loading' ? '正在读取…'
+          : listState === 'error' && !libraryLoaded ? '暂时无法读取'
+          : query ? '没有匹配的图解' : '还没有图解';
+        detail.textContent = listState === 'error' && !libraryLoaded ? listError
+          : query ? '试试其他标题或路径。'
+          : isSpaceSelected() ? '通过 API 发布到此空间。' : '';
+        message.append(title, detail);
+        if (query) message.append(makeButton('清除搜索', () => {
+          $('search').value = '';
+          renderList();
+          $('search').focus();
+        }));
+        else if (listState === 'error') message.append(makeButton('重试', () => loadPages(true)));
+        fragment.append(message);
       }
       $('list').replaceChildren(fragment);
-      if (focused) {
-        const replacement = Array.from($('list').querySelectorAll('.report'))
-          .find(button => button.dataset.filename === focused);
+      if (focusKey) {
+        const replacement = [...$('list').querySelectorAll('[data-focus-key]')]
+          .find(element => element.dataset.focusKey === focusKey);
         (replacement || $('search')).focus({ preventScroll: true });
       }
       $('list').scrollTop = scrollTop;
@@ -658,8 +884,8 @@
       $('preview').hidden = true;
       $('preview').removeAttribute('src');
       showPlaceholder('正在打开图解', page.title, null, '', true);
-      const url = new URL(page.url);
-      url.searchParams.set('v', page.modified);
+      const url = new URL(page.url, location.href);
+      if (page.modified) url.searchParams.set('v', page.modified);
       try {
         // The sandbox is opaque. Check the HTTP status without reading or modifying its document.
         const response = await fetch(url, { method: 'HEAD', cache: 'no-store', signal: request.signal });
@@ -708,24 +934,28 @@
       }
     }
 
-    function selectPage(page) {
+    function selectPage(page, explicit = false) {
       const changed = selected?.filename !== page.filename || selected?.modified !== page.modified;
+      const leaveHistory = historical && (explicit || historical.filename !== page.filename);
+      if (leaveHistory) historical = null;
       selected = page;
-      $('page-title').textContent = page.title;
-      $('page-title').title = page.title;
-      $('page-meta').textContent = page.filename;
-      $('page-meta').title = page.filename;
-      $('page-detail').textContent = `更新于 ${dates.format(new Date(page.modified))} · ${Math.max(1, Math.round(page.bytes / 1024))} KB`;
-      $('open').href = page.url;
+      $('page-title').textContent = pageTitle(page);
+      $('page-title').title = pageTitle(page);
+      $('page-meta').textContent = pagePath(page);
+      $('page-meta').title = pagePath(page);
+      $('page-detail').textContent = `更新于 ${formatDate(page.modified)} · ${Math.max(1, Math.round(page.bytes / 1024))} KB`;
+      $('open').href = historical?.version.url || page.url;
       $('open').hidden = false;
       $('fullscreen').disabled = false;
-      document.title = page.title + ' · 图解工作台';
+      $('history-banner').hidden = !historical;
+      document.title = pageTitle(page) + ' · 图解工作台';
       history.replaceState(null, '', '#' + encodeURIComponent(page.filename));
+      updateControls();
       for (const button of $('list').querySelectorAll('.report')) {
         if (button.dataset.filename === page.filename) button.setAttribute('aria-current', 'page');
         else button.removeAttribute('aria-current');
       }
-      if (changed) loadPreview(page);
+      if (!historical && (changed || leaveHistory)) loadPreview(page);
     }
 
     function hashFilename() {
@@ -737,7 +967,7 @@
     }
 
     async function loadPages(manual = false) {
-      if (pageRequest || signingOut) return false;
+      if (pageRequest || signingOut || $('login').open) return false;
       const request = new AbortController();
       pageRequest = request;
       const timeout = setTimeout(() => request.abort(), REQUEST_TIMEOUT);
@@ -752,27 +982,27 @@
         showPlaceholder('正在读取图解', '稍候，正在获取图解列表。', null, '', true);
       }
       try {
-        const responses = await Promise.all(['/api/pages', '/api/entities'].map(path =>
+        const responses = await Promise.all(['/api/pages', '/api/entities', '/api/session'].map(path =>
           fetch(path, { cache: 'no-store', signal: request.signal })));
-        if (pageRequest !== request) return false;
+        if (pageRequest !== request || $('login').open) return false;
         if (responses.some(response => response.status === 401)) {
           showLogin();
           return false;
         }
-        const [data, catalog] = await Promise.all(responses.map(async (response, index) => {
-          const label = index === 0 ? '读取图解' : '读取实体';
+        const [data, catalog, session] = await Promise.all(responses.map(async (response, index) => {
+          const label = ['读取图解', '读取空间', '读取身份'][index];
           if (!response.ok) {
             const detail = await response.json().catch(() => null);
             throw new Error(`${label}失败（${response.status}）${detail?.error ? '：' + detail.error : '，请稍后重试。'}`);
           }
           return response.json();
         }));
-        if (pageRequest !== request) return false;
+        if (pageRequest !== request || $('login').open) return false;
         const pagesChanged = pages.length !== data.pages.length || data.pages.some((page, index) => {
           const previous = pages[index];
           return previous.filename !== page.filename || previous.title !== page.title
             || previous.modified !== page.modified || previous.bytes !== page.bytes || previous.url !== page.url
-            || previous.entityId !== page.entityId;
+            || previous.entityId !== page.entityId || previous.path !== page.path;
         });
         const entitiesChanged = entityCatalog.totalCount !== catalog.totalCount
           || entityCatalog.unassignedCount !== catalog.unassignedCount
@@ -787,9 +1017,10 @@
         entityCatalog = catalog;
         libraryLoaded = true;
         authenticated = true;
+        role = session.role;
         listState = 'ready';
         $('logout').hidden = false;
-        if ($('login').open) $('login').close();
+        updateControls();
         if (selectedEntity !== '*' && selectedEntity !== ''
           && !catalog.entities.some(entity => entity.id === selectedEntity)) selectedEntity = '*';
         if (entitiesChanged || previousState !== 'ready') renderEntityFilter();
@@ -798,12 +1029,15 @@
         pendingFilename = '';
         if (linked) revealPage(linked);
         else {
-          const current = pages.find(page => page.filename === selected?.filename && inSelectedEntity(page))
+          const current = (historical && pages.find(page => page.filename === historical.filename))
+            || pages.find(page => page.filename === selected?.filename && inSelectedEntity(page))
             || pages.find(inSelectedEntity);
           if (current) selectPage(current);
           else showEmptyEntity();
         }
         const changed = pagesChanged || entitiesChanged;
+        await loadTree();
+        if (pageRequest !== request) return false;
         if (changed || linked || previousState !== 'ready') renderList();
         $('sync').textContent = '已同步 ' + times.format(new Date());
         if (manual) notify('图解列表已更新');
@@ -854,36 +1088,51 @@
       $('login-error').textContent = '';
       $('key').removeAttribute('aria-invalid');
       $('login-submit').disabled = true;
+      $('login-cancel').disabled = true;
       $('login-submit').textContent = '正在登录…';
+      const body = new URLSearchParams({ key: $('key').value });
+      $('key').value = '';
       try {
         const response = await fetch('/api/login', {
-          method: 'POST',
-          body: new URLSearchParams({ key: $('key').value }),
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+          method: 'POST', body, signal: AbortSignal.timeout(REQUEST_TIMEOUT),
         });
         if (!response.ok) {
           if (response.status === 401) {
             $('key').setAttribute('aria-invalid', 'true');
             throw new Error('访问密钥不正确，请重新输入。');
           }
-          throw new Error(`暂时无法登录（${response.status}），请稍后重试。`);
+          throw new Error(`暂时无法登录（${response.status}）。`);
         }
-        $('key').value = '';
+        const session = await apiRequest('/api/session');
+        role = session.role;
         authenticated = true;
-        $('logout').hidden = false;
+        updateControls();
+        if (unlocking && role !== 'admin') throw new Error('此密钥仅可阅读，请输入管理密钥。');
+        const resume = afterUnlock;
+        afterUnlock = null;
         $('login').close();
-        await loadPages();
+        await reloadPages();
+        if (apiContext) await loadTokens(apiContext);
+        resume?.();
         checkConnection();
       } catch (error) {
-        $('login-error').textContent = error.name === 'TimeoutError' ? '登录超时，请稍后重试。'
-          : error instanceof TypeError ? '无法连接服务，请检查网络后重试。' : error.message;
+        $('login-error').textContent = errorMessage(error);
         $('key').focus();
       } finally {
+        body.delete('key');
         $('login-submit').disabled = false;
-        $('login-submit').textContent = '进入工作台';
+        $('login-cancel').disabled = false;
+        $('login-submit').textContent = unlocking ? '解锁管理' : '进入工作台';
       }
     });
-    $('login').addEventListener('cancel', event => event.preventDefault());
+    $('login').addEventListener('cancel', event => {
+      if (!authenticated || $('login-submit').disabled) event.preventDefault();
+    });
+    $('login').addEventListener('close', () => {
+      $('key').value = '';
+      afterUnlock = null;
+    });
+    $('login-cancel').addEventListener('click', () => $('login').close());
     $('key').addEventListener('input', () => {
       $('key').removeAttribute('aria-invalid');
       $('login-error').textContent = '';
@@ -922,9 +1171,10 @@
       selectedEntity = $('entity-filter').value;
       pendingFilename = '';
       const first = pages.find(inSelectedEntity);
-      if (first) selectPage(first);
+      if (first) selectPage(first, true);
       else showEmptyEntity();
       renderList();
+      loadTree();
     });
     $('refresh').addEventListener('click', refresh);
     $('placeholder-action').addEventListener('click', () => placeholderAction?.());
@@ -941,7 +1191,7 @@
       else if ($('library').hidden && focusWasInLibrary) $('nav-toggle').focus();
     });
     document.addEventListener('keydown', event => {
-      if ($('login').open) return;
+      if (document.querySelector('dialog[open]')) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setNavigation(true);
@@ -1001,6 +1251,7 @@
         pendingFilename = '';
         revealPage(page);
         renderList();
+        loadTree();
       } else loadPages();
     });
     document.addEventListener('visibilitychange', () => {
@@ -1015,6 +1266,495 @@
         checkConnection();
       }
     }, POLL_INTERVAL);
+
+    function pagePath(page) { return page.path || page.filename; }
+    function pageTitle(page) {
+      const title = page.title;
+      return title && title !== page.filename && title !== page.filename?.replace(/\.html?$/i, '')
+        ? title : pagePath(page).split('/').pop();
+    }
+    function isSpaceSelected() { return selectedEntity !== '*' && selectedEntity !== ''; }
+    function entityRoute(id) { return '/api/entities/' + encodeURIComponent(id); }
+    function fileRoute(id, path) {
+      return entityRoute(id) + '/files/' + path.split('/').map(encodeURIComponent).join('/');
+    }
+    function formatDate(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? '' : dates.format(date);
+    }
+    function errorMessage(error) {
+      return error.name === 'TimeoutError' || error.name === 'AbortError' ? '请求超时，请重试。'
+        : error instanceof TypeError ? '无法连接服务，请检查网络。' : error.message;
+    }
+    function makeButton(label, action, className = 'button bordered') {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = className;
+      button.textContent = label;
+      button.addEventListener('click', action);
+      return button;
+    }
+    async function apiRequest(path, { method = 'GET', body, signal } = {}) {
+      const response = await fetch(path, {
+        method, cache: 'no-store', signal: signal || AbortSignal.timeout(REQUEST_TIMEOUT),
+        ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+      });
+      if (response.status === 204) return null;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `请求失败（${response.status}）。`);
+      return data;
+    }
+    function updateControls() {
+      $('admin-unlock').hidden = !authenticated || role === 'admin';
+      $('logout').hidden = !authenticated;
+      $('space-create').disabled = !authenticated;
+      $('space-api').disabled = !authenticated || !isSpaceSelected();
+      $('folder-create').disabled = !authenticated || !isSpaceSelected();
+      $('page-edit').disabled = !authenticated || !selected;
+      $('page-versions').disabled = !authenticated || !selected;
+      $('history-restore').textContent = role === 'admin' ? '恢复此版' : '解锁恢复';
+      $('api-admin').hidden = role !== 'admin';
+      $('api-unlock').hidden = role === 'admin';
+    }
+    function configureLogin(admin) {
+      unlocking = admin;
+      $('login-title').textContent = admin ? '解锁管理' : '登录后开始阅读';
+      $('login-description').textContent = admin ? '输入管理密钥。' : '输入访问密钥，或使用专属查看链接进入。';
+      $('login-submit').textContent = admin ? '解锁管理' : '进入工作台';
+      $('login-cancel').hidden = !admin;
+      $('login-error').textContent = '';
+      $('key').value = '';
+      $('key').removeAttribute('aria-invalid');
+    }
+    function requireAdmin(action) {
+      if (role === 'admin') return action();
+      if (!authenticated) return showLogin();
+      configureLogin(true);
+      afterUnlock = action;
+      $('login').showModal();
+      $('key').focus();
+    }
+    async function reloadPages() {
+      pageRequest?.abort();
+      pageRequest = null;
+      return loadPages();
+    }
+    async function loadTree() {
+      treeRequest?.abort();
+      treeRequest = null;
+      if (!isSpaceSelected()) {
+        treeEntity = '';
+        treeFolders = [];
+        treeError = '';
+        return;
+      }
+      const entityId = selectedEntity;
+      if (treeEntity !== entityId) {
+        treeEntity = entityId;
+        treeFolders = [];
+        treeError = '';
+      }
+      const request = new AbortController();
+      treeRequest = request;
+      try {
+        const data = await apiRequest(entityRoute(entityId) + '/tree', {
+          signal: AbortSignal.any([request.signal, AbortSignal.timeout(REQUEST_TIMEOUT)]),
+        });
+        if (treeRequest !== request || selectedEntity !== entityId) return;
+        const changed = treeError || treeFolders.length !== data.folders.length
+          || data.folders.some((folder, i) => treeFolders[i]?.path !== folder.path);
+        treeFolders = data.folders;
+        treeError = '';
+        if (changed) renderList();
+      } catch (error) {
+        if (treeRequest !== request || request.signal.aborted || selectedEntity !== entityId) return;
+        treeError = '目录读取失败 · ' + errorMessage(error);
+        renderList();
+      } finally {
+        if (treeRequest === request) treeRequest = null;
+      }
+    }
+
+    function setBusy(dialog, busy) {
+      dialog.dataset.busy = String(busy);
+      for (const button of dialog.querySelectorAll('button')) button.disabled = busy;
+    }
+    for (const button of document.querySelectorAll('[data-close]')) {
+      button.addEventListener('click', () => $(button.dataset.close).close());
+    }
+    for (const dialog of document.querySelectorAll('dialog.panel')) {
+      dialog.addEventListener('cancel', event => {
+        if (dialog.dataset.busy === 'true') event.preventDefault();
+      });
+    }
+    $('admin-unlock').addEventListener('click', () => requireAdmin(() => {}));
+    $('space-create').addEventListener('click', () => requireAdmin(() => openEditor('space')));
+    $('folder-create').addEventListener('click', () => {
+      const entityId = selectedEntity;
+      requireAdmin(() => openEditor('new-folder', { entityId }));
+    });
+    $('page-edit').addEventListener('click', () => {
+      const page = selected;
+      if (page) requireAdmin(() => openEditor('page', { page }));
+    });
+
+    function openEditor(mode, context = {}) {
+      editContext = { mode, ...context };
+      const unassigned = mode === 'page' && !context.page.entityId;
+      $('edit-title').textContent = mode === 'space' ? '新建空间'
+        : mode === 'new-folder' ? '新建目录'
+        : mode === 'folder' ? '重命名 / 移动目录'
+        : unassigned ? '移入空间' : '重命名 / 移动图解';
+      $('edit-name-field').hidden = mode !== 'space';
+      $('edit-name').required = mode === 'space';
+      $('edit-name').value = '';
+      $('edit-path-field').hidden = unassigned;
+      $('edit-path').required = !unassigned;
+      $('edit-path').readOnly = false;
+      $('edit-path-label').textContent = mode === 'space' ? '空间 ID' : '路径';
+      $('edit-path').value = context.path || (context.page ? pagePath(context.page) : '');
+      $('edit-path').placeholder = mode === 'space' ? 'my-space'
+        : mode === 'page' ? '主题/图解.html' : '主题/子目录';
+      $('edit-entity-field').hidden = mode !== 'page';
+      $('edit-entity').replaceChildren(...entityCatalog.entities.map(entity => {
+        const option = document.createElement('option');
+        option.value = entity.id;
+        option.textContent = entity.name;
+        return option;
+      }));
+      $('edit-entity').required = mode === 'page';
+      if (context.page?.entityId) $('edit-entity').value = context.page.entityId;
+      $('folder-delete').hidden = mode !== 'folder';
+      $('edit-hint').textContent = mode === 'space' ? 'ID 用于 API 地址。'
+        : unassigned ? '移入空间后可更改路径。'
+        : '输入完整相对路径；用 / 划分多级目录。';
+      $('edit-error').textContent = '';
+      $('edit-submit').textContent = mode === 'space' || mode === 'new-folder' ? '创建' : '保存';
+      if (mode === 'page') updateMoveDestination();
+      $('edit-dialog').showModal();
+      (mode === 'space' ? $('edit-name') : unassigned ? $('edit-entity') : $('edit-path')).focus();
+    }
+    function updateMoveDestination() {
+      if (editContext?.mode !== 'page') return;
+      const page = editContext.page;
+      const moving = $('edit-entity').value !== (page.entityId || '');
+      $('edit-path').readOnly = moving;
+      if (moving) $('edit-path').value = pagePath(page);
+      $('edit-hint').textContent = !entityCatalog.entities.length ? '请先创建空间。'
+        : moving ? '跨空间移动保留路径；移入后可重命名。'
+        : '输入完整相对路径；用 / 划分多级目录。';
+    }
+    $('edit-entity').addEventListener('change', updateMoveDestination);
+    $('edit-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (role !== 'admin' || !editContext) return;
+      const context = editContext;
+      const path = $('edit-path').value;
+      $('edit-error').textContent = '';
+      setBusy($('edit-dialog'), true);
+      try {
+        if (context.mode === 'space') {
+          await apiRequest('/api/entities', { method: 'POST', body: { id: path, name: $('edit-name').value } });
+          selectedEntity = path;
+          pendingFilename = '';
+        } else if (context.mode === 'new-folder') {
+          await apiRequest(entityRoute(context.entityId) + '/folders', { method: 'POST', body: { path } });
+          expandPath(context.entityId, path);
+        } else if (context.mode === 'folder') {
+          await apiRequest(entityRoute(context.entityId) + '/folders', {
+            method: 'PATCH', body: { path: context.path, newPath: path },
+          });
+          for (const [key, open] of [...folderExpansion]) {
+            const prefix = context.entityId + ':' + context.path;
+            if (key === prefix || key.startsWith(prefix + '/')) {
+              folderExpansion.delete(key);
+              folderExpansion.set(context.entityId + ':' + path + key.slice(prefix.length), open);
+            }
+          }
+          expandPath(context.entityId, path);
+        } else if ($('edit-entity').value !== (context.page.entityId || '')) {
+          const entityId = $('edit-entity').value;
+          if (!entityId) throw new Error('请先创建空间。');
+          await apiRequest('/api/pages/' + encodeURIComponent(context.page.filename), {
+            method: 'PATCH', body: { entityId },
+          });
+          selectedEntity = entityId;
+          pendingFilename = context.page.filename;
+        } else {
+          await apiRequest(fileRoute(context.page.entityId, pagePath(context.page)), {
+            method: 'PATCH', body: { path },
+          });
+          expandPath(context.page.entityId, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
+        }
+        $('edit-dialog').close();
+        await reloadPages();
+        renderEntityFilter();
+        if (context.mode === 'folder' || context.mode === 'new-folder') {
+          const key = (context.mode === 'folder' ? 'manage:' : 'folder:') + path;
+          const item = [...$('list').querySelectorAll('[data-focus-key]')].find(element => element.dataset.focusKey === key);
+          item?.focus({ preventScroll: true });
+        }
+      } catch (error) {
+        $('edit-error').textContent = errorMessage(error);
+      } finally {
+        setBusy($('edit-dialog'), false);
+      }
+    });
+    $('edit-dialog').addEventListener('close', () => { editContext = null; });
+    function expandPath(entityId, path) {
+      let prefix = '';
+      for (const name of path.split('/').filter(Boolean)) {
+        prefix = prefix ? prefix + '/' + name : name;
+        folderExpansion.set(entityId + ':' + prefix, true);
+      }
+    }
+    function askConfirmation(title, detail, action, label = '确认') {
+      confirmation = action;
+      $('confirm-title').textContent = title;
+      $('confirm-detail').textContent = detail;
+      $('confirm-error').textContent = '';
+      $('confirm-submit').textContent = label;
+      $('confirm-dialog').showModal();
+      $('confirm-dialog').querySelector('.dialog-actions [data-close]').focus();
+    }
+    $('confirm-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!confirmation || role !== 'admin') return;
+      $('confirm-error').textContent = '';
+      setBusy($('confirm-dialog'), true);
+      try {
+        await confirmation();
+        $('confirm-dialog').close();
+      } catch (error) {
+        $('confirm-error').textContent = errorMessage(error);
+      } finally {
+        setBusy($('confirm-dialog'), false);
+      }
+    });
+    $('confirm-dialog').addEventListener('close', () => { confirmation = null; });
+    $('folder-delete').addEventListener('click', () => {
+      const context = editContext;
+      if (!context || context.mode !== 'folder') return;
+      askConfirmation('删除空目录？', context.path, async () => {
+        await apiRequest(entityRoute(context.entityId) + '/folders?path=' + encodeURIComponent(context.path), { method: 'DELETE' });
+        $('edit-dialog').close();
+        await reloadPages();
+      }, '删除');
+    });
+
+    function shellQuote(value) { return "'" + value.replaceAll("'", "'\\''") + "'"; }
+    function updateApiExample(context) {
+      const base = location.origin + entityRoute(context.entityId);
+      const secret = context.secret || 'YOUR_SPACE_TOKEN';
+      $('api-base').textContent = base;
+      $('api-secret-section').hidden = !context.secret;
+      $('api-secret').value = context.secret || '';
+      $('api-command').value = `curl --fail-with-body --request PUT \\\n  ${shellQuote(base + '/files/guides/example.html')} \\\n  --header ${shellQuote('Authorization: Bearer ' + secret)} \\\n  --header 'Content-Type: text/html; charset=utf-8' \\\n  --data-binary @./diagram.html`;
+      $('api-agent').value = `请通过此空间的 HTTP API 管理图解，不使用 MCP，也不要索取全局管理密钥。\n空间 API：${base}\n认证：Authorization: Bearer ${context.secret || 'YOUR_SPACE_TOKEN（替换为空间令牌）'}\nGET ${base}/tree 查看目录和图解。\nGET ${base}/files/<逐段 URL 编码的相对路径> 读取可编辑源文件；PUT 同一路径发布或更新 HTML，Content-Type: text/html，正文为原始 HTML，最多 12 MiB。路径以 .html 或 .htm 结束，不使用 .src.html；父目录自动创建。\nPOST ${base}/folders {"path":"主题/目录"} 创建空目录；PATCH 同端点 {"path":"旧目录","newPath":"新目录"} 移动目录；DELETE 同端点加 ?path=<编码路径> 只删除空目录。\nPATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，保留页面标识和分享链接。\n页面响应的 filename 是稳定标识；GET ${location.origin}/api/pages/<filename>/versions 获取真实 Git 版本，POST ${location.origin}/api/pages/<filename>/restore {"revision":"完整提交 SHA"} 恢复为新版本。仅可访问本空间的页面及所属历史。\n不要将版本另存为 v1/v2 文件，不要泄露令牌。\n\n发布示例：\n${$('api-command').value}`;
+    }
+    $('space-api').addEventListener('click', () => {
+      if (!isSpaceSelected()) return;
+      apiContext = { entityId: selectedEntity, secret: '', secretId: '' };
+      $('api-title').textContent = entityName() + ' · API';
+      $('api-status').textContent = '';
+      $('token-name').value = '';
+      $('api-tokens').replaceChildren();
+      $('api-agent').hidden = true;
+      updateControls();
+      updateApiExample(apiContext);
+      $('api-dialog').showModal();
+      loadTokens(apiContext);
+    });
+    $('api-dialog').addEventListener('close', () => {
+      if (apiContext) apiContext.secret = '';
+      apiContext = null;
+      $('api-secret').value = '';
+      $('api-command').value = '';
+      $('api-agent').value = '';
+      $('api-agent').hidden = true;
+      $('api-secret-section').hidden = true;
+      $('api-tokens').replaceChildren();
+      $('token-name').value = '';
+      $('api-status').textContent = '';
+    });
+    $('api-unlock').addEventListener('click', () => requireAdmin(() => {}));
+    async function loadTokens(context) {
+      if (role !== 'admin' || apiContext !== context) return;
+      try {
+        const data = await apiRequest(entityRoute(context.entityId) + '/tokens');
+        if (apiContext !== context || !$('api-dialog').open) return;
+        const fragment = document.createDocumentFragment();
+        for (const token of data.tokens) {
+          const row = document.createElement('div');
+          row.className = 'token-row';
+          row.dataset.tokenId = token.id;
+          const copy = document.createElement('div');
+          copy.className = 'row-copy';
+          copy.textContent = token.name;
+          const date = document.createElement('small');
+          date.textContent = formatDate(token.createdAt);
+          copy.append(date);
+          const revoke = makeButton('撤销', () => {
+            askConfirmation('撤销令牌？', token.name, async () => {
+              await apiRequest(entityRoute(context.entityId) + '/tokens/' + encodeURIComponent(token.id), { method: 'DELETE' });
+              if (apiContext !== context) return;
+              if (context.secretId === token.id) {
+                context.secret = '';
+                context.secretId = '';
+                updateApiExample(context);
+              }
+              await loadTokens(context);
+            }, '撤销');
+          }, 'button danger');
+          revoke.setAttribute('aria-label', '撤销令牌 ' + token.name);
+          row.append(copy, revoke);
+          fragment.append(row);
+        }
+        if (!data.tokens.length) {
+          const empty = document.createElement('p');
+          empty.className = 'subtle';
+          empty.textContent = '暂无令牌';
+          fragment.append(empty);
+        }
+        $('api-tokens').replaceChildren(fragment);
+      } catch (error) {
+        if (apiContext === context) $('api-status').textContent = errorMessage(error);
+      }
+    }
+    $('token-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const context = apiContext;
+      if (role !== 'admin' || !context) return;
+      $('api-status').textContent = '';
+      setBusy($('api-dialog'), true);
+      try {
+        const data = await apiRequest(entityRoute(context.entityId) + '/tokens', {
+          method: 'POST', body: { name: $('token-name').value },
+        });
+        if (apiContext !== context || !$('api-dialog').open) return;
+        context.secret = data.secret;
+        context.secretId = data.token.id;
+        $('token-name').value = '';
+        updateApiExample(context);
+        await loadTokens(context);
+        $('api-secret').focus();
+        $('api-secret').select();
+      } catch (error) {
+        if (apiContext === context) $('api-status').textContent = errorMessage(error);
+      } finally {
+        setBusy($('api-dialog'), false);
+      }
+    });
+    async function copyApi(field) {
+      const context = apiContext;
+      if (!context) return;
+      $('api-status').textContent = '';
+      const wasHidden = field.hidden;
+      field.hidden = false;
+      field.focus();
+      field.select();
+      let copied = false;
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(field.value);
+          copied = true;
+        } catch {}
+      }
+      if (apiContext !== context || !$('api-dialog').open) return;
+      if (!copied) {
+        field.focus();
+        field.select();
+        try { copied = document.execCommand('copy'); } catch {}
+      }
+      if (copied) {
+        $('api-status').textContent = '已复制';
+        if (wasHidden) field.hidden = true;
+      } else {
+        $('api-status').textContent = '未能自动复制，内容已选中。请按 Ctrl+C（Mac：⌘C）。';
+      }
+    }
+    $('copy-secret').addEventListener('click', () => copyApi($('api-secret')));
+    $('copy-command').addEventListener('click', () => copyApi($('api-command')));
+    $('copy-agent').addEventListener('click', () => copyApi($('api-agent')));
+
+    async function openVersions() {
+      const page = selected;
+      if (!page) return;
+      versionsRequest?.abort();
+      const request = new AbortController();
+      versionsRequest = request;
+      $('versions-path').textContent = pagePath(page);
+      $('versions-list').textContent = '正在读取…';
+      $('versions-error').textContent = '';
+      $('versions-retry').hidden = true;
+      if (!$('versions-dialog').open) $('versions-dialog').showModal();
+      try {
+        const data = await apiRequest('/api/pages/' + encodeURIComponent(page.filename) + '/versions', {
+          signal: AbortSignal.any([request.signal, AbortSignal.timeout(REQUEST_TIMEOUT)]),
+        });
+        if (versionsRequest !== request || !$('versions-dialog').open) return;
+        const fragment = document.createDocumentFragment();
+        for (const version of data.versions) {
+          const row = document.createElement('div');
+          row.className = 'version-row';
+          row.dataset.revision = version.revision;
+          const copy = document.createElement('div');
+          copy.className = 'row-copy';
+          copy.textContent = formatDate(version.createdAt) + ' · ' + version.revision.slice(0, 8);
+          const detail = document.createElement('small');
+          detail.textContent = version.path + (version.message ? ' · ' + version.message : '');
+          copy.append(detail);
+          const preview = makeButton('预览', () => {
+            historical = { filename: page.filename, version };
+            selected = pages.find(item => item.filename === page.filename) || page;
+            selectPage(selected);
+            $('history-label').textContent = '历史 · ' + formatDate(version.createdAt) + ' · ' + version.revision.slice(0, 8);
+            $('history-banner').hidden = false;
+            loadPreview({ title: pageTitle(page) + ' · 历史版本', url: version.url });
+            $('versions-dialog').close();
+            if (compact.matches) setNavigation(false);
+            $('history-current').focus();
+          });
+          row.append(copy, preview);
+          fragment.append(row);
+        }
+        if (!data.versions.length) {
+          const empty = document.createElement('p');
+          empty.className = 'subtle';
+          empty.textContent = '暂无版本';
+          fragment.append(empty);
+        }
+        $('versions-list').replaceChildren(fragment);
+      } catch (error) {
+        if (versionsRequest !== request || request.signal.aborted) return;
+        $('versions-list').replaceChildren();
+        $('versions-error').textContent = errorMessage(error);
+        $('versions-retry').hidden = false;
+      }
+    }
+    $('page-versions').addEventListener('click', openVersions);
+    $('versions-retry').addEventListener('click', openVersions);
+    $('versions-dialog').addEventListener('close', () => {
+      versionsRequest?.abort();
+      versionsRequest = null;
+    });
+    $('history-current').addEventListener('click', () => {
+      if (selected) selectPage(selected, true);
+      $('page-title').focus({ preventScroll: true });
+    });
+    $('history-restore').addEventListener('click', () => {
+      const snapshot = historical;
+      if (!snapshot) return;
+      requireAdmin(() => askConfirmation('恢复此版本？',
+        formatDate(snapshot.version.createdAt) + ' · ' + snapshot.version.path + '。将在当前路径创建新版本。',
+        async () => {
+          const data = await apiRequest('/api/pages/' + encodeURIComponent(snapshot.filename) + '/restore', {
+            method: 'POST', body: { revision: snapshot.version.revision },
+          });
+          selectPage(data.page, true);
+          await reloadPages();
+        }, '恢复'));
+    });
 
     applyNavigation();
     renderList();

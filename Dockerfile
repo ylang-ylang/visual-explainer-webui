@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     ./node_modules/.bin/playwright-core install --with-deps chromium-headless-shell && \
     chmod -R a+rX /opt/browsers
 COPY LICENSE ./
-COPY remote-app/server.mjs remote-app/catalog.mjs remote-app/history.mjs remote-app/index.html ./
+COPY remote-app/*.mjs remote-app/index.html ./
 COPY remote-app/static/ ./static/
 ARG SOURCE_REVISION
 LABEL org.opencontainers.image.source="https://github.com/ylang-ylang/visual-explainer-webui" \

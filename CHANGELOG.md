@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0 — 2026-11-23
+
+- Organize each Entity as a workspace with nested folders, logical file paths and a matching content Git tree; preserve existing signed links and serving bytes during catalog migration.
+- Publish HTML directly through Entity-scoped HTTP endpoints, retain exact source companions, and issue revocable workspace API tokens without exposing the service credential.
+- Add signed administrator sessions, same-origin management, folder/file moves, and private hash-only token persistence outside content Git.
+- Browse, preview and restore real Git file versions from the reader; restoring records a new publication instead of rewriting history.
+- Add compact workspace, folder, API credential and version controls to the light reader, retaining sandboxed diagram playback and mobile layouts.
+
 ## 1.2.0 — 2026-11-22
 
 - Mirror library Entities as stable-ID folders in content Git, with an `_unassigned` directory and markers for empty groups.

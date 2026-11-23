@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 fixture=$(mktemp -d)
 name="ve-wrapper-check-$(node -e 'console.log(require("node:crypto").randomBytes(6).toString("hex"))')"
-image="${name}:local"
+image="${VE_CHECK_IMAGE:-${name}:local}"
 port="${VE_CHECK_PORT:-8080}"
 base_url="http://127.0.0.1:${port}"
 cleanup() {
@@ -17,7 +17,7 @@ cleanup() {
     docker run --rm --user 0 --mount "type=bind,src=$fixture,dst=/fixture" \
       "$image" chown -hR "$(id -u):$(id -g)" /fixture || status=1
   fi
-  docker image rm "$image" >/dev/null 2>&1 || true
+  if [[ -z "${VE_CHECK_IMAGE:-}" ]]; then docker image rm "$image" >/dev/null 2>&1 || true; fi
   rm -rf "$fixture"
   exit "$status"
 }
@@ -70,9 +70,9 @@ wait_ready() {
 import { setTimeout } from 'node:timers/promises';
 for (let attempt = 0; attempt < 90; attempt++) {
   try {
-    const response = await fetch(process.env.VE_BASE_URL, { signal: AbortSignal.timeout(1000) });
+    const response = await fetch(new URL('/health', process.env.VE_BASE_URL), { signal: AbortSignal.timeout(1000) });
+    if (response.status === 200 && await response.text() === 'ok') process.exit(0);
     await response.body?.cancel();
-    if (response.status === 200 || response.status === 401) process.exit(0);
   } catch {}
   await setTimeout(1000);
 }
@@ -90,6 +90,10 @@ node scripts/history-smoke.mjs
 docker restart "$name" >/dev/null
 wait_ready
 node scripts/history-smoke.mjs --persistence
+node scripts/scoped-smoke.mjs
+docker restart "$name" >/dev/null
+wait_ready
+node scripts/scoped-smoke.mjs --persistence
 
 # A second real service starts with no pages or catalog at all.
 docker rm --force "$name" >/dev/null
@@ -108,3 +112,28 @@ docker run --detach --name "$name" --publish "127.0.0.1:${port}:8080" \
   "$image" >/dev/null
 wait_ready
 VE_HISTORY_FIXTURE="$fixture/empty" node scripts/history-smoke.mjs --empty-library
+
+# Existing bare, already-projected v1 history is a distinct migration path.
+docker rm --force "$name" >/dev/null
+mkdir -p "$fixture/projected/data" "$fixture/projected/remote"
+chmod 0777 "$fixture/projected" "$fixture/projected/data" "$fixture/projected/remote"
+cp "$fixture/data/legacy.html" "$fixture/projected/data/legacy.html"
+docker run --rm --user 0 \
+  --mount "type=bind,src=$fixture/projected/data,dst=/data" \
+  --mount "type=bind,src=$fixture/projected/remote,dst=/history-remote" \
+  "$image" chown -hR 1000:1000 /data /history-remote
+docker run --rm --env VE_HISTORY_FIXTURE=/fixture \
+  --mount "type=bind,src=$fixture/projected,dst=/fixture" \
+  --mount "type=bind,src=$(pwd)/scripts/seed-history.mjs,dst=/seed-history.mjs,readonly" \
+  "$image" node /seed-history.mjs --projected
+docker run --detach --name "$name" --publish "127.0.0.1:${port}:8080" \
+  --env "PUBLIC_URL=$base_url" \
+  --env VISUAL_EXPLAINER_OUTPUT_DIR=/data \
+  --env TOKEN_FILE=/run/secrets/api_token \
+  --env GIT_HISTORY_REMOTE=/history-remote/repo.git \
+  --mount "type=bind,src=$fixture/projected/data,dst=/data" \
+  --mount "type=bind,src=$fixture/projected/remote,dst=/history-remote" \
+  --mount "type=bind,src=$fixture/token,dst=/run/secrets/api_token,readonly" \
+  "$image" >/dev/null
+wait_ready
+VE_HISTORY_FIXTURE="$fixture/projected" node scripts/scoped-smoke.mjs --projected
