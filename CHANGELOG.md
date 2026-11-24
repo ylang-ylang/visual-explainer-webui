@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Replace the separate workspace selector and two creation flows with one folder tree and one **New Folder** action. Create top-level or nested folders by name only, with the destination visible above the tree and internal IDs generated automatically.
+- Keep existing content, catalog IDs, scoped credentials, direct HTTP/MCP publishing, signed links and Git versions unchanged. Existing groups are top-level folders; unassigned diagrams appear at the root.
+- Add a whole-library `/api/tree` read endpoint, retain explicit-ID API creation, and make nested-folder API examples disclose their top-level credential scope.
+- Exercise the real browser's folder creation, rename/delete, scoped upload and version restore on desktop/mobile alongside the existing compatibility suite.
+
 ## 1.3.0 — 2026-11-23
 
 - Correct the browser login flow: existing valid legacy web sessions migrate directly to management without another credential prompt; fresh read-only links use a separate cookie and cannot be used as login passwords.

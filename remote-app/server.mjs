@@ -413,13 +413,21 @@ const http = createServer(async (req, res) => {
           if (!scoped && !ownHistory) throw new ApiError(403, 'Entity-scoped access only');
           if (ownHistory && catalog.assignment(id) !== auth.entityId) throw new ApiError(403, 'Page belongs to another Entity');
         }
+        if (resource === 'tree' && parts.length === 1 && req.method === 'GET') {
+          const pages = await listPages();
+          return json(res, 200, {
+            entities: catalog.entities().map(entity => withCount(entity, pages)),
+            folders: catalog.entities().flatMap(entity => catalog.folders(entity.id).map(folder => ({ entityId: entity.id, ...folder }))),
+            pages, unassignedCount: pages.filter(page => page.entityId === null).length, totalCount: pages.length,
+          });
+        }
         if (resource === 'entities' && parts.length === 1 && req.method === 'GET') {
           const pages = await listPages();
           return json(res, 200, { entities: catalog.entities().map(entity => withCount(entity, pages)),
             unassignedCount: pages.filter(page => page.entityId === null).length, totalCount: pages.length });
         }
         if (resource === 'entities' && parts.length === 1 && req.method === 'POST') {
-          const body = await readJson(req, 4096); fields(body, ['id', 'name'], ['id', 'name']);
+          const body = await readJson(req, 4096); fields(body, ['id', 'name'], ['name']);
           const entity = await catalog.create(body.id, body.name);
           await history.snapshot(`Create entity ${entity.id}`);
           return json(res, 201, { entity: withCount(entity, await listPages()) });

@@ -196,7 +196,7 @@ export async function createCatalog(outputDir) {
       addParents(nextDirectories, id, path);
       check(nextPages, nextDirectories);
     },
-    async create(id, name) {
+    async create(id = randomUUID(), name) {
       entityId(id); name = entityName(name);
       if (entities.has(id)) throw new ApiError(409, 'Entity already exists');
       const now = new Date().toISOString(), entry = { id, name, createdAt: now, updatedAt: now };

@@ -55,7 +55,7 @@ docker run --rm --env VE_HISTORY_FIXTURE=/fixture \
   --mount "type=bind,src=$fixture,dst=/fixture" \
   --mount "type=bind,src=$(pwd)/scripts/seed-history.mjs,dst=/seed-history.mjs,readonly" \
   "$image" node /seed-history.mjs
-docker run --detach --name "$name" --publish "127.0.0.1:${port}:8080" \
+docker run --detach --name "$name" --publish "127.0.0.1:${port}:${port}" --env "PORT=$port" \
   --env "PUBLIC_URL=$base_url" \
   --env VISUAL_EXPLAINER_OUTPUT_DIR=/data \
   --env TOKEN_FILE=/run/secrets/api_token \
@@ -94,6 +94,8 @@ node scripts/scoped-smoke.mjs
 docker restart "$name" >/dev/null
 wait_ready
 node scripts/scoped-smoke.mjs --persistence
+docker exec --interactive --env VE_FOLDER_SMOKE=1 --workdir /opt/bridge \
+  "$name" node --input-type=module < scripts/folders-smoke.mjs
 
 # A second real service starts with no pages or catalog at all.
 docker rm --force "$name" >/dev/null
@@ -101,7 +103,7 @@ mkdir -p "$fixture/empty/data" "$fixture/empty/remote"
 chmod 0777 "$fixture/empty/data" "$fixture/empty/remote"
 docker run --rm --mount "type=bind,src=$fixture/empty/remote,dst=/history-remote" \
   "$image" git init --bare --initial-branch=main /history-remote/repo.git >/dev/null
-docker run --detach --name "$name" --publish "127.0.0.1:${port}:8080" \
+docker run --detach --name "$name" --publish "127.0.0.1:${port}:${port}" --env "PORT=$port" \
   --env "PUBLIC_URL=$base_url" \
   --env VISUAL_EXPLAINER_OUTPUT_DIR=/data \
   --env TOKEN_FILE=/run/secrets/api_token \
@@ -126,7 +128,7 @@ docker run --rm --env VE_HISTORY_FIXTURE=/fixture \
   --mount "type=bind,src=$fixture/projected,dst=/fixture" \
   --mount "type=bind,src=$(pwd)/scripts/seed-history.mjs,dst=/seed-history.mjs,readonly" \
   "$image" node /seed-history.mjs --projected
-docker run --detach --name "$name" --publish "127.0.0.1:${port}:8080" \
+docker run --detach --name "$name" --publish "127.0.0.1:${port}:${port}" --env "PORT=$port" \
   --env "PUBLIC_URL=$base_url" \
   --env VISUAL_EXPLAINER_OUTPUT_DIR=/data \
   --env TOKEN_FILE=/run/secrets/api_token \

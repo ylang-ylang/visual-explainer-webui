@@ -5,7 +5,7 @@ Independent Web UI and remote MCP wrapper for [nicobailon/visual-explainer](http
 ## Ownership
 
 - **Official upstream:** skill/resources/prompts, HTML compilation and rendering.
-- **This wrapper:** light visual library, sandboxed previews, authentication, Entity workspaces and nested folders, scoped HTTP publishing, Git version previews/restores and remote MCP transport.
+- **This wrapper:** light visual library, sandboxed previews, authentication, one folder hierarchy, scoped HTTP publishing, Git version previews/restores and remote MCP transport.
 - **Working agent:** inspects its own project, writes HTML and sends it to the renderer. The server does not run a model or accept local project paths.
 
 The source of truth for the upstream revision is the `visual-explainer` dependency in `remote-app/package.json`: an official GitHub archive at an immutable commit. `remote-app/package-lock.json` locks the archive integrity and transitive dependencies. There is no copied renderer tree, fork patch set or startup download. The image installs the original package's dependencies rather than linking a fork checkout to wrapper dependencies.
@@ -36,7 +36,7 @@ The TrueNAS installation remains at `http://192.168.202.11:28319/`, with the sam
 
 ### Agents
 
-For direct HTTP publishing, select an Entity workspace in the Web UI and open **API**. An administrator can issue a named workspace token, copy a ready-to-use upload command, and revoke it later. Agents do not need MCP, a repository clone or SSH access to TrueNAS.
+For direct HTTP publishing, select a folder in the Web UI and open **API**. An administrator can issue a named folder token, copy a ready-to-use upload command, and revoke it later. Each token covers that top-level folder and all its descendants; opening API from a nested folder does not narrow the token's scope. Agents do not need MCP, a repository clone or SSH access to TrueNAS.
 
 For clients that prefer MCP, connect to `${PUBLIC_URL}/mcp` using `Authorization: Bearer <service-token>`. Read `visual-explainer://skill/SKILL.md` and the relevant resources/prompts, inspect your project locally, then call:
 
@@ -57,9 +57,11 @@ To use the original local Agent skill without the Web UI, install it directly fr
 
 ### Direct HTTP publishing
 
-An Entity is the workspace boundary. Nested folders organize meaning and alternative designs; Git records the edit history of each file. The Web UI supports creating spaces and folders, moving/renaming files or folders, inspecting revisions, and restoring a revision as a new publication.
+The library shows one folder tree, including existing content and empty folders. Previously unassigned diagrams appear at the root. **New Folder** asks only for a name: at **Root** it creates a top-level folder; after selecting a folder it creates a child there. There is no separate workspace selector, create-space action or identifier field. The current destination is shown above the tree; choose **Root** to create another top-level folder.
 
-Configure `BASE_URL` and the workspace `PAGE_TOKEN` through the agent's secret environment, not its prompt or repository:
+Top-level folders retain internal Entity IDs for API addresses, credential boundaries and existing content history. New IDs are generated automatically; existing IDs, assignments, serving files and signed links are unchanged, with no catalog migration. Folders can be renamed and empty folders deleted through their tree menu; nested folders and files retain their existing move controls. Git records edits, with revision previews and restores in the reader.
+
+Configure `BASE_URL` and the folder's `PAGE_TOKEN` through the agent's secret environment, not its prompt or repository:
 
 ```sh
 curl --fail-with-body -X PUT \
@@ -69,32 +71,35 @@ curl --fail-with-body -X PUT \
   --data-binary @diagram.html
 ```
 
-The Entity must exist; missing parent folders are created automatically. A new path creates a diagram, and the same path updates it with a new Git revision. The response includes `page.url` and `revision`. Upload complete HTML, optionally containing SVG, CSS and JavaScript; this is not an arbitrary asset-hosting or server-execution API. `GET` on the same endpoint returns the exact saved source, or the rendered HTML for older pages without source.
+The top-level folder (internal Entity) must exist; missing parent folders are created automatically. A new path creates a diagram, and the same path updates it with a new Git revision. The response includes `page.url` and `revision`. Upload complete HTML, optionally containing SVG, CSS and JavaScript; this is not an arbitrary asset-hosting or server-execution API. `GET` on the same endpoint returns the exact saved source, or the rendered HTML for older pages without source.
 
-Logical paths are relative to one Entity. The same path can exist independently in different Entities. Use URL-encoded UTF-8 path segments; traversal, hidden segments and encoded separators are rejected. The internal `filename` remains a stable page identity, so moving a logical path does not change its signed URL.
+Logical API paths are relative to one top-level folder's internal Entity ID. The same path can exist independently in different top-level folders. Use URL-encoded UTF-8 path segments; traversal, hidden segments and encoded separators are rejected. The internal `filename` remains a stable page identity, so moving a logical path does not change its signed URL.
 
-Workspace tokens can access only their Entity's file tree, folders, files and permitted history/restores. They cannot list the whole library, administer spaces or credentials, or invoke MCP. Secrets are shown once; token lists contain metadata only. Revoke a token from the API dialog when access ends.
+Folder tokens can access only their top-level folder's tree, files and permitted history/restores. They cannot list the whole library, administer top-level folders or credentials, or invoke MCP. Secrets are shown once; token lists contain metadata only. Revoke a token from the API dialog when access ends.
 
 ### Viewers and security
 
-Open `${PUBLIC_URL}/` and log in once using the existing service token. Successful web login grants management immediately; there is no separate management password or second unlock. API workspace tokens remain separate credentials for external agents, not browser passwords. Credentials are not stored in browser storage.
+Open `${PUBLIC_URL}/` and log in once using the existing service token. Successful web login grants management immediately; there is no separate management password or second unlock. Scoped API tokens remain separate credentials for external agents, not browser passwords. Credentials are not stored in browser storage.
 
 Valid legacy `ve_viewer` browser sessions are accepted as management sessions and exchanged for an administrator cookie on the next library load, so existing users do not need to enter their credential again. **This migration upgrades all already-issued legacy browser sessions, including legacy read-only sessions, until they expire or are logged out.**
 
 Fresh `/?access=<viewer-key>` links use a separate read-only cookie and redirect to a clean URL. The viewer key is `HMAC-SHA256(token, "viewer-access")`, hex encoded; it is accepted only through the viewing link, not the login form. Opening a viewing link does not downgrade an already logged-in owner.
 
-A viewer session reads the whole library and its versions but cannot mutate it. Entity workspace tokens are scoped API credentials, not viewer sessions; the service token remains a global administrator credential. Signed current-page URLs grant read access only to the current diagram; historical previews use separate revision-specific signed URLs. Generated pages run in opaque sandboxed frames. Treat keys and page URLs as private; use TLS or an encrypted tunnel outside trusted networks. Rotating the service token invalidates signed links and sessions.
+A viewer session reads the whole library and its versions but cannot mutate it. Folder tokens are scoped API credentials, not viewer sessions; the service token remains a global administrator credential. Signed current-page URLs grant read access only to the current diagram; historical previews use separate revision-specific signed URLs. Generated pages run in opaque sandboxed frames. Treat keys and page URLs as private; use TLS or an encrypted tunnel outside trusted networks. Rotating the service token invalidates signed links and sessions.
 
 The official package currently includes `pptxgenjs` → `image-size`, with high-severity parser denial-of-service advisories [GHSA-5p2g-fcmc-qvqq](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq) and [GHSA-w3rx-r6r6-pgpr](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr); npm reports no available dependency fix. This wrapper does not expose a PPTX export endpoint. The dependency is retained as declared by the unmodified upstream package; reassess these advisories when updating upstream.
 
-## Entities and HTTP API
+## Folders and HTTP API
 
-Reads accept a viewer session or service Bearer token; Entity-scoped routes also accept the matching workspace Bearer token. Management requires the service Bearer or an administrator cookie; cookie mutations require an exact same-origin `Origin`. Workspace tokens can mutate only their own Entity's files and folders and restore permitted file versions. Any supplied cross-origin `Origin` is rejected.
+The existing `/api/entities` endpoints and `entityId` fields remain compatible; they identify top-level folders internally, not a second organizational layer.
+
+Reads accept a viewer session or service Bearer token; Entity-scoped routes also accept the matching folder Bearer token. Management requires the service Bearer or an administrator cookie; cookie mutations require an exact same-origin `Origin`. Folder tokens can mutate only their own top-level folder's files and descendants and restore permitted file versions. Any supplied cross-origin `Origin` is rejected.
 
 | Method | Endpoint | JSON body / result |
 |---|---|---|
+| GET | `/api/tree` | `{entities, folders, pages, unassignedCount, totalCount}`; all top-level and nested folders, including empty folders; each nested folder has `entityId` and `path`; no scoped-token access |
 | GET | `/api/entities` | `{entities, unassignedCount, totalCount}`; each entity has `diagramCount` |
-| POST | `/api/entities` | `{id, name}`; creates an entity |
+| POST | `/api/entities` | `{name, id?}`; creates a top-level folder, generating its ID when omitted; explicit legacy IDs still accepted |
 | PATCH | `/api/entities/:id` | `{name}`; renames without changing its ID |
 | DELETE | `/api/entities/:id` | Empty entities only; nonempty returns 409 |
 | GET | `/api/pages?entityId=cosmos` | `{pages}`; omit filter for all, empty value for unassigned |
@@ -139,7 +144,7 @@ repository. The repository mirrors the library's Entity groups:
 - `_unassigned/<filename>` for unassigned pages and orphan sources.
 - `.entities.json` at the root, retaining the exact Entity metadata and names.
 
-Directory names at the workspace root use stable Entity IDs. Renaming a display name does not rename that root directory; moving a file or nested folder moves rendered HTML and source together in one commit. Empty directories are retained using generated empty `.gitkeep` markers, removed when content arrives. Folder structure and page identities are recorded in the catalog; credentials are not.
+Top-level Git directory names use stable Entity IDs. Renaming a display name does not rename that root directory; moving a file or nested folder moves rendered HTML and source together in one commit. Empty directories are retained using generated empty `.gitkeep` markers, removed when content arrives. Folder structure and page identities are recorded in the catalog; credentials are not.
 
 Successful API/MCP renders and Entity mutations snapshot and synchronize the
 directory layout before returning success. Identical content creates no empty
@@ -182,7 +187,7 @@ pushes pending commits, even if it creates no new version. There is no force-pus
 pull, automatic reset or rollback. A configured remote that is unavailable during
 startup prevents startup until it is reachable or the configuration is corrected.
 
-The reader's versions panel reads real Git snapshots by stable page identity, including paths before folder moves. Historical HTML is served through revision-specific signed sandbox URLs. Restoring republishes saved source (or old rendered HTML when no source exists) into the current Entity/path and records a new commit; it never rolls back the whole catalog. Workspace tokens cannot read or restore a version that belonged to another Entity.
+The reader's versions panel reads real Git snapshots by stable page identity, including paths before folder moves. Historical HTML is served through revision-specific signed sandbox URLs. Restoring republishes saved source (or old rendered HTML when no source exists) into the current Entity/path and records a new commit; it never rolls back the whole catalog. Folder tokens cannot read or restore a version that belonged to another Entity.
 
 Browse history on GitHub or clone the content repository. To restore a version,
 extract its source using `git show <commit>:<entity-id>/<logical/path>.src.html` in that clone,
@@ -202,7 +207,7 @@ node scripts/update-upstream.mjs --revision <40-character-commit-sha>
 
 The updater changes the official archive pin and refreshes the npm lockfile. Review the upstream diff and run compatibility checks before merging. Daily/manual GitHub automation checks for a new official commit and opens an update PR only after building and exercising the updated wrapper. It does **not** merge or deploy updates automatically. Ordinary PR CI also builds and exercises the real container. Repository Actions permissions must allow GitHub Actions to create pull requests.
 
-Compatibility checks use isolated data and a temporary token; **never run the smoke script against a real library**. They exercise official MCP resources/prompts/rendering, migration, nested directories, scoped credentials and cross-space denial, same-origin administrator sessions, real Git version previews/restores, signed links and restart persistence. The workflows contain the complete build/run commands.
+Compatibility checks use isolated data and a temporary token; **never run the smoke script against a real library**. They exercise official MCP resources/prompts/rendering, migration, nested directories, scoped credentials and cross-folder denial, same-origin administrator sessions, real Git version previews/restores, signed links and restart persistence. `scripts/folders-smoke.mjs` additionally drives the real browser through the single name-only root/nested creation flow, existing-tree preservation, root rename/delete, API-token issuance, publication and version restore, mobile layout and read-only login behavior. The workflows contain the complete build/run commands.
 
 ## License
 
