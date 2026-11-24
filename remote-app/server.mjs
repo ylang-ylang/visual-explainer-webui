@@ -476,8 +476,12 @@ const http = createServer(async (req, res) => {
           if (auth.role !== 'admin') throw new ApiError(auth.role === 'viewer' && mutation ? 401 : 403, 'Admin authentication required');
           if (parts.length === 3 && req.method === 'GET') return json(res, 200, { tokens: tokens.list(id) });
           if (parts.length === 3 && req.method === 'POST') {
-            const body = await readJson(req, 4096); fields(body, ['name'], []);
-            return json(res, 201, await tokens.create(id, body.name));
+            const body = await readJson(req, 4096); fields(body, ['name', 'expiresIn'], []);
+            return json(res, 201, await tokens.create(id, body.name, body.expiresIn));
+          }
+          if (parts.length === 4 && req.method === 'PATCH') {
+            const body = await readJson(req, 4096); fields(body, ['expiresIn'], ['expiresIn']);
+            return json(res, 200, await tokens.setExpiry(id, parts[3], body.expiresIn));
           }
           if (parts.length === 4 && req.method === 'DELETE') { await tokens.revoke(id, parts[3]); return send(res, 204, ''); }
         }

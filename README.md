@@ -36,7 +36,7 @@ The TrueNAS installation remains at `http://192.168.202.11:28319/`, with the sam
 
 ### Agents
 
-For direct HTTP publishing, select a folder in the Web UI and open **API**, then click **生成 API 令牌**. No name or other input is needed; copy the one-time secret or ready-to-use upload command, and revoke the token later. Each token covers that top-level folder and all its descendants; opening API from a nested folder does not narrow the token's scope. Agents do not need MCP, a repository clone or SSH access to TrueNAS.
+For direct HTTP publishing, select a folder in the Web UI and open **API** as an administrator: a usable **Key** appears automatically, with a **7-day** server-enforced expiry. Choose 1 / 7 / 30 days or no expiry, then use **复制提示词与命令**. This copies shell-commented agent instructions followed by an executable curl command; save your HTML as `./diagram.html` before running it. Changing validity updates the same key from now, without rotating it. Each key covers that top-level folder and all its descendants; selecting a nested folder changes only the example upload target. Agents do not need MCP, a repository clone or SSH access to TrueNAS.
 
 For clients that prefer MCP, connect to `${PUBLIC_URL}/mcp` using `Authorization: Bearer <service-token>`. Read `visual-explainer://skill/SKILL.md` and the relevant resources/prompts, inspect your project locally, then call:
 
@@ -75,7 +75,7 @@ The top-level folder (internal Entity) must exist; missing parent folders are cr
 
 Logical API paths are relative to one top-level folder's internal Entity ID. The same path can exist independently in different top-level folders. Use URL-encoded UTF-8 path segments; traversal, hidden segments and encoded separators are rejected. The internal `filename` remains a stable page identity, so moving a logical path does not change its signed URL.
 
-Folder tokens can access only their top-level folder's tree, files and permitted history/restores. They cannot list the whole library, administer top-level folders or credentials, or invoke MCP. Secrets are shown once; token lists contain metadata only. Revoke a token from the API dialog when access ends.
+Folder tokens can access only their top-level folder's tree, files and permitted history/restores. They cannot list the whole library, administer top-level folders or credentials, or invoke MCP. The server returns each secret only on creation; lists and expiry edits contain metadata only. The page retains its new key only in memory and reuses it across panel close/reopen and library refresh; closing the panel does not revoke it. Reloading/leaving the page loses that secret, so the next API open issues a new key without revoking already-copied commands. Read-only viewers never issue or receive keys. Existing named/unnamed non-expiring tokens remain unchanged; administrators can still list and explicitly revoke them through the existing endpoints below.
 
 ### Viewers and security
 
@@ -113,7 +113,8 @@ Reads accept a viewer session or service Bearer token; Entity-scoped routes also
 | DELETE | `/api/entities/:id/folders?path=...` | Empty folders only |
 | GET / PUT | `/api/entities/:id/files/<path>` | Read source / publish raw `text/html`, up to 12 MiB |
 | PATCH | `/api/entities/:id/files/<path>` | `{path}`; move/rename without changing page identity |
-| GET / POST | `/api/entities/:id/tokens` | Administrator only; list metadata / create `{}` with an automatic label; legacy `{name}` remains supported |
+| GET / POST | `/api/entities/:id/tokens` | Administrator only; list metadata / create `{name?, expiresIn?}`; name defaults to an automatic label. `expiresIn`: integer 1–2592000 seconds or `null`; omitted/null retains legacy no-expiry behavior. Expiring metadata includes `expiresAt` (UTC ISO timestamp); secret returned only on creation |
+| PATCH | `/api/entities/:id/tokens/:tokenId` | Administrator only; `{expiresIn}` updates the same active key's expiry from now (or `null` removes expiry); no secret returned; expired keys cannot be reactivated |
 | DELETE | `/api/entities/:id/tokens/:tokenId` | Administrator only; revoke |
 | GET | `/api/pages/:filename/versions` | `{versions}`; newest 50 meaningful Git revisions with signed preview URLs |
 | GET | `/api/pages/:filename/versions/:revision` | `{version, html}`; saved source when available |
@@ -133,7 +134,7 @@ jq -n --rawfile html architecture.html '{html:$html,entityId:"cosmos"}' |
     -H "Authorization: Bearer $VE_TOKEN" -H 'Content-Type: application/json' --data-binary @-
 ```
 
-Back up the complete data directory, including HTML/source companions, `.entities.json`, the private `.tokens.json` registry and `.git`, plus the service token and deploy key separately. The token registry is mode 0600 and contains hashes, never cleartext secrets; it is excluded from content Git. Invalid catalogs or credential registries stop startup rather than silently losing metadata.
+Back up the complete data directory, including HTML/source companions, `.entities.json`, the private `.tokens.json` registry and `.git`, plus the service token and deploy key separately. The token registry is mode 0600 and contains hashes, never cleartext secrets; it is excluded from content Git. Expiry adds an optional `expiresAt` field to v1 token records; no migration is needed, and records without that field stay non-expiring. Older images cannot read newly expiring records. Invalid catalogs or credential registries stop startup rather than silently losing metadata.
 
 ## Page version history
 
@@ -207,7 +208,7 @@ node scripts/update-upstream.mjs --revision <40-character-commit-sha>
 
 The updater changes the official archive pin and refreshes the npm lockfile. Review the upstream diff and run compatibility checks before merging. Daily/manual GitHub automation checks for a new official commit and opens an update PR only after building and exercising the updated wrapper. It does **not** merge or deploy updates automatically. Ordinary PR CI also builds and exercises the real container. Repository Actions permissions must allow GitHub Actions to create pull requests.
 
-Compatibility checks use isolated data and a temporary token; **never run the smoke script against a real library**. They exercise official MCP resources/prompts/rendering, migration, nested directories, scoped credentials and cross-folder denial, same-origin administrator sessions, real Git version previews/restores, signed links and restart persistence. `scripts/folders-smoke.mjs` additionally drives the real browser through the single name-only root/nested creation flow, existing-tree preservation, root rename/delete, API-token issuance, publication and version restore, mobile layout and read-only login behavior. The workflows contain the complete build/run commands.
+Compatibility checks use isolated data and a temporary token; **never run the smoke script against a real library**. They exercise official MCP resources/prompts/rendering, migration, nested directories, scoped credentials and cross-folder denial, same-origin administrator sessions, real Git version previews/restores, signed links and restart persistence. `scripts/folders-smoke.mjs` additionally drives the real browser through name-only root/nested creation, existing-tree preservation, root rename/delete, automatic key issuance/reuse, validity edits, real clipboard copy, publication and version restore, mobile layout and read-only behavior. Its host runner executes the exact clipboard payload with curl against the disposable server and checks exact source bytes and explicit revocation. `scripts/token-expiry-smoke.mjs` advances a disposable server's clock to check expiry at the exact boundary and across restart, along with unchanged legacy records, metadata-only edits and hash-only storage. The workflows contain the complete build/run commands.
 
 ## License
 

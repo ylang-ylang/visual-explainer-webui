@@ -1,4 +1,5 @@
-// Run inside check-image.sh's disposable container, never against a real library.
+// Browser half of folders-check.mjs. Its stdout contains a private clipboard
+// payload: only run through that host runner, never log this pipe or use a real library.
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -44,7 +45,7 @@ await api(`/api/entities/${explicit.id}`, { method: 'DELETE', status: 204 });
 
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 try {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -125,43 +126,96 @@ try {
   const named = await api(`/api/entities/${created.id}/tokens`, {
     method: 'POST', body: { name: 'existing-named-agent' }, status: 201,
   });
-  await api(`/api/entities/${created.id}/tree`, { auth: named.secret });
+  const unnamed = await api(`/api/entities/${created.id}/tokens`, { method: 'POST', body: {}, status: 201 });
+  for (const existing of [named, unnamed]) {
+    assert.equal(Object.hasOwn(existing.token, 'expiresAt'), false, 'Legacy create defaults to no expiry');
+    await api(`/api/entities/${created.id}/tree`, { auth: existing.secret });
+  }
   const registryPath = join(process.env.VISUAL_EXPLAINER_OUTPUT_DIR ?? '/data', '.tokens.json');
   const originalRegistry = JSON.parse(await readFile(registryPath, 'utf8'));
   const child = page.locator(`.folder[data-entity-id="${created.id}"][data-path="子文件夹/更深层"]`);
   await child.locator(':scope > summary > .folder-name').click();
+  const issued = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === `/api/entities/${created.id}/tokens` && request.method() === 'POST') issued.push(request);
+  });
+  const creation = () => page.waitForResponse(response => new URL(response.url()).pathname === `/api/entities/${created.id}/tokens` && response.request().method() === 'POST');
+  const readyKey = () => page.waitForFunction(() => !document.querySelector('#copy-api').disabled);
+  async function closeApi() {
+    await page.locator('[data-close="api-dialog"]').click();
+    await page.waitForFunction(() => ['api-secret', 'api-payload'].every(id => document.getElementById(id).value === ''));
+  }
+  // Hold the first issuance in flight, then close/reopen: both views must share it.
+  let release, entered;
+  const gate = new Promise(resolve => { release = resolve; });
+  const intercepted = new Promise(resolve => { entered = resolve; });
+  await page.route('**/tokens', async route => {
+    if (route.request().method() === 'POST') { entered(); await gate; }
+    await route.continue();
+  });
+  const generated = creation();
   await page.locator('#folder-api').click();
-  assert.ok((await page.locator('#api-scope').innerText()).includes('改名后的文件夹'));
-  assert.ok((await page.locator('#api-scope').innerText()).includes('不限当前子文件夹'), 'Nested-folder API must accurately disclose its top-level scope');
-  assert.ok((await page.locator('#api-command').inputValue()).includes(encodeURIComponent('更深层')));
-  assert.equal(await page.locator('#token-name, #token-form').count(), 0, 'Token generation has no name field or form');
-  assert.equal(await page.locator('#api-dialog input:visible').count(), 0, 'Generation needs zero inputs');
-  await page.locator(`.token-row[data-token-id="${named.token.id}"]`).filter({ hasText: named.token.name }).waitFor();
-  const generated = page.waitForResponse(response => new URL(response.url()).pathname === `/api/entities/${created.id}/tokens` && response.request().method() === 'POST');
-  await page.getByRole('button', { name: '生成 API 令牌', exact: true }).click();
+  await intercepted;
+  assert.equal(await page.locator('#copy-api').isDisabled(), true);
+  await closeApi();
+  await page.locator('#folder-api').click();
+  release();
   const response = await generated;
   assert.equal(response.status(), 201);
-  assert.deepEqual(response.request().postDataJSON(), {}, 'One click sends no user-supplied name');
+  assert.deepEqual(response.request().postDataJSON(), { expiresIn: 604800 }, 'Opening API issues a finite key without a Generate action');
   const credential = await response.json();
-  const tokenId = credential.token.id;
-  assert.equal(credential.token.name, `API ${tokenId.slice(0, 8)}`);
-  await page.locator('#api-secret-section').waitFor({ state: 'visible' });
+  await readyKey();
+  await page.unroute('**/tokens');
+  assert.equal(issued.length, 1, 'Reopening during issuance must not create a second key');
+  assert.ok((await page.locator('#api-scope').innerText()).includes('改名后的文件夹'));
+  assert.ok((await page.locator('#api-scope').innerText()).includes('不限当前子文件夹'), 'Nested-folder API must accurately disclose its top-level scope');
+  assert.equal(await page.locator('#token-name, #token-form, #token-create, #api-tokens, #copy-secret, #copy-command, #copy-agent').count(), 0);
+  assert.equal(await page.locator('#api-dialog button:visible').count(), 2, 'Only close and the combined copy action remain');
+  assert.equal(await page.locator('#api-dialog input:visible').count(), 1, 'Only the read-only Key, no naming or generation inputs');
+  assert.equal(await page.locator('#api-secret').getAttribute('readonly'), '');
   const agent = await page.locator('#api-secret').inputValue();
   assert.equal(agent, credential.secret);
   assert.match(agent, /^ve_[A-Za-z0-9_-]{43}$/);
-  const tokenRow = page.locator(`.token-row[data-token-id="${tokenId}"]`);
-  await tokenRow.waitFor();
-  assert.ok((await page.locator('#api-command').inputValue()).includes(agent), 'Generated key is ready in the upload command');
-  await page.locator('[data-close="api-dialog"]').click();
-  await page.waitForFunction(() => ['api-secret', 'api-command', 'api-agent'].every(id => document.getElementById(id).value === ''),
-    null, { timeout: 5000 });
+  assert.ok(Math.abs(Date.parse(credential.token.expiresAt) - Date.parse(credential.token.createdAt) - 604800000) < 1000);
+  assert.ok((await page.locator('#api-expiry').innerText()).includes('到期：'));
+  let currentToken = credential.token;
+  for (const value of ['86400', '2592000', 'none', '604800']) {
+    const updated = page.waitForResponse(response => new URL(response.url()).pathname === `/api/entities/${created.id}/tokens/${credential.token.id}` && response.request().method() === 'PATCH');
+    await page.locator('#api-validity').selectOption(value);
+    const edit = await updated;
+    assert.equal(edit.status(), 200);
+    assert.deepEqual(edit.request().postDataJSON(), { expiresIn: value === 'none' ? null : Number(value) });
+    const result = await edit.json();
+    assert.deepEqual(Object.keys(result), ['token'], 'Expiry edits return no recoverable secret');
+    currentToken = result.token;
+    assert.equal(currentToken.id, credential.token.id);
+    assert.equal(currentToken.createdAt, credential.token.createdAt);
+    assert.equal(Object.hasOwn(currentToken, 'expiresAt'), value !== 'none');
+    await readyKey();
+    assert.equal(await page.locator('#api-secret').inputValue(), agent, 'Validity changes preserve copied keys');
+    await api(`/api/entities/${created.id}/tree`, { auth: agent });
+  }
+  assert.equal(issued.length, 1, 'Validity edits must not accumulate credentials');
+  await closeApi();
+  await page.locator('#refresh').click();
+  await page.waitForFunction(() => document.querySelector('#refresh').getAttribute('aria-busy') === 'false');
+  await root.locator(':scope > summary > .folder-name').click();
   await page.locator('#folder-api').click();
-  await tokenRow.waitFor();
-  assert.equal(await page.locator('#api-secret-section').isVisible(), false, 'Reopening never recovers a secret');
-  assert.ok(!(await page.locator('#api-command').inputValue()).includes(agent));
+  await readyKey();
+  assert.equal(await page.locator('#api-secret').inputValue(), agent, 'Root and descendants reuse the same scoped credential');
+  assert.ok(!(await page.locator('#api-payload').inputValue()).includes(encodeURIComponent('更深层')));
+  await closeApi();
+  if (!(await root.evaluate(element => element.open))) await root.locator(':scope > summary').click();
+  await child.locator(':scope > summary > .folder-name').click();
+  await page.locator('#folder-api').click();
+  await readyKey();
+  assert.equal(await page.locator('#api-secret').inputValue(), agent, 'Panel and library refresh reuse only the in-memory secret');
   const listed = (await api(`/api/entities/${created.id}/tokens`)).tokens;
-  assert.deepEqual(listed, [named.token, credential.token], 'Lists expose metadata, not secrets');
-  await page.locator('[data-close="api-dialog"]').click();
+  assert.deepEqual(listed, [named.token, unnamed.token, currentToken], 'Lists expose metadata, not secrets');
+  assert.equal(issued.length, 1);
+  const storage = await page.evaluate(() => JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage)]));
+  assert.ok(!storage.includes(agent) && !storage.includes(token), 'No credential may enter browser storage');
+  await closeApi();
   await api('/api/tree', { auth: agent, status: 403 });
   await api('/api/entities', { method: 'POST', body: { name: 'Forbidden' }, auth: agent, status: 403 });
   if (initial.entities.length) await api(`/api/entities/${initial.entities[0].id}/tree`, { auth: agent, status: 403 });
@@ -200,20 +254,41 @@ try {
   for (const [filename, location] of Object.entries(originalCatalog.pages)) assert.deepEqual(saved.pages[filename], location);
   for (const entity of originalCatalog.entities) assert.deepEqual(saved.entities.find(item => item.id === entity.id), entity);
 
-  await page.locator('#folder-api').click();
-  await tokenRow.getByRole('button', { name: '撤销令牌 ' + credential.token.name, exact: true }).click();
-  await page.locator('#confirm-submit').click();
-  await page.locator('#confirm-dialog').waitFor({ state: 'hidden' });
-  await tokenRow.waitFor({ state: 'detached' });
+  await api(`/api/entities/${created.id}/tokens/${credential.token.id}`, { method: 'DELETE', status: 204 });
   await api(`/api/entities/${created.id}/tree`, { auth: agent, status: 401 });
-  await api(`/api/entities/${created.id}/tree`, { auth: named.secret });
-  assert.deepEqual((await api(`/api/entities/${created.id}/tokens`)).tokens, [named.token]);
-  assert.deepEqual(JSON.parse(await readFile(registryPath, 'utf8')), originalRegistry,
-    'Generating and revoking a key preserves every existing named record and hash without migration');
-  await page.locator('[data-close="api-dialog"]').click();
+  const replacement = creation();
+  await page.locator('#folder-api').click();
+  const fresh = await (await replacement).json();
+  await readyKey();
+  assert.equal(issued.length, 2, 'Only explicit revocation requires a replacement key');
+  assert.notEqual(fresh.token.id, credential.token.id);
+  await page.getByRole('button', { name: '复制提示词与命令', exact: true }).click();
+  await page.locator('#api-status').filter({ hasText: '已复制' }).waitFor();
+  const copyPayload = await page.evaluate(() => navigator.clipboard.readText());
+  assert.equal(copyPayload, await page.locator('#api-payload').inputValue(), 'Read the real browser clipboard, not a stub');
+  assert.ok(copyPayload.includes(fresh.secret) && copyPayload.includes(encodeURIComponent('更深层')));
+  const lines = copyPayload.split('\n');
+  const commandLine = lines.findIndex(line => line.startsWith('curl '));
+  assert.ok(commandLine > 5 && lines.slice(0, commandLine).every(line => line.startsWith('# ')), 'Every prose line must be a shell comment');
+  assert.ok(!copyPayload.includes('```') && !copyPayload.includes('YOUR_FOLDER_TOKEN'));
+  assert.equal(await page.locator('#api-payload').isVisible(), false);
+  await closeApi();
+  await api(`/api/entities/${created.id}/tree`, { auth: fresh.secret });
+  for (const existing of [named, unnamed]) await api(`/api/entities/${created.id}/tree`, { auth: existing.secret });
+  const registry = JSON.parse(await readFile(registryPath, 'utf8'));
+  assert.equal(registry.version, 1);
+  assert.deepEqual(registry.tokens.filter(entry => entry.id !== fresh.token.id), originalRegistry.tokens,
+    'Existing named/unnamed records and hashes remain byte-for-byte equivalent, without migration');
+  for (const secret of [token, agent, fresh.secret, named.secret, unnamed.secret]) assert.ok(!JSON.stringify(registry).includes(secret));
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#nav-toggle').click();
+  await page.locator('#folder-api').click();
+  await readyKey();
+  assert.equal(await page.locator('#api-secret').inputValue(), fresh.secret);
+  assert.ok(await page.locator('#api-dialog').evaluate(element => element.getBoundingClientRect().width <= innerWidth), 'Compact API panel fits the mobile viewport');
+  assert.equal(issued.length, 2, 'Mobile rendering must reuse the existing key');
+  await closeApi();
   await page.locator('#folder-root').click();
   assert.equal(await page.locator('#folder-create').isVisible(), true);
   assert.ok(await page.locator('#library').evaluate(element => element.scrollWidth <= element.clientWidth), 'Folder controls fit the mobile drawer');
@@ -229,13 +304,34 @@ try {
   const viewerKey = createHmac('sha256', token).update('viewer-access').digest('hex');
   await readOnly.goto(new URL('/?access=' + viewerKey, base).href);
   await readOnly.waitForFunction(() => document.querySelector('#sync').textContent.startsWith('已同步'));
+  const viewerTokenRequests = [];
+  readOnly.on('request', request => { if (new URL(request.url()).pathname.includes('/tokens')) viewerTokenRequests.push(request); });
+  await readOnly.locator(`.folder[data-entity-id="${created.id}"][data-path=""] > summary > .folder-name`).click();
+  const beforeViewer = await readFile(registryPath, 'utf8');
+  await readOnly.locator('#folder-api').click();
+  assert.equal(await readOnly.locator('#api-admin').isVisible(), false);
+  assert.equal(await readOnly.locator('#api-secret').inputValue(), '');
+  assert.equal(await readOnly.locator('#api-payload').inputValue(), '');
+  assert.equal(await readOnly.locator('#login').isVisible(), false, 'Opening read-only API must not promote or prompt the viewer');
+  assert.equal(viewerTokenRequests.length, 0, 'Viewer API must not even request token metadata');
+  assert.equal(await readFile(registryPath, 'utf8'), beforeViewer);
+  const forbidden = await readOnly.evaluate(async route => {
+    const response = await fetch(route, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: null }) });
+    return { status: response.status, body: await response.json() };
+  }, `/api/entities/${created.id}/tokens/${fresh.token.id}`);
+  assert.equal(forbidden.status, 401, 'Viewers cannot change validity either');
+  assert.deepEqual(Object.keys(forbidden.body), ['error']);
+  await readOnly.locator('[data-close="api-dialog"]').click();
   await readOnly.locator('#folder-create').click();
   await readOnly.locator('#login[open]').waitFor();
   assert.equal(await readOnly.locator('#edit-dialog').isVisible(), false, 'Read-only viewers must log in before creation');
   await readOnly.locator('#login-cancel').click();
   await viewer.close();
   assert.deepEqual(errors, [], 'The folder UI must not emit browser errors');
-  console.log('PASS one-click API generation with zero inputs, one-time secret, scoped publishing and denial, UI revoke, unchanged named credentials/registry; folder tree, signed URLs, versions, mobile and viewer login');
+  // The host runner captures this pipe privately, executes the exact copied curl,
+  // and revokes the key afterward. Never print this JSON to a terminal or log.
+  process.stdout.write(JSON.stringify({ copyPayload, entityId: created.id, tokenId: fresh.token.id,
+    path: '子文件夹/更深层/guides/example.html', legacyTokens: [named.token, unnamed.token] }));
 } finally {
   await browser.close();
 }

@@ -94,8 +94,9 @@ node scripts/scoped-smoke.mjs
 docker restart "$name" >/dev/null
 wait_ready
 node scripts/scoped-smoke.mjs --persistence
-docker exec --interactive --env VE_FOLDER_SMOKE=1 --workdir /opt/bridge \
-  "$name" node --input-type=module < scripts/folders-smoke.mjs
+docker exec --interactive --env VE_TOKEN_EXPIRY_SMOKE=1 --workdir /opt/bridge \
+  "$name" node --input-type=module < scripts/token-expiry-smoke.mjs
+node scripts/folders-check.mjs
 
 # A second real service starts with no pages or catalog at all.
 docker rm --force "$name" >/dev/null

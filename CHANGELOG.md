@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Generate folder API tokens with one click and no name input; keep existing named credentials and the token registry unchanged.
+- Simplify folder API to an automatically supplied Key, a compact validity selector (7 days by default) and one **复制提示词与命令** action: all instructions are shell comments before an executable curl command. Reuse the key in page memory across panel opens and library refreshes; validity edits update the same key, not rotate it.
+- Enforce optional token expiry on the server, preserving legacy named/unnamed non-expiring records and create/list/revoke endpoints without migration. Keep secrets creation-only and hash-only storage; viewers never issue credentials.
 - Replace the separate workspace selector and two creation flows with one folder tree and one **New Folder** action. Create top-level or nested folders by name only, with the destination visible above the tree and internal IDs generated automatically.
 - Keep existing content, catalog IDs, scoped credentials, direct HTTP/MCP publishing, signed links and Git versions unchanged. Existing groups are top-level folders; unassigned diagrams appear at the root.
 - Add a whole-library `/api/tree` read endpoint, retain explicit-ID API creation, and make nested-folder API examples disclose their top-level credential scope.
