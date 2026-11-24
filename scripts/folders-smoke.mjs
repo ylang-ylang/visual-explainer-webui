@@ -153,9 +153,8 @@ try {
   await tokenRow.waitFor();
   assert.ok((await page.locator('#api-command').inputValue()).includes(agent), 'Generated key is ready in the upload command');
   await page.locator('[data-close="api-dialog"]').click();
-  assert.equal(await page.locator('#api-secret').inputValue(), '');
-  assert.equal(await page.locator('#api-command').inputValue(), '');
-  assert.equal(await page.locator('#api-agent').inputValue(), '');
+  await page.waitForFunction(() => ['api-secret', 'api-command', 'api-agent'].every(id => document.getElementById(id).value === ''),
+    null, { timeout: 5000 });
   await page.locator('#folder-api').click();
   await tokenRow.waitFor();
   assert.equal(await page.locator('#api-secret-section').isVisible(), false, 'Reopening never recovers a secret');
