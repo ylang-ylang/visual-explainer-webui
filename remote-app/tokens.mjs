@@ -43,9 +43,11 @@ export async function createTokens(outputDir, catalog) {
     },
     list(entityId) { catalog.entity(entityId); return entries.filter(entry => entry.entityId === entityId).map(metadata); },
     async create(entityId, name) {
-      catalog.entity(entityId); name = entityName(name);
+      catalog.entity(entityId);
+      const id = randomUUID();
+      name = name === undefined ? `API ${id.slice(0, 8)}` : entityName(name);
       const secret = `ve_${randomBytes(32).toString('base64url')}`;
-      const entry = { id: randomUUID(), entityId, name, createdAt: new Date().toISOString(), hash: digest(secret) };
+      const entry = { id, entityId, name, createdAt: new Date().toISOString(), hash: digest(secret) };
       await persist([...entries, entry]);
       return { token: metadata(entry), secret };
     },

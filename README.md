@@ -36,7 +36,7 @@ The TrueNAS installation remains at `http://192.168.202.11:28319/`, with the sam
 
 ### Agents
 
-For direct HTTP publishing, select a folder in the Web UI and open **API**. An administrator can issue a named folder token, copy a ready-to-use upload command, and revoke it later. Each token covers that top-level folder and all its descendants; opening API from a nested folder does not narrow the token's scope. Agents do not need MCP, a repository clone or SSH access to TrueNAS.
+For direct HTTP publishing, select a folder in the Web UI and open **API**, then click **生成 API 令牌**. No name or other input is needed; copy the one-time secret or ready-to-use upload command, and revoke the token later. Each token covers that top-level folder and all its descendants; opening API from a nested folder does not narrow the token's scope. Agents do not need MCP, a repository clone or SSH access to TrueNAS.
 
 For clients that prefer MCP, connect to `${PUBLIC_URL}/mcp` using `Authorization: Bearer <service-token>`. Read `visual-explainer://skill/SKILL.md` and the relevant resources/prompts, inspect your project locally, then call:
 
@@ -113,7 +113,7 @@ Reads accept a viewer session or service Bearer token; Entity-scoped routes also
 | DELETE | `/api/entities/:id/folders?path=...` | Empty folders only |
 | GET / PUT | `/api/entities/:id/files/<path>` | Read source / publish raw `text/html`, up to 12 MiB |
 | PATCH | `/api/entities/:id/files/<path>` | `{path}`; move/rename without changing page identity |
-| GET / POST | `/api/entities/:id/tokens` | Administrator only; list metadata / create `{name}` |
+| GET / POST | `/api/entities/:id/tokens` | Administrator only; list metadata / create `{}` with an automatic label; legacy `{name}` remains supported |
 | DELETE | `/api/entities/:id/tokens/:tokenId` | Administrator only; revoke |
 | GET | `/api/pages/:filename/versions` | `{versions}`; newest 50 meaningful Git revisions with signed preview URLs |
 | GET | `/api/pages/:filename/versions/:revision` | `{version, html}`; saved source when available |

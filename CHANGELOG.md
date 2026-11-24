@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Generate folder API tokens with one click and no name input; keep existing named credentials and the token registry unchanged.
 - Replace the separate workspace selector and two creation flows with one folder tree and one **New Folder** action. Create top-level or nested folders by name only, with the destination visible above the tree and internal IDs generated automatically.
 - Keep existing content, catalog IDs, scoped credentials, direct HTTP/MCP publishing, signed links and Git versions unchanged. Existing groups are top-level folders; unassigned diagrams appear at the root.
 - Add a whole-library `/api/tree` read endpoint, retain explicit-ID API creation, and make nested-folder API examples disclose their top-level credential scope.

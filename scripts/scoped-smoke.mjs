@@ -111,7 +111,7 @@ async function put(id, path, html, auth, status = 201) {
 }
 async function createToken(id, name) {
   const result = await api(`${entity(id)}/tokens`, { method: 'POST', status: 201, body: { name } });
-  assert.equal(result.token.name, name);
+  assert.equal(result.token.name, name ?? `API ${result.token.id.slice(0, 8)}`);
   assert.ok(typeof result.token.id === 'string' && result.token.id.length > 0);
   assert.equal(new Date(result.token.createdAt).toISOString(), result.token.createdAt);
   assert.ok(typeof result.secret === 'string' && result.secret.length >= 32, 'Agent secrets must have high entropy');
@@ -303,7 +303,7 @@ async function pathIsolation(agent, stable) {
 async function mutations() {
   for (const id of [a, b]) await api('/api/entities', { method: 'POST', status: 201, body: { id, name: id } });
   const { cookie, viewerCookie } = await authChecks();
-  const agent = await createToken(a, 'Scoped editor A');
+  const agent = await createToken(a);
   const foreign = await createToken(b, 'Scoped editor B');
   const revoked = await createToken(a, 'Revoked editor');
   const beforeTokens = head();

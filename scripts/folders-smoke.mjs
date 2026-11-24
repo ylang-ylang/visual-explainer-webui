@@ -48,6 +48,10 @@ try {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('dialog', async dialog => {
+    errors.push(`Unexpected browser ${dialog.type()}`);
+    await dialog.dismiss();
+  });
   await page.goto(base.href);
   await page.locator('#login[open]').waitFor();
   await page.locator('#key').fill(token);
@@ -118,19 +122,46 @@ try {
   await page.getByRole('button', { name: '管理文件夹 改名后的文件夹', exact: true }).waitFor();
   assert.equal((await api('/api/entities')).entities.find(entity => entity.id === created.id).name, '改名后的文件夹');
 
+  const named = await api(`/api/entities/${created.id}/tokens`, {
+    method: 'POST', body: { name: 'existing-named-agent' }, status: 201,
+  });
+  await api(`/api/entities/${created.id}/tree`, { auth: named.secret });
+  const registryPath = join(process.env.VISUAL_EXPLAINER_OUTPUT_DIR ?? '/data', '.tokens.json');
+  const originalRegistry = JSON.parse(await readFile(registryPath, 'utf8'));
   const child = page.locator(`.folder[data-entity-id="${created.id}"][data-path="子文件夹/更深层"]`);
   await child.locator(':scope > summary > .folder-name').click();
   await page.locator('#folder-api').click();
   assert.ok((await page.locator('#api-scope').innerText()).includes('改名后的文件夹'));
   assert.ok((await page.locator('#api-scope').innerText()).includes('不限当前子文件夹'), 'Nested-folder API must accurately disclose its top-level scope');
   assert.ok((await page.locator('#api-command').inputValue()).includes(encodeURIComponent('更深层')));
-  await page.locator('#token-name').fill('folder-ui-agent');
-  await page.locator('#token-create').click();
+  assert.equal(await page.locator('#token-name, #token-form').count(), 0, 'Token generation has no name field or form');
+  assert.equal(await page.locator('#api-dialog input:visible').count(), 0, 'Generation needs zero inputs');
+  await page.locator(`.token-row[data-token-id="${named.token.id}"]`).filter({ hasText: named.token.name }).waitFor();
+  const generated = page.waitForResponse(response => new URL(response.url()).pathname === `/api/entities/${created.id}/tokens` && response.request().method() === 'POST');
+  await page.getByRole('button', { name: '生成 API 令牌', exact: true }).click();
+  const response = await generated;
+  assert.equal(response.status(), 201);
+  assert.deepEqual(response.request().postDataJSON(), {}, 'One click sends no user-supplied name');
+  const credential = await response.json();
+  const tokenId = credential.token.id;
+  assert.equal(credential.token.name, `API ${tokenId.slice(0, 8)}`);
   await page.locator('#api-secret-section').waitFor({ state: 'visible' });
   const agent = await page.locator('#api-secret').inputValue();
-  const tokenRow = page.locator('.token-row').filter({ hasText: 'folder-ui-agent' });
+  assert.equal(agent, credential.secret);
+  assert.match(agent, /^ve_[A-Za-z0-9_-]{43}$/);
+  const tokenRow = page.locator(`.token-row[data-token-id="${tokenId}"]`);
   await tokenRow.waitFor();
-  const tokenId = await tokenRow.getAttribute('data-token-id');
+  assert.ok((await page.locator('#api-command').inputValue()).includes(agent), 'Generated key is ready in the upload command');
+  await page.locator('[data-close="api-dialog"]').click();
+  assert.equal(await page.locator('#api-secret').inputValue(), '');
+  assert.equal(await page.locator('#api-command').inputValue(), '');
+  assert.equal(await page.locator('#api-agent').inputValue(), '');
+  await page.locator('#folder-api').click();
+  await tokenRow.waitFor();
+  assert.equal(await page.locator('#api-secret-section').isVisible(), false, 'Reopening never recovers a secret');
+  assert.ok(!(await page.locator('#api-command').inputValue()).includes(agent));
+  const listed = (await api(`/api/entities/${created.id}/tokens`)).tokens;
+  assert.deepEqual(listed, [named.token, credential.token], 'Lists expose metadata, not secrets');
   await page.locator('[data-close="api-dialog"]').click();
   await api('/api/tree', { auth: agent, status: 403 });
   await api('/api/entities', { method: 'POST', body: { name: 'Forbidden' }, auth: agent, status: 403 });
@@ -170,6 +201,18 @@ try {
   for (const [filename, location] of Object.entries(originalCatalog.pages)) assert.deepEqual(saved.pages[filename], location);
   for (const entity of originalCatalog.entities) assert.deepEqual(saved.entities.find(item => item.id === entity.id), entity);
 
+  await page.locator('#folder-api').click();
+  await tokenRow.getByRole('button', { name: '撤销令牌 ' + credential.token.name, exact: true }).click();
+  await page.locator('#confirm-submit').click();
+  await page.locator('#confirm-dialog').waitFor({ state: 'hidden' });
+  await tokenRow.waitFor({ state: 'detached' });
+  await api(`/api/entities/${created.id}/tree`, { auth: agent, status: 401 });
+  await api(`/api/entities/${created.id}/tree`, { auth: named.secret });
+  assert.deepEqual((await api(`/api/entities/${created.id}/tokens`)).tokens, [named.token]);
+  assert.deepEqual(JSON.parse(await readFile(registryPath, 'utf8')), originalRegistry,
+    'Generating and revoking a key preserves every existing named record and hash without migration');
+  await page.locator('[data-close="api-dialog"]').click();
+
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#nav-toggle').click();
   await page.locator('#folder-root').click();
@@ -181,8 +224,6 @@ try {
   await page.reload();
   await page.locator('#nav-toggle').click();
   await page.locator(`.folder[data-entity-id="${created.id}"][data-path="子文件夹/更深层"]`).waitFor();
-  await api(`/api/entities/${created.id}/tokens/${tokenId}`, { method: 'DELETE', status: 204 });
-  await api(`/api/entities/${created.id}/tree`, { auth: agent, status: 401 });
 
   const viewer = await browser.newContext();
   const readOnly = await viewer.newPage();
@@ -195,7 +236,7 @@ try {
   await readOnly.locator('#login-cancel').click();
   await viewer.close();
   assert.deepEqual(errors, [], 'The folder UI must not emit browser errors');
-  console.log('PASS one folder tree, name-only root/nested creation, existing records, legacy IDs, root rename/delete, scoped publishing, signed URLs, version preview/restore, mobile and viewer login');
+  console.log('PASS one-click API generation with zero inputs, one-time secret, scoped publishing and denial, UI revoke, unchanged named credentials/registry; folder tree, signed URLs, versions, mobile and viewer login');
 } finally {
   await browser.close();
 }

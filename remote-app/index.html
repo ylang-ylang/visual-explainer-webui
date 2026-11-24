@@ -487,13 +487,7 @@
     <p id="api-base" class="code-field"></p>
     <button id="api-unlock" class="button bordered" type="button" hidden>登录</button>
     <section id="api-admin" hidden>
-      <form id="token-form">
-        <label for="token-name">API 令牌</label>
-        <div class="inline-form">
-          <input id="token-name" placeholder="名称，如 coding-agent" autocomplete="off" maxlength="120" required>
-          <button id="token-create" class="button bordered" type="submit">创建</button>
-        </div>
-      </form>
+      <button id="token-create" class="button bordered" type="button">生成 API 令牌</button>
       <div id="api-tokens" aria-live="polite"></div>
     </section>
     <section id="api-secret-section" hidden>
@@ -1485,7 +1479,6 @@
       apiContext = { ...currentFolder, secret: '', secretId: '' };
       $('api-title').textContent = folderLabel(currentFolder.entityId, currentFolder.path) + ' · API';
       $('api-status').textContent = '';
-      $('token-name').value = '';
       $('api-tokens').replaceChildren();
       $('api-agent').hidden = true;
       updateControls();
@@ -1502,7 +1495,6 @@
       $('api-agent').hidden = true;
       $('api-secret-section').hidden = true;
       $('api-tokens').replaceChildren();
-      $('token-name').value = '';
       $('api-status').textContent = '';
     });
     $('api-unlock').addEventListener('click', () => requireAdmin(() => {}));
@@ -1549,20 +1541,18 @@
         if (apiContext === context) $('api-status').textContent = errorMessage(error);
       }
     }
-    $('token-form').addEventListener('submit', async event => {
-      event.preventDefault();
+    $('token-create').addEventListener('click', async () => {
       const context = apiContext;
       if (role !== 'admin' || !context) return;
       $('api-status').textContent = '';
       setBusy($('api-dialog'), true);
       try {
         const data = await apiRequest(entityRoute(context.entityId) + '/tokens', {
-          method: 'POST', body: { name: $('token-name').value },
+          method: 'POST', body: {},
         });
         if (apiContext !== context || !$('api-dialog').open) return;
         context.secret = data.secret;
         context.secretId = data.token.id;
-        $('token-name').value = '';
         updateApiExample(context);
         await loadTokens(context);
         $('api-secret').focus();
