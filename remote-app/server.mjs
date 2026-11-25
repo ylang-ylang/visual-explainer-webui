@@ -146,6 +146,12 @@ async function listPages() {
   return pages.sort((a, b) => b.modified.localeCompare(a.modified));
 }
 
+async function requireRootNameFree(name, exceptFilename = null) {
+  if ((await listPages()).some(page => page.entityId === null && page.filename !== exceptFilename && page.path === name)) {
+    throw new ApiError(409, 'Destination already exists');
+  }
+}
+
 function equal(a, b) {
   const aa = Buffer.from(a), bb = Buffer.from(b);
   return aa.length === bb.length && timingSafeEqual(aa, bb);
@@ -200,13 +206,17 @@ async function readJson(req, limit) {
 }
 
 function fields(body, allowed, required) {
-  if (Object.keys(body).some(key => !allowed.includes(key)) || required.some(key => !Object.hasOwn(body, key))) {
+  if (body === null || typeof body !== 'object' || Array.isArray(body) ||
+      Object.keys(body).some(key => !allowed.includes(key)) || required.some(key => !Object.hasOwn(body, key))) {
     throw new ApiError(400, `Expected fields: ${required.join(', ')}`);
   }
 }
 
 function withCount(entity, pages) {
-  return { ...entity, diagramCount: pages.filter(page => page.entityId === entity.id).length };
+  return { ...entity, diagramCount: pages.filter(page => catalog.inScope(entity.id, page.entityId)).length };
+}
+function scopedPage(page, id) {
+  return { ...page, entityId: id, path: catalog.relative(id, page.entityId, page.path) };
 }
 
 // Run the unmodified official package's stdio server; one process multiplexes independent MCP calls.
@@ -240,9 +250,10 @@ async function renderLocked(args, apiFilename = false, params = { name: 'visual_
   predicted = predicted.replace(/\.src(\.html?)$/i, '$1');
   pageFilename(predicted);
   const before = await readPage(predicted);
-  const assigned = location?.entityId ?? (Object.hasOwn(args, 'entityId') ? args.entityId : catalog.assignment(predicted));
-  const logical = location?.path ?? catalog.location(predicted).path;
+  const assigned = location ? location.entityId : (Object.hasOwn(args, 'entityId') ? args.entityId : catalog.assignment(predicted));
+  const logical = location?.path ?? (assigned === null && catalog.assignment(predicted) !== null ? predicted : catalog.location(predicted).path);
   if (!before) logicalPath(logical, true);
+  if (assigned === null) await requireRootNameFree(logical, predicted);
   catalog.validateLocation(predicted, assigned, logical);
   await readSource(predicted, true);
   const result = await upstream.callTool({ ...params, arguments: { filename: predicted, html: args.html, open: false } }, undefined, { timeout: 180000 });
@@ -411,7 +422,25 @@ const http = createServer(async (req, res) => {
             ((action === 'versions' && [3, 4].includes(parts.length) && req.method === 'GET') ||
              (action === 'restore' && parts.length === 3 && req.method === 'POST'));
           if (!scoped && !ownHistory) throw new ApiError(403, 'Entity-scoped access only');
-          if (ownHistory && catalog.assignment(id) !== auth.entityId) throw new ApiError(403, 'Page belongs to another Entity');
+          if (ownHistory && !catalog.inScope(auth.entityId, catalog.assignment(id))) throw new ApiError(403, 'Page is outside current folder scope');
+        }
+        if (resource === 'moves' && parts.length === 1 && req.method === 'POST') {
+          const body = await readJson(req, 8192); fields(body, ['source', 'destination', 'name'], ['source', 'destination']);
+          if (!body.source || !body.destination) throw new ApiError(400, 'Source and destination required');
+          fields(body.destination, ['entityId', 'path'], ['entityId', 'path']);
+          if (body.source.kind === 'page') {
+            fields(body.source, ['kind', 'filename'], ['kind', 'filename']);
+            await requirePage(body.source.filename);
+          } else fields(body.source, ['kind', 'entityId', 'path'], ['kind', 'entityId', 'path']);
+          if (!['page', 'folder'].includes(body.source.kind)) throw new ApiError(400, 'Invalid move kind');
+          if (body.destination.entityId === null) {
+            const from = body.source.kind === 'page' ? catalog.location(body.source.filename) : catalog.resolve(body.source.entityId, body.source.path);
+            const sourceName = from.path ? from.path.split('/').at(-1) : catalog.entity(from.entityId).name;
+            await requireRootNameFree(body.name ?? sourceName, body.source.kind === 'page' ? body.source.filename : null);
+          }
+          const move = await catalog.move(body.source, body.destination, body.name);
+          if (move.moved) await history.snapshot('Organize library');
+          return json(res, 200, { move });
         }
         if (resource === 'tree' && parts.length === 1 && req.method === 'GET') {
           const pages = await listPages();
@@ -428,12 +457,14 @@ const http = createServer(async (req, res) => {
         }
         if (resource === 'entities' && parts.length === 1 && req.method === 'POST') {
           const body = await readJson(req, 4096); fields(body, ['id', 'name'], ['name']);
+          await requireRootNameFree(typeof body.name === 'string' ? body.name.trim() : body.name);
           const entity = await catalog.create(body.id, body.name);
           await history.snapshot(`Create entity ${entity.id}`);
           return json(res, 201, { entity: withCount(entity, await listPages()) });
         }
         if (resource === 'entities' && parts.length === 2 && req.method === 'PATCH') {
           const body = await readJson(req, 4096); fields(body, ['name'], ['name']);
+          if (!catalog.entity(id).parent) await requireRootNameFree(typeof body.name === 'string' ? body.name.trim() : body.name);
           const entity = await catalog.rename(id, body.name);
           await history.snapshot(`Rename entity ${id}`);
           return json(res, 200, { entity: withCount(entity, await listPages()) });
@@ -441,7 +472,7 @@ const http = createServer(async (req, res) => {
         if (resource === 'entities' && parts.length === 2 && req.method === 'DELETE') {
           catalog.entity(id);
           const pages = await listPages();
-          if (pages.some(page => page.entityId === id) || catalog.folders(id).length) throw new ApiError(409, 'Entity is not empty');
+          if (pages.some(page => catalog.inScope(id, page.entityId)) || catalog.scopeFolders(id).length) throw new ApiError(409, 'Entity is not empty');
           // Revoke first: a partial failure can never leave live keys to a removed Entity.
           await tokens.revokeEntity(id);
           await catalog.remove(id, pages);
@@ -450,8 +481,9 @@ const http = createServer(async (req, res) => {
         }
         if (resource === 'entities' && action === 'tree' && parts.length === 3 && req.method === 'GET') {
           catalog.entity(id);
-          return json(res, 200, { folders: catalog.folders(id),
-            pages: (await listPages()).filter(page => page.entityId === id).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0) });
+          return json(res, 200, { folders: catalog.scopeFolders(id),
+            pages: (await listPages()).filter(page => catalog.inScope(id, page.entityId)).map(page => scopedPage(page, id))
+              .sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0) });
         }
         if (resource === 'entities' && action === 'folders' && parts.length === 3) {
           if (req.method === 'POST') {
@@ -462,9 +494,9 @@ const http = createServer(async (req, res) => {
           }
           if (req.method === 'PATCH') {
             const body = await readJson(req, 4096); fields(body, ['path', 'newPath'], ['path', 'newPath']);
-            const folder = await catalog.moveFolder(id, body.path, body.newPath);
+            const move = await catalog.moveFolder(id, body.path, body.newPath);
             await history.snapshot(`Move folder in ${id}`);
-            return json(res, 200, { folder });
+            return json(res, 200, { folder: { path: body.newPath }, move });
           }
           if (req.method === 'DELETE') {
             await catalog.removeFolder(id, url.searchParams.get('path'));
@@ -489,6 +521,7 @@ const http = createServer(async (req, res) => {
           catalog.entity(id);
           const path = logicalPath(parts.slice(3).join('/'), true);
           const filename = catalog.find(id, path);
+          const location = catalog.fileLocation(id, path);
           if (req.method === 'GET') {
             if (!filename) throw new ApiError(404, 'File not found');
             await requirePage(filename);
@@ -505,24 +538,25 @@ const http = createServer(async (req, res) => {
             try { html = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); }
             catch { throw new ApiError(400, 'HTML must be valid UTF-8'); }
             const physical = filename ?? `${randomUUID()}.html`;
-            const result = requireRender(await renderLocked({ filename: physical, html }, true, undefined, { entityId: id, path }, bytes));
-            return json(res, filename ? 200 : 201, { page: result.page, revision: result.revision, render: result.render });
+            const result = requireRender(await renderLocked({ filename: physical, html }, true, undefined, location, bytes));
+            return json(res, filename ? 200 : 201, { page: scopedPage(result.page, id), revision: result.revision, render: result.render });
           }
           if (req.method === 'PATCH') {
             if (!filename) throw new ApiError(404, 'File not found');
             await requirePage(filename);
             const body = await readJson(req, 4096); fields(body, ['path'], ['path']);
             logicalPath(body.path, true);
-            await catalog.assign(filename, id, body.path);
+            const target = catalog.fileLocation(id, body.path);
+            await catalog.assign(filename, target.entityId, target.path);
             await history.snapshot(`Move page ${filename}`);
-            return json(res, 200, { page: await requirePage(filename) });
+            return json(res, 200, { page: scopedPage(await requirePage(filename), id) });
           }
         }
         if (resource === 'pages' && parts.length === 1 && req.method === 'GET') {
           const filter = url.searchParams.get('entityId');
           if (filter !== null && filter !== '') catalog.entity(filter);
           const pages = await listPages();
-          return json(res, 200, { pages: filter === null ? pages : pages.filter(page => page.entityId === (filter || null)) });
+          return json(res, 200, { pages: filter === null ? pages : pages.filter(page => filter ? catalog.inScope(filter, page.entityId) : page.entityId === null) });
         }
         if (resource === 'pages' && action === 'versions' && [3, 4].includes(parts.length) && req.method === 'GET') {
           await requirePage(id);
@@ -541,8 +575,11 @@ const http = createServer(async (req, res) => {
         if (resource === 'pages' && parts.length === 2 && req.method === 'GET') return json(res, 200, { page: await requirePage(id) });
         if (resource === 'pages' && parts.length === 2 && req.method === 'PATCH') {
           await requirePage(id);
-          const body = await readJson(req, 4096); fields(body, ['entityId'], ['entityId']);
-          await catalog.assign(id, body.entityId);
+          const body = await readJson(req, 4096); fields(body, ['entityId', 'path'], ['entityId']);
+          const path = body.path ?? (body.entityId === null ? id : catalog.location(id).path);
+          const target = body.entityId === null ? { entityId: null, path } : catalog.fileLocation(body.entityId, path);
+          if (target.entityId === null) await requireRootNameFree(target.path, id);
+          await catalog.assign(id, target.entityId, target.path);
           await history.snapshot(`Move page ${id}`);
           return json(res, 200, { page: await requirePage(id) });
         }

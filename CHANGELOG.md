@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Drag diagrams and complete folder subtrees onto folders or Root as an administrator, including cross-folder moves and nesting previously top-level folders. Keep the existing keyboard/touch rename/move dialog; reject cycles/collisions atomically, preserve drag state during library refresh, and never pretend non-target drops reorder rows.
+- Upgrade catalog v1/v2 to v3 with an exact private pre-migration catalog backup. Real parent edges preserve moved API-folder IDs, endpoints and Keys; parent scopes follow current subtree membership, including history/restore authorization. Serving filenames, source bytes and signed current/version URLs stay stable. Downgrades require restoring the full pre-upgrade data backup.
+- Remove Desktop/Mobile preview controls and forced viewport styling/state; fit the current window while retaining responsive navigation, fullscreen and independent opening. Add isolated migration, actual-pointer browser, scope/history and restart regressions.
+
 - Simplify folder API to an automatically supplied Key, a compact validity selector (7 days by default) and one **复制提示词与命令** action: all instructions are shell comments before an executable curl command. Reuse the key in page memory across panel opens and library refreshes; validity edits update the same key, not rotate it.
 - Enforce optional token expiry on the server, preserving legacy named/unnamed non-expiring records and create/list/revoke endpoints without migration. Keep secrets creation-only and hash-only storage; viewers never issue credentials.
 - Replace the separate workspace selector and two creation flows with one folder tree and one **New Folder** action. Create top-level or nested folders by name only, with the destination visible above the tree and internal IDs generated automatically.

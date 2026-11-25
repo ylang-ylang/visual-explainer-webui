@@ -4,7 +4,7 @@ import { lstat, mkdtemp, open, readdir, realpath, rm } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
-import { ApiError, entityId, logicalPath, pageFilename, sourceFilename, sourcePairs } from './catalog.mjs';
+import { ApiError, entityId, logicalPath, pageFilename, scopePath, sourceFilename, sourcePairs } from './catalog.mjs';
 
 const execute = promisify(execFile);
 const author = 'Visual Explainer';
@@ -183,7 +183,7 @@ export async function createHistory(outputDir, catalog) {
     let metadata = null;
     if (tree.has('.entities.json')) {
       metadata = JSON.parse((await git(['cat-file', 'blob', tree.get('.entities.json')])).stdout);
-      if (![1, 2].includes(metadata?.version) || !metadata.pages || typeof metadata.pages !== 'object') throw new Error('Invalid historical catalog');
+      if (![1, 2, 3].includes(metadata?.version) || !metadata.pages || typeof metadata.pages !== 'object') throw new Error('Invalid historical catalog');
     }
     const info = (await git(['show', '-s', '--format=%P%x00%cI%x00%s', revision])).stdout.trimEnd().split('\0');
     const result = { tree, metadata, parent: info[0].split(' ')[0] || null, createdAt: info[1], message: info.slice(2).join('\0') };
@@ -192,7 +192,7 @@ export async function createHistory(outputDir, catalog) {
     records.set(revision, result);
     return result;
   }
-  const fingerprint = version => JSON.stringify([version.path, version.entityId, version.blob, version.sourceBlob]);
+  const fingerprint = version => JSON.stringify([version.path, version.entityId, version.blob, version.sourceBlob, version.ancestry]);
 
   async function locate(filename, revision) {
     pageFilename(filename);
@@ -201,7 +201,9 @@ export async function createHistory(outputDir, catalog) {
     if (value !== undefined) {
       entity = saved.metadata.version === 1 ? value : value.entityId;
       path = saved.metadata.version === 1 ? filename.normalize('NFC') : value.path;
-      entityId(entity); logicalPath(path, true);
+      if (entity !== null) entityId(entity);
+      if (entity === null && path === filename) pageFilename(path);
+      else logicalPath(path, true);
     }
     const projected = `${entity ?? '_unassigned'}/${saved.metadata?.version === 1 ? filename : path}`;
     // Stable physical identity comes from this revision's catalog, never a
@@ -209,8 +211,15 @@ export async function createHistory(outputDir, catalog) {
     const storedPath = saved.tree.has(projected) ? projected : saved.tree.has(filename) ? filename : null;
     if (!storedPath) throw new ApiError(404, 'Page version not found');
     const sourcePath = sourcePairs([...saved.tree.keys()]).get(storedPath)?.[0] ?? sourceFilename(storedPath);
+    const ancestry = [];
+    let anchor = saved.metadata?.entities.find(entry => entry.id === entity);
+    while (anchor?.parent) {
+      if (ancestry.some(entry => entry[0] === anchor.id)) throw new Error('Invalid historical hierarchy');
+      ancestry.push([anchor.id, anchor.parent.entityId, anchor.parent.path, anchor.name]);
+      anchor = saved.metadata.entities.find(entry => entry.id === anchor.parent.entityId);
+    }
     return {
-      revision, createdAt: saved.createdAt, message: saved.message, path, entityId: entity,
+      revision, createdAt: saved.createdAt, message: saved.message, path, entityId: entity, ancestry,
       sourceAvailable: saved.tree.has(sourcePath), storedPath,
       blob: saved.tree.get(storedPath), sourceBlob: saved.tree.get(sourcePath) ?? null,
     };
@@ -224,7 +233,11 @@ export async function createHistory(outputDir, catalog) {
       throw new ApiError(404, 'Revision not found');
     }
   }
-  const publicVersion = ({ storedPath, blob, sourceBlob, ...version }) => version;
+  const publicVersion = ({ storedPath, blob, sourceBlob, ancestry, ...version }) => version;
+  async function historicalScope(scope, version) {
+    const saved = await record(version.revision);
+    return scopePath(saved.metadata?.entities ?? [], scope, version.entityId) !== null;
+  }
 
   return {
     async versions(filename, entity = undefined) {
@@ -240,7 +253,7 @@ export async function createHistory(outputDir, catalog) {
           try { version = await locate(filename, revision); }
           catch (error) { if (error instanceof ApiError && error.status === 404) { previous = null; continue; } throw error; }
           const current = fingerprint(version);
-          if (current !== previous && (entity === undefined || version.entityId === entity)) snapshots.push(publicVersion(version));
+          if (current !== previous && (entity === undefined || await historicalScope(entity, version))) snapshots.push(publicVersion(version));
           previous = current;
         }
         return snapshots.reverse().slice(0, 50);
@@ -251,7 +264,7 @@ export async function createHistory(outputDir, catalog) {
         phase = 'read';
         await reachable(revision);
         const version = await locate(filename, revision);
-        if (entity !== undefined && version.entityId !== entity) throw new ApiError(403, 'Version belongs to another Entity');
+        if (entity !== undefined && !await historicalScope(entity, version)) throw new ApiError(403, 'Version is outside folder scope');
         const parent = (await record(revision)).parent;
         if (parent) {
           let previous;
@@ -287,14 +300,11 @@ export async function createHistory(outputDir, catalog) {
             const location = page ? catalog.location(page) : { entityId: null, path: name.replace(/\.src(\.html?)$/i, '$1') };
             let logical = location.path;
             if (source(name)) {
-              if (!location.entityId) logical = name;
-              else {
-                const primary = pairs.get(page)[0];
-                // Preserve legacy alternate companions too, without conflating
-                // their bytes with the canonical source in the logical tree.
-                logical = name === primary ? sourceFilename(location.path) :
-                  location.path.replace(/\.html?$/i, /\.htm$/i.test(location.path) ? '.src.html' : '.src.htm');
-              }
+              const primary = pairs.get(page)?.[0];
+              // Preserve legacy alternate companions too, without conflating
+              // their bytes with the canonical source in the logical tree.
+              logical = !page ? name : name === primary ? sourceFilename(location.path) :
+                location.path.replace(/\.html?$/i, /\.htm$/i.test(location.path) ? '.src.html' : '.src.htm');
             }
             path = `${location.entityId ?? '_unassigned'}/${logical}`;
           }

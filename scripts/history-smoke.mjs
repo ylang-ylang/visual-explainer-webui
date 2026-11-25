@@ -138,7 +138,7 @@ function auditHistory() {
     assert.equal(local('rev-parse', `${revision}:${legacyPath}`), local('rev-parse', `${commits[0]}:legacy.html`), 'Legacy HTML changed');
     assert.equal(local('rev-parse', `${revision}:${sourcePath}`), local('rev-parse', `${commits[0]}:LEGACY.src.HTM`), 'Case-sensitive orphan source changed');
     if (index > 0) {
-      assert.equal(catalog(revision)?.version, 2, 'Every current snapshot must use the migrated v2 catalog');
+      assert.equal(catalog(revision)?.version, 3, 'Every current snapshot must use the migrated v3 catalog');
       assert.equal(local('rev-parse', `${revision}^`), commits[index - 1], 'History must fast-forward without rewriting commits');
     }
     assert.ok(changed(revision).length > 0, 'No empty commits');
@@ -158,7 +158,7 @@ async function initialImport() {
     assert.deepEqual(blobBytes(commits[1], `${unassigned}/${filename}`), await readFile(join(dataDir, filename)),
       'Migration must preserve exact serving-file bytes');
   }
-  assert.equal(catalog(commits.at(-1)).version, 2);
+  assert.equal(catalog(commits.at(-1)).version, 3);
   assert.deepEqual((await request('/api/entities')).entities, []);
   auditHistory();
   await writeFile(checkpoint, JSON.stringify({ initial: commits[1] }));

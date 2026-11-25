@@ -2,6 +2,7 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+node --test scripts/catalog-test.mjs
 fixture=$(mktemp -d)
 name="ve-wrapper-check-$(node -e 'console.log(require("node:crypto").randomBytes(6).toString("hex"))')"
 image="${VE_CHECK_IMAGE:-${name}:local}"
@@ -97,6 +98,7 @@ node scripts/scoped-smoke.mjs --persistence
 docker exec --interactive --env VE_TOKEN_EXPIRY_SMOKE=1 --workdir /opt/bridge \
   "$name" node --input-type=module < scripts/token-expiry-smoke.mjs
 node scripts/folders-check.mjs
+node scripts/organize-check.mjs
 
 # A second real service starts with no pages or catalog at all.
 docker rm --force "$name" >/dev/null

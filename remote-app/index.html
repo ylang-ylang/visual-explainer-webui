@@ -187,15 +187,8 @@
     .viewer-title h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600; line-height: 1.6; }
     .viewer-title p { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; line-height: 1.5; }
     .viewer-actions { display: flex; align-items: center; flex-shrink: 0; gap: 8px; }
-    .sizes { display: flex; gap: 2px; padding: 3px; border-radius: 7px; background: #f0f3f0; }
-    .sizes .button { min-height: 28px; padding: 4px 9px; gap: 5px; color: var(--muted); font-size: 11px; }
-    .sizes .icon { width: 14px; height: 14px; }
-    .sizes .button[aria-pressed="true"] { color: var(--ink); background: #fff; box-shadow: 0 1px 3px #23362c14; }
-    .tool-separator { width: 1px; height: 19px; margin: 0 2px; background: var(--line); }
     .stage { position: relative; display: flex; justify-content: center; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: #fff; }
-    .stage[data-size="mobile"] { background: #edf0ed; }
     #preview { display: block; flex: none; width: 100%; height: 100%; border: 0; background: #fff; }
-    .stage[data-size="mobile"] #preview { width: min(390px, 100%); box-shadow: 0 0 0 1px #dce2dc; }
     .placeholder { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; padding: 28px; overflow-y: auto; background: #fff; text-align: center; }
     .placeholder-icon { display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: 19px; border-radius: 12px; background: var(--soft); color: #829187; }
     .placeholder-icon .icon { width: 24px; height: 24px; stroke-width: 1.4; }
@@ -259,7 +252,6 @@
       .viewer-title h1 { font-size: 14px; }
       .viewer-title p { font-size: 10px; }
       .viewer-actions { justify-content: flex-end; gap: 7px; margin-top: 11px; }
-      .sizes { margin-right: auto; }
       .viewer-actions > .button { min-height: 36px; }
       .viewer-footer { min-height: 28px; padding: 5px 14px max(5px, env(safe-area-inset-bottom)); }
       .share-hint { display: none; }
@@ -270,7 +262,6 @@
       .brand-mark, .connection { display: none; }
       .appbar-start { gap: 9px; }
       .viewer-actions { gap: 4px; }
-      .tool-separator { margin: 0; }
       .viewer-actions .button { padding-left: 7px; padding-right: 7px; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -285,6 +276,12 @@
     .folder > summary::before { content: "›"; width: 12px; flex: none; text-align: center; color: var(--muted); }
     .folder[open] > summary::before { transform: rotate(90deg); }
     .folder > summary:hover { background: #edf1ee; }
+    [draggable="true"] { cursor: grab; }
+    .drag-source { opacity: .45; }
+    .drop-target { background: #dceee5 !important; outline: 2px solid var(--accent); outline-offset: -2px; }
+    .drop-invalid { background: #f9e8e4 !important; outline: 2px solid var(--danger); outline-offset: -2px; }
+    #drag-status { margin: 0 0 7px; color: var(--accent); font-size: 11px; }
+    #drag-status[data-error="true"] { color: var(--danger); }
     .folder > summary[aria-current="location"] { background: var(--accent-soft); color: var(--accent); }
     .folder-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
     .folder-children { margin-left: 9px; padding-left: 4px; border-left: 1px solid var(--line); }
@@ -359,7 +356,7 @@
           </button>
         </div>
         <nav class="folder-location" aria-label="当前文件夹">
-          <button id="folder-root" class="button" type="button" aria-current="location">根目录</button>
+          <button id="folder-root" class="button" type="button" aria-current="location" data-drop-entity-id="" data-drop-path="">根目录</button>
           <span id="folder-location"></span>
         </nav>
         <div class="library-tools">
@@ -374,6 +371,7 @@
       </div>
       <nav id="list" aria-label="历史图解" aria-busy="true"></nav>
       <div class="library-foot">
+        <p id="drag-status" role="status" aria-live="polite" hidden></p>
         <span id="sync" role="status">正在读取图解…</span>
         <span>页面可见时，每 15 秒自动更新</span>
       </div>
@@ -390,17 +388,6 @@
           </div>
         </div>
         <div class="viewer-actions">
-          <div class="sizes" role="group" aria-label="预览宽度">
-            <button id="desktop" class="button" type="button" aria-pressed="true" title="桌面预览：填满阅读区">
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4m-4 0h8"/></svg>
-              桌面
-            </button>
-            <button id="mobile" class="button" type="button" aria-pressed="false" title="手机预览：最大宽度 390 像素">
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg>
-              手机
-            </button>
-          </div>
-          <span class="tool-separator" aria-hidden="true"></span>
           <button id="fullscreen" class="button icon-button" type="button" aria-label="全屏阅读" aria-pressed="false" title="全屏阅读" disabled>
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>
           </button>
@@ -415,7 +402,7 @@
         <button id="history-current" class="button bordered" type="button">返回当前</button>
         <button id="history-restore" class="button" type="button">恢复此版</button>
       </div>
-      <div id="stage" class="stage" data-size="desktop" aria-busy="true">
+      <div id="stage" class="stage" aria-busy="true">
         <div id="placeholder" class="placeholder" data-loading="true" role="status">
           <div class="placeholder-icon" aria-hidden="true">
             <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg>
@@ -566,6 +553,10 @@
     // One-time secrets stay in this page's memory only, never browser storage.
     const apiKeys = new Map();
     let versionsRequest = null;
+    let dragging = null;
+    let movePending = false;
+    let dropTarget = null;
+    let expandTimer;
 
     function notify(message) {
       clearTimeout(noticeTimer);
@@ -663,8 +654,10 @@
     }
 
     function folderLabel(entityId, path = '') {
-      const root = entityCatalog.entities.find(entity => entity.id === entityId)?.name || '';
-      return [root, path].filter(Boolean).join(' / ');
+      const folder = entityCatalog.entities.find(entity => entity.id === entityId);
+      if (!folder) return path;
+      const prefix = folder.parent ? folderLabel(folder.parent.entityId, folder.parent.path) : '';
+      return [prefix, folder.name, path].filter(Boolean).join(' / ');
     }
 
     function fullPagePath(page) {
@@ -695,6 +688,7 @@
     }
 
     function renderList() {
+      if (dragging || movePending) return;
       const query = $('search').value.trim().toLocaleLowerCase();
       const filtered = pages.filter(page => (page.title + ' ' + fullPagePath(page)).toLocaleLowerCase().includes(query));
       const active = $('list').contains(document.activeElement) ? document.activeElement : null;
@@ -714,6 +708,8 @@
           }
         }, 'report');
         button.dataset.filename = page.filename;
+        button.draggable = authenticated && role === 'admin';
+        button.dataset.dragKind = 'page';
         button.dataset.focusKey = 'page:' + page.filename;
         button.title = pageTitle(page) + '\n' + pagePath(page);
         if (selected?.filename === page.filename) button.setAttribute('aria-current', 'page');
@@ -731,12 +727,17 @@
       }
 
       const root = { folders: new Map(), pages: [] };
+      const anchors = new Map();
       function directory(entityId, path) {
         if (!entityId) return root;
-        if (!root.folders.has(entityId)) root.folders.set(entityId, {
-          name: folderLabel(entityId), entityId, path: '', folders: new Map(), pages: [],
-        });
-        let node = root.folders.get(entityId);
+        if (!anchors.has(entityId)) {
+          const entity = entityCatalog.entities.find(entry => entry.id === entityId);
+          const parent = entity.parent ? directory(entity.parent.entityId, entity.parent.path) : root;
+          const node = { name: entity.name, entityId, path: '', folders: new Map(), pages: [] };
+          parent.folders.set('anchor:' + entityId, node);
+          anchors.set(entityId, node);
+        }
+        let node = anchors.get(entityId);
         let prefix = '';
         for (const name of path.split('/').filter(Boolean)) {
           prefix = prefix ? prefix + '/' + name : name;
@@ -765,6 +766,12 @@
           details.open = query ? true : folderExpansion.get(key) ?? true;
           const summary = document.createElement('summary');
           summary.dataset.focusKey = 'folder:' + key;
+          summary.draggable = authenticated && role === 'admin';
+          summary.dataset.dragKind = 'folder';
+          summary.dataset.entityId = child.entityId;
+          summary.dataset.path = child.path;
+          summary.dataset.dropEntityId = child.entityId;
+          summary.dataset.dropPath = child.path;
           summary.title = folderLabel(child.entityId, child.path);
           if (currentFolder.entityId === child.entityId && currentFolder.path === child.path) summary.setAttribute('aria-current', 'location');
           summary.addEventListener('click', () => chooseFolder(child.entityId, child.path));
@@ -777,7 +784,7 @@
             requireAdmin(() => openEditor('folder', { entityId: child.entityId, path: child.path }));
           }, 'button folder-action');
           manage.setAttribute('aria-label', '管理文件夹 ' + folderLabel(child.entityId, child.path));
-          manage.title = child.path ? '重命名 / 移动 / 删除空文件夹' : '重命名 / 删除空文件夹';
+          manage.title = '重命名 / 移动 / 删除空文件夹';
           manage.dataset.focusKey = 'manage:' + key;
           summary.append(label, manage);
           details.append(summary);
@@ -925,7 +932,7 @@
     }
 
     async function loadPages(manual = false) {
-      if (pageRequest || signingOut || $('login').open) return false;
+      if (pageRequest || signingOut || $('login').open || dragging || movePending) return false;
       const request = new AbortController();
       pageRequest = request;
       const timeout = setTimeout(() => request.abort(), REQUEST_TIMEOUT);
@@ -942,7 +949,7 @@
       try {
         const responses = await Promise.all(['/api/tree', '/api/session'].map(path =>
           fetch(path, { cache: 'no-store', signal: request.signal })));
-        if (pageRequest !== request || $('login').open) return false;
+        if (pageRequest !== request || $('login').open || dragging || movePending) return false;
         if (responses.some(response => response.status === 401)) {
           showLogin();
           return false;
@@ -955,7 +962,7 @@
           }
           return response.json();
         }));
-        if (pageRequest !== request || $('login').open) return false;
+        if (pageRequest !== request || $('login').open || dragging || movePending) return false;
         pages = data.pages;
         entityCatalog = data;
         treeFolders = data.folders;
@@ -1147,13 +1154,6 @@
       }
     });
 
-    function setSize(mobile) {
-      $('stage').dataset.size = mobile ? 'mobile' : 'desktop';
-      $('desktop').setAttribute('aria-pressed', String(!mobile));
-      $('mobile').setAttribute('aria-pressed', String(mobile));
-    }
-    $('desktop').addEventListener('click', () => setSize(false));
-    $('mobile').addEventListener('click', () => setSize(true));
     $('fullscreen').addEventListener('click', async () => {
       try {
         await $('stage').requestFullscreen();
@@ -1196,6 +1196,115 @@
       }
     }, POLL_INTERVAL);
 
+    function dragMessage(message, invalid = false) {
+      $('drag-status').hidden = false;
+      $('drag-status').textContent = message;
+      $('drag-status').dataset.error = String(invalid);
+    }
+    function clearDropTarget() {
+      clearTimeout(expandTimer);
+      dropTarget?.classList.remove('drop-target', 'drop-invalid');
+      dropTarget = null;
+    }
+    function endDrag() {
+      dragging = null;
+      clearDropTarget();
+      $('library').querySelector('.drag-source')?.classList.remove('drag-source');
+      $('drag-status').hidden = true;
+    }
+    function dropDestination(element) {
+      return { entityId: element.dataset.dropEntityId || null, path: element.dataset.dropPath };
+    }
+    function invalidDestination(source, target) {
+      if (source.kind !== 'folder' || !target.entityId) return '';
+      let id = target.entityId, path = target.path;
+      while (id) {
+        if (id === source.entityId && (!source.path || path === source.path || path.startsWith(source.path + '/'))) {
+          return '不能移入自身或子文件夹';
+        }
+        const parent = entityCatalog.entities.find(entry => entry.id === id);
+        if (!parent?.parent) break;
+        path = [parent.parent.path, parent.name, path].filter(Boolean).join('/');
+        id = parent.parent.entityId;
+      }
+      return '';
+    }
+    $('library').addEventListener('dragstart', event => {
+      const row = event.target.closest('[data-drag-kind]');
+      if (!row || role !== 'admin' || !authenticated || movePending ||
+          (row.tagName === 'SUMMARY' && event.target.closest('button'))) {
+        event.preventDefault();
+        return;
+      }
+      dragging = row.dataset.dragKind === 'page' ? { kind: 'page', filename: row.dataset.filename }
+        : { kind: 'folder', entityId: row.dataset.entityId, path: row.dataset.path };
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', row.title);
+      row.classList.add('drag-source');
+      dragMessage('拖到文件夹或根目录；按 Esc 取消');
+    });
+    function updateDropTarget(event) {
+      if (!dragging || role !== 'admin') return;
+      const target = event.target.closest('[data-drop-entity-id]');
+      if (target !== dropTarget) {
+        clearDropTarget();
+        dropTarget = target;
+        if (target?.tagName === 'SUMMARY' && !target.parentElement.open) {
+          expandTimer = setTimeout(() => { if (dragging && dropTarget === target) target.parentElement.open = true; }, 650);
+        }
+      }
+      if (!target) {
+        event.dataTransfer.dropEffect = 'none';
+        dragMessage('请放到文件夹或根目录；不改变同级排序');
+        return;
+      }
+      const destination = dropDestination(target);
+      const invalid = invalidDestination(dragging, destination);
+      target.classList.toggle('drop-invalid', Boolean(invalid));
+      target.classList.toggle('drop-target', !invalid);
+      event.dataTransfer.dropEffect = invalid ? 'none' : 'move';
+      dragMessage(invalid || '移入 ' + (folderLabel(destination.entityId, destination.path) || '根目录'), Boolean(invalid));
+      if (!invalid) event.preventDefault();
+    }
+    for (const event of ['dragenter', 'dragover']) $('library').addEventListener(event, updateDropTarget);
+    $('library').addEventListener('dragleave', event => {
+      if (!$('library').contains(event.relatedTarget)) clearDropTarget();
+    });
+    $('library').addEventListener('drop', event => {
+      if (!dragging || role !== 'admin') return;
+      event.preventDefault();
+      const target = event.target.closest('[data-drop-entity-id]');
+      const source = dragging;
+      const destination = target && dropDestination(target);
+      if (!destination || invalidDestination(source, destination)) return;
+      movePending = true;
+      endDrag();
+      dragMessage('正在移动…');
+      void (async () => {
+        try {
+          const { move } = await apiRequest('/api/moves', { method: 'POST', body: { source, destination } });
+          if (move.moved) {
+            $('search').value = '';
+            if (destination.entityId) expandPath(destination.entityId, destination.path);
+            if (source.kind === 'folder') chooseFolder(move.entityId, move.path);
+            else chooseFolder(destination.entityId, destination.path);
+            notify('已移动到 ' + (folderLabel(destination.entityId, destination.path) || '根目录'));
+          } else notify('位置未改变');
+        } catch (error) {
+          notify((error.status && error.status < 500 ? '未移动：' : '移动结果待确认：') + errorMessage(error));
+        } finally {
+          movePending = false;
+          $('drag-status').hidden = true;
+          await reloadPages();
+        }
+      })();
+    });
+    document.addEventListener('dragend', () => {
+      if (!dragging) return;
+      endDrag();
+      void reloadPages();
+    });
+
     function pagePath(page) { return page.path || page.filename; }
     function pageTitle(page) {
       const title = page.title;
@@ -1229,7 +1338,11 @@
       });
       if (response.status === 204) return null;
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `请求失败（${response.status}）。`);
+      if (!response.ok) {
+        const error = new Error(data.error || `请求失败（${response.status}）。`);
+        error.status = response.status;
+        throw error;
+      }
       return data;
     }
     function updateControls() {
@@ -1301,49 +1414,45 @@
 
     function openEditor(mode, context = {}) {
       editContext = { mode, ...context };
-      const unassigned = mode === 'page' && !context.page.entityId;
-      const nameOnly = mode === 'new-folder' || (mode === 'folder' && !context.path);
+      const anchored = mode === 'folder' && !context.path;
+      const anchor = anchored && entityCatalog.entities.find(entry => entry.id === context.entityId);
+      const nameOnly = mode === 'new-folder' || anchored;
       $('edit-title').textContent = mode === 'new-folder' ? '新建文件夹'
-        : mode === 'folder' ? (context.path ? '重命名 / 移动文件夹' : '重命名文件夹')
-        : unassigned ? '移入文件夹' : '重命名 / 移动图解';
+        : mode === 'folder' ? '重命名 / 移动文件夹' : '重命名 / 移动图解';
       $('edit-name-field').hidden = !nameOnly;
       $('edit-name').required = nameOnly;
-      $('edit-name').value = mode === 'folder' && nameOnly ? folderLabel(context.entityId) : '';
-      $('edit-path-field').hidden = nameOnly || unassigned;
-      $('edit-path').required = !nameOnly && !unassigned;
+      $('edit-name').value = anchored ? anchor.name : '';
+      $('edit-path-field').hidden = mode === 'new-folder';
+      $('edit-path').required = mode !== 'new-folder' && !anchored;
       $('edit-path').readOnly = false;
-      $('edit-path-label').textContent = '路径';
-      $('edit-path').value = context.path || (context.page ? pagePath(context.page) : '');
+      $('edit-path-label').textContent = anchored ? '目标目录（可留空）' : '路径';
+      $('edit-path').value = anchored ? anchor.parent?.path || '' : context.path || (context.page ? pagePath(context.page) : '');
       $('edit-path').placeholder = mode === 'page' ? '主题/图解.html' : '主题/子文件夹';
-      $('edit-entity-field').hidden = mode !== 'page';
-      $('edit-entity').replaceChildren(...entityCatalog.entities.map(entity => {
+      $('edit-entity-field').hidden = mode === 'new-folder';
+      $('edit-entity').replaceChildren(...[{ id: '', name: '根目录' }, ...entityCatalog.entities].map(entity => {
         const option = document.createElement('option');
         option.value = entity.id;
-        option.textContent = entity.name;
+        option.textContent = entity.id ? folderLabel(entity.id) : entity.name;
         return option;
       }));
-      $('edit-entity').required = mode === 'page';
-      if (context.page?.entityId) $('edit-entity').value = context.page.entityId;
+      $('edit-entity').required = false;
+      $('edit-entity').value = anchored ? anchor.parent?.entityId || '' : context.entityId || context.page?.entityId || '';
       $('folder-delete').hidden = mode !== 'folder';
       $('edit-hint').textContent = mode === 'new-folder' ? '创建于：' + (folderLabel(context.entityId, context.path) || '根目录')
-        : nameOnly ? '重命名不影响图解链接或 API 接入。'
-        : unassigned ? '移入文件夹后可更改路径。'
-        : '输入相对顶层文件夹的路径；用 / 划分多级文件夹。';
+        : anchored ? '移动或重命名不改变此文件夹的 API 地址与 Key；上级 Key 的范围随目录变化。'
+        : '输入相对目标文件夹的完整路径；用 / 划分多级文件夹。根目录只接受名称。';
       $('edit-error').textContent = '';
       $('edit-submit').textContent = mode === 'new-folder' ? '创建' : '保存';
       if (mode === 'page') updateMoveDestination();
       $('edit-dialog').showModal();
-      (nameOnly ? $('edit-name') : unassigned ? $('edit-entity') : $('edit-path')).focus();
+      (nameOnly ? $('edit-name') : $('edit-path')).focus();
     }
     function updateMoveDestination() {
       if (editContext?.mode !== 'page') return;
-      const page = editContext.page;
-      const moving = $('edit-entity').value !== (page.entityId || '');
-      $('edit-path').readOnly = moving;
-      if (moving) $('edit-path').value = pagePath(page);
-      $('edit-hint').textContent = !entityCatalog.entities.length ? '请先创建文件夹。'
-        : moving ? '移入目标顶层文件夹并保留相对路径；移入后可重命名。'
-        : '输入相对顶层文件夹的路径；用 / 划分多级文件夹。';
+      $('edit-path').readOnly = false;
+      $('edit-hint').textContent = $('edit-entity').value
+        ? '输入相对目标文件夹的完整路径；用 / 划分多级文件夹。'
+        : '根目录只接受文件名；移动和重命名不改变分享链接。';
     }
     $('edit-entity').addEventListener('change', updateMoveDestination);
     $('edit-form').addEventListener('submit', async event => {
@@ -1372,43 +1481,33 @@
           $('search').value = '';
           pendingFilename = '';
         } else if (context.mode === 'folder') {
-          if (!context.path) {
-            await apiRequest(entityRoute(context.entityId), { method: 'PATCH', body: { name: $('edit-name').value } });
-          } else {
-            await apiRequest(entityRoute(context.entityId) + '/folders', {
+          const entityId = $('edit-entity').value || null;
+          if (context.path && entityId === context.entityId) {
+            const { move } = await apiRequest(entityRoute(context.entityId) + '/folders', {
               method: 'PATCH', body: { path: context.path, newPath: path },
             });
-            for (const [key, open] of [...folderExpansion]) {
-              const prefix = context.entityId + ':' + context.path;
-              if (key === prefix || key.startsWith(prefix + '/')) {
-                folderExpansion.delete(key);
-                folderExpansion.set(context.entityId + ':' + path + key.slice(prefix.length), open);
-              }
-            }
-            const current = currentFolder.path;
-            if (currentFolder.entityId === context.entityId && (current === context.path || current.startsWith(context.path + '/'))) {
-              chooseFolder(context.entityId, path + current.slice(context.path.length));
-            }
-            expandPath(context.entityId, path);
+            chooseFolder(move.entityId, move.path);
+          } else {
+            const destinationPath = context.path ? path.split('/').slice(0, -1).join('/') : path;
+            const name = context.path ? path.split('/').at(-1) : $('edit-name').value.trim();
+            const { move } = await apiRequest('/api/moves', { method: 'POST', body: {
+              source: { kind: 'folder', entityId: context.entityId, path: context.path },
+              destination: { entityId, path: destinationPath }, name,
+            } });
+            if (entityId) expandPath(entityId, destinationPath);
+            chooseFolder(move.entityId, move.path);
           }
-        } else if ($('edit-entity').value !== (context.page.entityId || '')) {
-          const entityId = $('edit-entity').value;
-          if (!entityId) throw new Error('请先创建文件夹。');
+        } else {
+          const entityId = $('edit-entity').value || null;
           await apiRequest('/api/pages/' + encodeURIComponent(context.page.filename), {
-            method: 'PATCH', body: { entityId },
+            method: 'PATCH', body: { entityId, path },
           });
           pendingFilename = context.page.filename;
-        } else {
-          await apiRequest(fileRoute(context.page.entityId, pagePath(context.page)), {
-            method: 'PATCH', body: { path },
-          });
-          expandPath(context.page.entityId, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
         }
         $('edit-dialog').close();
         await reloadPages();
         if (context.mode === 'folder' || context.mode === 'new-folder') {
-          const key = context.mode === 'new-folder' ? 'folder:' + currentFolder.entityId + ':' + currentFolder.path
-            : 'manage:' + context.entityId + ':' + (context.path ? path : '');
+          const key = (context.mode === 'new-folder' ? 'folder:' : 'manage:') + currentFolder.entityId + ':' + currentFolder.path;
           const item = [...$('list').querySelectorAll('[data-focus-key]')].find(element => element.dataset.focusKey === key);
           item?.focus({ preventScroll: true });
         }
@@ -1420,6 +1519,8 @@
     });
     $('edit-dialog').addEventListener('close', () => { editContext = null; });
     function expandPath(entityId, path) {
+      const entity = entityCatalog.entities.find(entry => entry.id === entityId);
+      if (entity?.parent) expandPath(entity.parent.entityId, entity.parent.path);
       folderExpansion.set(entityId + ':', true);
       let prefix = '';
       for (const name of path.split('/').filter(Boolean)) {
@@ -1475,7 +1576,7 @@
       const usable = usableApiKey(key);
       const examplePath = [context.path, 'guides/example.html'].filter(Boolean).join('/');
       $('api-base').textContent = base;
-      $('api-scope').textContent = 'Key 可访问「' + folderLabel(context.entityId) + '」及其所有子文件夹（不限当前子文件夹）。关闭面板不影响已复制的 Key。';
+      $('api-scope').textContent = 'Key 可访问「' + folderLabel(context.entityId) + '」及其所有子文件夹（不限当前子文件夹）。移动此文件夹后 API 地址与 Key 不变。关闭面板不影响已复制的 Key。';
       $('api-secret').value = usable ? key.secret : '';
       $('api-validity').value = key?.expiresIn === null ? 'none' : String(key?.expiresIn ?? 604800);
       $('api-validity').disabled = !usable || !!key.pending;
@@ -1484,8 +1585,8 @@
         + ' · 修改有效期沿用当前 Key，从现在起计时。' : '正在获取 Key…';
       const instructions = `请通过此文件夹的 HTTP API 管理图解，不使用 MCP，也不要索取全局管理密钥。
 文件夹 API：${base}
-Key 范围：顶层文件夹「${folderLabel(context.entityId)}」及其所有子文件夹，不限当前子文件夹。
-当前发布目标：${examplePath}；路径相对于顶层文件夹，逐段 URL 编码。选中子文件夹只改变发布目标，不缩小 Key 权限。
+Key 范围：文件夹「${folderLabel(context.entityId)}」及其所有子文件夹，不限当前子文件夹；移动后 API 地址与 Key 不变。
+当前发布目标：${examplePath}；路径相对于此 API 文件夹，逐段 URL 编码。选中子文件夹只改变发布目标，不缩小 Key 权限。
 GET ${base}/tree 查看目录和图解。
 GET ${base}/files/<路径> 读取可编辑源文件；PUT 同一路径发布或更新 HTML，Content-Type: text/html; charset=utf-8，正文为原始 HTML，最多 12 MiB。
 路径以 .html 或 .htm 结束，不使用 .src.html；父目录自动创建，同路径更新保留 Git 版本。

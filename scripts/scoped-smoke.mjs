@@ -489,7 +489,7 @@ async function persistence() {
 async function projectedMigration() {
   const { legacy } = JSON.parse(await readFile(join(fixture, 'legacy-checkpoint.json'), 'utf8'));
   const catalog = JSON.parse(container('cat', '/data/.entities.json'));
-  assert.equal(catalog.version, 2);
+  assert.equal(catalog.version, 3);
   git('merge-base', '--is-ancestor', legacy, head());
   assert.equal(git('rev-parse', '--is-bare-repository'), 'true');
   const value = await tree('migration-space');

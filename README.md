@@ -36,7 +36,7 @@ The TrueNAS installation remains at `http://192.168.202.11:28319/`, with the sam
 
 ### Agents
 
-For direct HTTP publishing, select a folder in the Web UI and open **API** as an administrator: a usable **Key** appears automatically, with a **7-day** server-enforced expiry. Choose 1 / 7 / 30 days or no expiry, then use **复制提示词与命令**. This copies shell-commented agent instructions followed by an executable curl command; save your HTML as `./diagram.html` before running it. Changing validity updates the same key from now, without rotating it. Each key covers that top-level folder and all its descendants; selecting a nested folder changes only the example upload target. Agents do not need MCP, a repository clone or SSH access to TrueNAS.
+For direct HTTP publishing, select a folder in the Web UI and open **API** as an administrator: a usable **Key** appears automatically, with a **7-day** server-enforced expiry. Choose 1 / 7 / 30 days or no expiry, then use **复制提示词与命令**. This copies shell-commented agent instructions followed by an executable curl command; save your HTML as `./diagram.html` before running it. Changing validity updates the same key from now, without rotating it. Each key covers its API folder and all its current descendants; selecting an ordinary nested folder changes only the example upload target. Moving the API folder retains its key and stable endpoint; moving content into or out of its subtree changes membership. Agents do not need MCP, a repository clone or SSH access to TrueNAS.
 
 For clients that prefer MCP, connect to `${PUBLIC_URL}/mcp` using `Authorization: Bearer <service-token>`. Read `visual-explainer://skill/SKILL.md` and the relevant resources/prompts, inspect your project locally, then call:
 
@@ -59,7 +59,9 @@ To use the original local Agent skill without the Web UI, install it directly fr
 
 The library shows one folder tree, including existing content and empty folders. Previously unassigned diagrams appear at the root. **New Folder** asks only for a name: at **Root** it creates a top-level folder; after selecting a folder it creates a child there. There is no separate workspace selector, create-space action or identifier field. The current destination is shown above the tree; choose **Root** to create another top-level folder.
 
-Top-level folders retain internal Entity IDs for API addresses, credential boundaries and existing content history. New IDs are generated automatically; existing IDs, assignments, serving files and signed links are unchanged, with no catalog migration. Folders can be renamed and empty folders deleted through their tree menu; nested folders and files retain their existing move controls. Git records edits, with revision previews and restores in the reader.
+Administrators can drag diagrams and folders onto any folder or **Root**; highlighted targets show where the item will go. Folder subtrees move together, including nested API folders. Dragging a row elsewhere does not reorder it; Esc cancels. The existing rename/move dialog remains the keyboard/touch fallback. Viewers remain read-only. The preview fills the current reader width directly, with responsive navigation, fullscreen and independent opening retained.
+
+API folders retain stable internal Entity IDs even when nested inside other folders. Their own endpoints/keys remain rooted there, while their new parent's key includes the moved-in subtree and their former parent's key loses it. Moving an ordinary folder to Root creates a stable API-folder ID, but never creates a key. Files, source companions, signed links and existing versions retain their identities. Cycles and destination-name collisions are rejected before the catalog changes.
 
 Configure `BASE_URL` and the folder's `PAGE_TOKEN` through the agent's secret environment, not its prompt or repository:
 
@@ -105,9 +107,10 @@ Reads accept a viewer session or service Bearer token; Entity-scoped routes also
 | GET | `/api/pages?entityId=cosmos` | `{pages}`; omit filter for all, empty value for unassigned |
 | GET | `/api/pages/:filename` | `{page}` including nullable `entityId` |
 | PUT | `/api/pages/:filename` | `{html, entityId?}`; renders/creates or replaces; returns `{page, render}` |
-| PATCH | `/api/pages/:filename` | `{entityId}`; moves, or `null` to unassign |
+| PATCH | `/api/pages/:filename` | `{entityId, path?}`; move/rename, or `null` for Root |
+| POST | `/api/moves` | Administrator only; `{source, destination, name?}`; source is `{kind:"page", filename}` or `{kind:"folder", entityId, path}`; destination is `{entityId, path}` (`null, ""` for Root). Returns `{move:{moved,...}}`; no-op does not create a version |
 | GET | `/api/session` | `{role, entityId?}`; `admin`, `viewer` or `agent` |
-| GET | `/api/entities/:id/tree` | `{folders:[{path}], pages}` including empty folders |
+| GET | `/api/entities/:id/tree` | `{folders:[{path}], pages}` including descendant API folders; all response paths are relative to this stable API folder |
 | POST | `/api/entities/:id/folders` | `{path}`; creates parents |
 | PATCH | `/api/entities/:id/folders` | `{path, newPath}`; recursive move |
 | DELETE | `/api/entities/:id/folders?path=...` | Empty folders only |
@@ -134,7 +137,7 @@ jq -n --rawfile html architecture.html '{html:$html,entityId:"cosmos"}' |
     -H "Authorization: Bearer $VE_TOKEN" -H 'Content-Type: application/json' --data-binary @-
 ```
 
-Back up the complete data directory, including HTML/source companions, `.entities.json`, the private `.tokens.json` registry and `.git`, plus the service token and deploy key separately. The token registry is mode 0600 and contains hashes, never cleartext secrets; it is excluded from content Git. Expiry adds an optional `expiresAt` field to v1 token records; no migration is needed, and records without that field stay non-expiring. Older images cannot read newly expiring records. Invalid catalogs or credential registries stop startup rather than silently losing metadata.
+Back up the complete data directory, including HTML/source companions, `.entities.json`, the private `.tokens.json` registry and `.git`, plus the service token and deploy key separately. The token registry is mode 0600 and contains hashes, never cleartext secrets; it is excluded from content Git. Catalog v1/v2 upgrades automatically to v3, adding real parent edges to API folders and root-page logical names; the exact old catalog is saved privately as `.entities.pre-v3.<uuid>.backup.json`. Older images cannot read v3. To downgrade, stop the service and restore the complete pre-upgrade data backup (including `.git`), not just that catalog copy; migration itself records a v3 history snapshot. Expiry adds an optional `expiresAt` field to v1 token records; records without that field stay non-expiring. Older images cannot read newly expiring records. Invalid catalogs or credential registries stop startup rather than silently losing metadata.
 
 ## Page version history
 
@@ -145,7 +148,7 @@ repository. The repository mirrors the library's Entity groups:
 - `_unassigned/<filename>` for unassigned pages and orphan sources.
 - `.entities.json` at the root, retaining the exact Entity metadata and names.
 
-Top-level Git directory names use stable Entity IDs. Renaming a display name does not rename that root directory; moving a file or nested folder moves rendered HTML and source together in one commit. Empty directories are retained using generated empty `.gitkeep` markers, removed when content arrives. Folder structure and page identities are recorded in the catalog; credentials are not.
+Top-level Git directory names use stable API-folder IDs, independent of visual parents. Reparenting such a folder changes its catalog edge, not its stable Git root. Moving an ordinary subtree across API folders moves rendered HTML and source projections together in one commit; flat serving files never move. Empty directories are retained using generated empty `.gitkeep` markers, removed when content arrives. Folder structure and page identities are recorded in the catalog; credentials are not.
 
 Successful API/MCP renders and Entity mutations snapshot and synchronize the
 directory layout before returning success. Identical content creates no empty
@@ -188,7 +191,7 @@ pushes pending commits, even if it creates no new version. There is no force-pus
 pull, automatic reset or rollback. A configured remote that is unavailable during
 startup prevents startup until it is reachable or the configuration is corrected.
 
-The reader's versions panel reads real Git snapshots by stable page identity, including paths before folder moves. Historical HTML is served through revision-specific signed sandbox URLs. Restoring republishes saved source (or old rendered HTML when no source exists) into the current Entity/path and records a new commit; it never rolls back the whole catalog. Folder tokens cannot read or restore a version that belonged to another Entity.
+The reader's versions panel reads real Git snapshots by stable page identity, including paths before folder moves. Historical HTML is served through revision-specific signed sandbox URLs. Restoring republishes saved source (or old rendered HTML when no source exists) into the current Entity/path and records a new commit; it never rolls back the whole catalog. Folder tokens must have current subtree membership to list, read or restore a page's history, and each returned version must also have belonged to that scope at the time. Historical membership never grants a former parent access after a move. Previously issued signed page/version URLs remain independent read capabilities.
 
 Browse history on GitHub or clone the content repository. To restore a version,
 extract its source using `git show <commit>:<entity-id>/<logical/path>.src.html` in that clone,
@@ -208,7 +211,7 @@ node scripts/update-upstream.mjs --revision <40-character-commit-sha>
 
 The updater changes the official archive pin and refreshes the npm lockfile. Review the upstream diff and run compatibility checks before merging. Daily/manual GitHub automation checks for a new official commit and opens an update PR only after building and exercising the updated wrapper. It does **not** merge or deploy updates automatically. Ordinary PR CI also builds and exercises the real container. Repository Actions permissions must allow GitHub Actions to create pull requests.
 
-Compatibility checks use isolated data and a temporary token; **never run the smoke script against a real library**. They exercise official MCP resources/prompts/rendering, migration, nested directories, scoped credentials and cross-folder denial, same-origin administrator sessions, real Git version previews/restores, signed links and restart persistence. `scripts/folders-smoke.mjs` additionally drives the real browser through name-only root/nested creation, existing-tree preservation, root rename/delete, automatic key issuance/reuse, validity edits, real clipboard copy, publication and version restore, mobile layout and read-only behavior. Its host runner executes the exact clipboard payload with curl against the disposable server and checks exact source bytes and explicit revocation. `scripts/token-expiry-smoke.mjs` advances a disposable server's clock to check expiry at the exact boundary and across restart, along with unchanged legacy records, metadata-only edits and hash-only storage. The workflows contain the complete build/run commands.
+Compatibility checks use isolated data and a temporary token; **never run the smoke script against a real library**. They exercise official MCP resources/prompts/rendering, migration, nested directories, scoped credentials and cross-folder denial, same-origin administrator sessions, real Git version previews/restores, signed links and restart persistence. `scripts/folders-smoke.mjs` additionally drives the real browser through name-only root/nested creation, existing-tree preservation, root rename/delete, automatic key issuance/reuse, validity edits, real clipboard copy, publication and version restore, mobile layout and read-only behavior. Its host runner executes the exact clipboard payload with curl against the disposable server and checks exact source bytes and explicit revocation. `scripts/token-expiry-smoke.mjs` advances a disposable server's clock to check expiry at the exact boundary and across restart, along with unchanged legacy records, metadata-only edits and hash-only storage. `scripts/catalog-test.mjs` checks exact-byte v1/v2 backup migration and atomic hierarchy transformations. `scripts/organize-check.mjs` drives actual Chromium pointer gestures (not synthetic drop events) through cross-folder/root diagram moves, nested API folders, mixed subtrees, rejection/cancel/no-op, in-flight refresh, current-scope authorization and restart persistence, plus responsive preview/fullscreen checks. The workflows contain the complete build/run commands.
 
 ## License
 
