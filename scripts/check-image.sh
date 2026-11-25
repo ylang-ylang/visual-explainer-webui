@@ -117,6 +117,8 @@ docker run --detach --name "$name" --publish "127.0.0.1:${port}:${port}" --env "
   "$image" >/dev/null
 wait_ready
 VE_HISTORY_FIXTURE="$fixture/empty" node scripts/history-smoke.mjs --empty-library
+docker exec --interactive --env VE_CONTEXT_SMOKE=1 --workdir /opt/bridge \
+  "$name" node --input-type=module < scripts/context-menu-smoke.mjs
 
 # Existing bare, already-projected v1 history is a distinct migration path.
 docker rm --force "$name" >/dev/null

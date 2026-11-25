@@ -131,6 +131,10 @@ try {
     });
     const folder = (id, path = '') => page.locator(`.folder[data-entity-id="${id}"][data-path="${path}"] > summary`).first();
     const report = item => page.locator(`.report[data-filename="${item.filename}"]`);
+    async function contextAction(row, name) {
+      await row.click({ button: 'right' });
+      await page.getByRole('menuitem', { name, exact: true }).click();
+    }
     async function refresh() {
       await page.locator('#refresh').click();
       await page.waitForFunction(() => document.querySelector('#refresh').getAttribute('aria-busy') === 'false');
@@ -178,16 +182,16 @@ try {
     assert.equal(await api(collision.url, { auth: null }).then(text => text.includes('名称冲突图解')), true);
     await unchanged(() => pointerMove(folder(a, 'same'), folder(b, 'dest'), 409));
     await unchanged(() => pointerMove(report(diagram), page.locator('#folder-root')));
-    // Existing dialog remains a keyboard/touch alternative, including Root.
+    // Context-menu move reuses the existing destination dialog, including Root.
     await report(diagram).click();
-    await page.locator('#page-edit').click();
+    await contextAction(report(diagram), '移动到…');
     await page.locator('#edit-entity').selectOption(a);
     await page.locator('#edit-path').fill('src/nested/fallback.html');
     await page.locator('#edit-submit').click();
     await page.locator('#edit-dialog').waitFor({ state: 'hidden' });
     await page.waitForFunction(() => !pageRequest);
     assert.equal((await api(pageRoute(diagram))).page.path, 'src/nested/fallback.html');
-    await page.locator('#page-edit').click();
+    await contextAction(report(diagram), '移动到…');
     await page.locator('#edit-entity').selectOption('');
     await page.locator('#edit-path').fill('diagram.html');
     await page.locator('#edit-submit').click();
@@ -247,13 +251,13 @@ try {
     await pointerMove(folder(c), folder(a, 'src/nested'));
     assert.equal(await api(file(c, 'anchored.html'), { auth: keys[c] }), html('锚定子树图解'));
     assert.equal(await api(file(a, 'src/nested/锚定 C/anchored.html'), { auth: keys[a] }), html('锚定子树图解'));
-    await page.getByRole('button', { name: '管理文件夹 拖动 A / same', exact: true }).click();
+    await contextAction(folder(a, 'same'), '移动到…');
     await page.locator('#edit-path').fill('src/nested/锚定 C/fallback');
     await page.locator('#edit-submit').click();
     await page.locator('#edit-dialog').waitFor({ state: 'hidden' });
     await page.waitForFunction(() => !pageRequest);
     assert.deepEqual(await page.evaluate(() => currentFolder), { entityId: c, path: 'fallback' }, 'Dialog follows canonical identity across an anchored API path');
-    await page.getByRole('button', { name: '管理文件夹 拖动 A / src/nested / 锚定 C / fallback', exact: true }).click();
+    await contextAction(folder(c, 'fallback'), '移动到…');
     await page.locator('#edit-entity').selectOption(a);
     await page.locator('#edit-path').fill('same');
     await page.locator('#edit-submit').click();
@@ -338,7 +342,7 @@ try {
     await page.locator('#nav-toggle').click();
     assert.equal(await page.locator('#library').getAttribute('aria-modal'), 'true');
     await folder(c).locator('.folder-name').click();
-    await page.locator('#folder-api').click();
+    await contextAction(folder(c), '文件夹 API');
     await page.waitForFunction(() => !document.querySelector('#copy-api').disabled);
     assert.ok(!(await page.locator('#api-scope').innerText()).includes('顶层'), 'Nested anchor scope must not be described as top-level');
     assert.ok((await page.locator('#api-base').innerText()).endsWith(entity(c)));

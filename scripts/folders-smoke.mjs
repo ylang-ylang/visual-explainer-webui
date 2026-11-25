@@ -60,7 +60,7 @@ try {
   await page.locator('#login').waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.querySelector('#sync').textContent.startsWith('已同步'));
   assert.equal(await page.locator('#space-create, #entity-filter').count(), 0, 'There must be no separate space flow');
-  assert.equal(await page.getByRole('button', { name: '＋ 新建文件夹', exact: true }).count(), 1);
+  assert.equal(await page.locator('#folder-create, #folder-api, #page-edit, #page-versions, .folder-action').count(), 0);
   assert.ok(!(await page.locator('body').innerText()).includes('空间'), 'The library must present folders, not spaces');
   for (const entity of initial.entities) {
     assert.equal(await page.locator(`.folder[data-entity-id="${entity.id}"][data-path=""]`).count(), 1, 'Existing groups appear in the same tree');
@@ -69,8 +69,16 @@ try {
     assert.equal(await page.locator(`#list > .report[data-filename="${item.filename}"]`).count(), 1, 'Unassigned pages appear at the root');
   }
 
+  async function currentRow(p = page) {
+    const current = await p.evaluate(() => currentFolder);
+    return current.entityId ? p.locator(`.folder[data-entity-id="${current.entityId}"][data-path="${current.path}"] > summary`) : p.locator('#folder-root');
+  }
+  async function contextAction(row, name, p = page) {
+    await row.click({ button: 'right' });
+    await p.getByRole('menuitem', { name, exact: true }).click();
+  }
   async function newFolder(name, route, body) {
-    await page.locator('#folder-create').click();
+    await contextAction(await currentRow(), '新建文件夹');
     assert.equal(await page.locator('#edit-title').innerText(), '新建文件夹');
     assert.equal(await page.locator('#edit-dialog input:visible').count(), 1, 'Creation asks only for a name, never an ID or path');
     assert.equal(await page.locator('#edit-name').isVisible(), true);
@@ -98,29 +106,28 @@ try {
   const root = page.locator(`.folder[data-entity-id="${created.id}"][data-path=""]`);
   assert.equal(await root.locator('.folder').count(), 2, 'Children are nested under the same top-level folder');
 
-  await page.locator('#folder-create').click();
+  await contextAction(await currentRow(), '新建文件夹');
   await page.locator('#edit-name').fill('not/a/name');
   await page.locator('#edit-submit').click();
-  await page.locator('#edit-error').filter({ hasText: '请输入文件夹名称' }).waitFor();
+  await page.locator('#edit-error').filter({ hasText: '请输入名称' }).waitFor();
   assert.equal(await page.locator('#edit-dialog').isVisible(), true);
   await page.locator('[data-close="edit-dialog"]').click();
 
   await page.locator('#folder-root').click();
   const sibling = (await newFolder('另一个文件夹', '/api/entities', { name: '另一个文件夹' })).entity;
   assert.notEqual(sibling.id, created.id);
-  await page.getByRole('button', { name: '管理文件夹 另一个文件夹', exact: true }).click();
-  await page.locator('#folder-delete').click();
+  await contextAction(page.locator(`.folder[data-entity-id="${sibling.id}"][data-path=""] > summary`), '删除空文件夹');
   await page.locator('#confirm-submit').click();
   await page.locator('#confirm-dialog').waitFor({ state: 'hidden' });
   await page.locator(`.folder[data-entity-id="${sibling.id}"]`).waitFor({ state: 'detached' });
   assert.equal(await page.locator('#folder-root').getAttribute('aria-current'), 'location');
 
   // Root folders have the same management entry, without requiring an identifier.
-  await page.getByRole('button', { name: '管理文件夹 文件夹回归', exact: true }).click();
+  await contextAction(root.locator(':scope > summary'), '重命名');
   await page.locator('#edit-name').fill('改名后的文件夹');
   await page.locator('#edit-submit').click();
   await page.locator('#edit-dialog').waitFor({ state: 'hidden' });
-  await page.getByRole('button', { name: '管理文件夹 改名后的文件夹', exact: true }).waitFor();
+  await root.locator(':scope > summary .folder-name').filter({ hasText: '改名后的文件夹' }).waitFor();
   assert.equal((await api('/api/entities')).entities.find(entity => entity.id === created.id).name, '改名后的文件夹');
 
   const named = await api(`/api/entities/${created.id}/tokens`, {
@@ -154,11 +161,11 @@ try {
     await route.continue();
   });
   const generated = creation();
-  await page.locator('#folder-api').click();
+  await contextAction(await currentRow(), '文件夹 API');
   await intercepted;
   assert.equal(await page.locator('#copy-api').isDisabled(), true);
   await closeApi();
-  await page.locator('#folder-api').click();
+  await contextAction(await currentRow(), '文件夹 API');
   release();
   const response = await generated;
   assert.equal(response.status(), 201);
@@ -200,14 +207,14 @@ try {
   await page.locator('#refresh').click();
   await page.waitForFunction(() => document.querySelector('#refresh').getAttribute('aria-busy') === 'false');
   await root.locator(':scope > summary > .folder-name').click();
-  await page.locator('#folder-api').click();
+  await contextAction(await currentRow(), '文件夹 API');
   await readyKey();
   assert.equal(await page.locator('#api-secret').inputValue(), agent, 'Root and descendants reuse the same scoped credential');
   assert.ok(!(await page.locator('#api-payload').inputValue()).includes(encodeURIComponent('更深层')));
   await closeApi();
   if (!(await root.evaluate(element => element.open))) await root.locator(':scope > summary').click();
   await child.locator(':scope > summary > .folder-name').click();
-  await page.locator('#folder-api').click();
+  await contextAction(await currentRow(), '文件夹 API');
   await readyKey();
   assert.equal(await page.locator('#api-secret').inputValue(), agent, 'Panel and library refresh reuse only the in-memory secret');
   const listed = (await api(`/api/entities/${created.id}/tokens`)).tokens;
@@ -235,7 +242,7 @@ try {
   await page.locator(`.report[data-filename="${first.page.filename}"]`).click();
   await page.locator('#search').fill('');
   assert.equal(await page.locator('#folder-location').innerText(), '改名后的文件夹 / 子文件夹/更深层');
-  await page.locator('#page-versions').click();
+  await contextAction(page.locator(`.report[data-filename="${first.page.filename}"]`), '版本历史');
   const oldVersion = page.locator(`.version-row[data-revision="${first.revision}"]`);
   await oldVersion.getByRole('button', { name: '预览', exact: true }).click();
   await page.locator('#history-banner').waitFor({ state: 'visible' });
@@ -257,7 +264,7 @@ try {
   await api(`/api/entities/${created.id}/tokens/${credential.token.id}`, { method: 'DELETE', status: 204 });
   await api(`/api/entities/${created.id}/tree`, { auth: agent, status: 401 });
   const replacement = creation();
-  await page.locator('#folder-api').click();
+  await contextAction(await currentRow(), '文件夹 API');
   const fresh = await (await replacement).json();
   await readyKey();
   assert.equal(issued.length, 2, 'Only explicit revocation requires a replacement key');
@@ -283,16 +290,16 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#nav-toggle').click();
-  await page.locator('#folder-api').click();
+  await contextAction(await currentRow(), '文件夹 API');
   await readyKey();
   assert.equal(await page.locator('#api-secret').inputValue(), fresh.secret);
   assert.ok(await page.locator('#api-dialog').evaluate(element => element.getBoundingClientRect().width <= innerWidth), 'Compact API panel fits the mobile viewport');
   assert.equal(issued.length, 2, 'Mobile rendering must reuse the existing key');
   await closeApi();
   await page.locator('#folder-root').click();
-  assert.equal(await page.locator('#folder-create').isVisible(), true);
+  assert.equal(await page.locator('#folder-create').count(), 0);
   assert.ok(await page.locator('#library').evaluate(element => element.scrollWidth <= element.clientWidth), 'Folder controls fit the mobile drawer');
-  await page.locator('#folder-create').click();
+  await contextAction(await currentRow(), '新建文件夹');
   assert.equal(await page.locator('#edit-dialog input:visible').count(), 1);
   await page.locator('[data-close="edit-dialog"]').click();
   await page.reload();
@@ -308,7 +315,7 @@ try {
   readOnly.on('request', request => { if (new URL(request.url()).pathname.includes('/tokens')) viewerTokenRequests.push(request); });
   await readOnly.locator(`.folder[data-entity-id="${created.id}"][data-path=""] > summary > .folder-name`).click();
   const beforeViewer = await readFile(registryPath, 'utf8');
-  await readOnly.locator('#folder-api').click();
+  await contextAction(await currentRow(readOnly), '文件夹 API', readOnly);
   assert.equal(await readOnly.locator('#api-admin').isVisible(), false);
   assert.equal(await readOnly.locator('#api-secret').inputValue(), '');
   assert.equal(await readOnly.locator('#api-payload').inputValue(), '');
@@ -322,10 +329,11 @@ try {
   assert.equal(forbidden.status, 401, 'Viewers cannot change validity either');
   assert.deepEqual(Object.keys(forbidden.body), ['error']);
   await readOnly.locator('[data-close="api-dialog"]').click();
-  await readOnly.locator('#folder-create').click();
-  await readOnly.locator('#login[open]').waitFor();
-  assert.equal(await readOnly.locator('#edit-dialog').isVisible(), false, 'Read-only viewers must log in before creation');
-  await readOnly.locator('#login-cancel').click();
+  await readOnly.locator('#folder-root').click({ button: 'right' });
+  assert.deepEqual(await readOnly.getByRole('menuitem').allTextContents(), ['只读查看']);
+  assert.equal(await readOnly.getByRole('menuitem').isDisabled(), true);
+  assert.equal(await readOnly.locator('#edit-dialog[open], #login[open]').count(), 0, 'Read-only menus have no mutation or credential-prompt action');
+  await readOnly.keyboard.press('Escape');
   await viewer.close();
   assert.deepEqual(errors, [], 'The folder UI must not emit browser errors');
   // The host runner captures this pipe privately, executes the exact copied curl,

@@ -134,8 +134,9 @@
     .library-heading h2 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
     .count { flex-shrink: 0; min-width: 22px; padding: 1px 6px; border-radius: 5px; background: #eaf0eb; color: #647168; text-align: center; font-size: 11px; font-variant-numeric: tabular-nums; }
     #close-library { flex-shrink: 0; margin: -7px -6px -7px auto; }
-    .folder-location { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; min-width: 0; color: var(--muted); font-size: 12px; }
-    #folder-location { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .folder-location { margin: 0 8px 3px; }
+    #folder-root { justify-content: flex-start; width: 100%; gap: 7px; min-height: 32px; padding: 5px 8px; font-size: 12px; }
+    #folder-root .icon { width: 16px; height: 16px; color: var(--accent); }
     #folder-root[aria-current="location"] { background: var(--accent-soft); color: var(--accent); }
     .search {
       display: flex;
@@ -155,24 +156,13 @@
     .search-hint { margin: 11px 1px 0; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
     kbd { font: inherit; color: #8b948e; }
     #list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 8px 12px; scrollbar-width: thin; scrollbar-color: #cbd3cc transparent; }
-    .report {
-      position: relative;
-      display: block;
-      width: 100%;
-      margin: 3px 0;
-      padding: 13px 12px;
-      border: 0;
-      border-radius: 7px;
-      background: transparent;
-      text-align: left;
-    }
+    .report { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; height: 32px; margin: 1px 0; padding: 5px 6px; border: 0; border-radius: 5px; background: transparent; text-align: left; }
+    .report::before { content: ""; width: 12px; flex: none; }
+    .report > .icon { width: 16px; height: 16px; color: #758b91; }
     .report:hover { background: #f0f3ef; }
-    .report[aria-current="page"] { background: var(--accent-soft); }
-    .report[aria-current="page"]::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 3px; border-radius: 2px; background: var(--accent); }
-    .report-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: 13px; font-weight: 500; line-height: 1.65; }
-    .report[aria-current="page"] .report-title { color: #24594f; font-weight: 600; }
-    .report-file { display: block; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; line-height: 1.5; }
-    .report-date { display: block; margin-top: 8px; color: #7b857e; font-size: 10px; font-variant-numeric: tabular-nums; }
+    .report[aria-current="page"] { background: var(--accent-soft); color: #24594f; }
+    .report-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 22px; }
+    .report[aria-current="page"] .report-title { font-weight: 600; }
     .list-message { padding: 34px 18px; text-align: center; }
     .list-message strong { display: block; font-size: 13px; font-weight: 500; }
     .list-message p { margin: 8px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
@@ -239,13 +229,9 @@
       .library-heading { margin-bottom: 20px; }
       .library-heading h2 { font-size: 16px; }
       #close-library { width: 40px; height: 40px; }
-      #folder-root { min-height: 42px; }
       .search { height: 42px; }
       .search input { font-size: 16px; }
       .search-hint kbd { display: none; }
-      .report { padding: 14px; }
-      .report-title { font-size: 14px; }
-      .report-file, .report-date { font-size: 11px; }
       .library-foot { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
       .nav-backdrop { position: fixed; z-index: 20; inset: 0; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: #26332f38; }
       .viewer-toolbar { display: block; min-height: 0; padding: 12px 14px 10px; }
@@ -268,13 +254,12 @@
       .spinner, #refresh[aria-busy="true"] .icon { animation: none; }
     }
 
-    .library-tools { display: flex; gap: 4px; margin: -2px 0 10px; }
-    .library-tools .button { flex: 1; padding-inline: 6px; }
-    .folder { margin: 3px 0; min-width: 0; }
-    .folder > summary { display: flex; align-items: center; gap: 5px; min-height: 36px; padding: 2px 4px; border-radius: 6px; cursor: pointer; list-style: none; }
+    .folder { margin: 1px 0; min-width: 0; }
+    .folder > summary { display: flex; align-items: center; gap: 6px; height: 32px; padding: 5px 6px; border-radius: 5px; cursor: pointer; list-style: none; }
     .folder > summary::-webkit-details-marker { display: none; }
-    .folder > summary::before { content: "›"; width: 12px; flex: none; text-align: center; color: var(--muted); }
-    .folder[open] > summary::before { transform: rotate(90deg); }
+    .folder > summary > .chevron { width: 12px; height: 12px; color: var(--muted); }
+    .folder[open] > summary > .chevron { transform: rotate(90deg); }
+    .folder > summary > .folder-icon { width: 16px; height: 16px; color: #a3874b; }
     .folder > summary:hover { background: #edf1ee; }
     [draggable="true"] { cursor: grab; }
     .drag-source { opacity: .45; }
@@ -284,11 +269,18 @@
     #drag-status[data-error="true"] { color: var(--danger); }
     .folder > summary[aria-current="location"] { background: var(--accent-soft); color: var(--accent); }
     .folder-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-    .folder-children { margin-left: 9px; padding-left: 4px; border-left: 1px solid var(--line); }
-    .folder-empty { padding: 8px 12px; color: var(--muted); font-size: 11px; }
-    .folder-action { min-height: 28px; width: 28px; padding: 2px; }
-    .page-tools { display: flex; gap: 4px; margin-top: 5px; }
-    .page-tools .button { min-height: 27px; padding: 3px 7px; }
+    .folder-children { margin-left: 12px; padding-left: 9px; border-left: 1px solid #dce3dd; }
+    .folder-children > .folder > summary, .folder-children > .report { position: relative; }
+    .folder-children > .folder > summary::before, .folder-children > .report::after { content: ""; position: absolute; left: -9px; top: 16px; width: 8px; border-top: 1px solid #dce3dd; }
+    .folder-empty { padding: 5px 6px 5px 40px; color: var(--muted); font-size: 11px; }
+    .context-target { box-shadow: inset 0 0 0 1px #9eb9ad; background: #eff4f0; }
+    .context-menu { position: fixed; z-index: 60; width: 208px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow-y: auto; padding: 5px; border: 1px solid #d9e1da; border-radius: 8px; background: #fff; box-shadow: 0 8px 32px #26332f26; }
+    .context-label { padding: 5px 9px 7px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+    .context-menu [role="menuitem"] { display: flex; align-items: center; width: 100%; min-height: 32px; padding: 6px 9px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); text-align: left; text-decoration: none; font-size: 12px; }
+    .context-menu [role="menuitem"]:hover, .context-menu [role="menuitem"]:focus { outline: none; background: var(--accent-soft); }
+    .context-menu [role="menuitem"].danger { color: var(--danger); }
+    .context-menu [role="menuitem"]:disabled { color: var(--muted); background: transparent; }
+    .context-menu [role="separator"] { height: 1px; margin: 4px 3px; background: var(--line); }
     .history-banner { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 7px 16px; border-bottom: 1px solid var(--line); background: var(--accent-soft); font-size: 12px; }
     #history-label { flex: 1; min-width: 100px; overflow-wrap: anywhere; }
     dialog.panel { width: 560px; padding: 22px; }
@@ -355,21 +347,19 @@
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/></svg>
           </button>
         </div>
-        <nav class="folder-location" aria-label="当前文件夹">
-          <button id="folder-root" class="button" type="button" aria-current="location" data-drop-entity-id="" data-drop-path="">根目录</button>
-          <span id="folder-location"></span>
-        </nav>
-        <div class="library-tools">
-          <button id="folder-create" class="button bordered" type="button" title="在当前目录新建文件夹" disabled>＋ 新建文件夹</button>
-          <button id="folder-api" class="button bordered" type="button" title="文件夹 API 接入" disabled>API</button>
-        </div>
         <label class="search">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
           <input id="search" type="search" placeholder="搜索标题或路径" aria-label="搜索标题或路径" aria-keyshortcuts="Control+k Meta+k" autocomplete="off">
         </label>
-        <div class="search-hint"><span id="list-caption">按最近更新</span><kbd title="Ctrl K / ⌘ K 搜索">Ctrl K</kbd></div>
+        <div class="search-hint"><span id="list-caption">文件夹与图解</span><span title="聚焦条目后，也可按 Shift+F10 打开菜单；Ctrl K 搜索">右键操作</span></div>
       </div>
-      <nav id="list" aria-label="历史图解" aria-busy="true"></nav>
+      <nav class="folder-location" aria-label="当前文件夹">
+        <button id="folder-root" class="button" type="button" aria-current="location" data-context-kind="root" data-drop-entity-id="" data-drop-path="" title="根目录 · 右键新建文件夹" aria-keyshortcuts="Shift+F10">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2-3h9v16H3zM3 7h18"/></svg>根目录
+        </button>
+        <span id="folder-location" class="sr-only"></span>
+      </nav>
+      <nav id="list" aria-label="文件夹与图解" aria-busy="true" tabindex="-1"></nav>
       <div class="library-foot">
         <p id="drag-status" role="status" aria-live="polite" hidden></p>
         <span id="sync" role="status">正在读取图解…</span>
@@ -380,12 +370,8 @@
     <section id="viewer" class="viewer" aria-label="图解阅读器">
       <div class="viewer-toolbar">
         <div class="viewer-title">
-          <h1 id="page-title" tabindex="-1">图解阅读器</h1>
+          <h1 id="page-title" tabindex="0" aria-keyshortcuts="Shift+F10">图解阅读器</h1>
           <p id="page-meta">从列表中选择一份图解</p>
-          <div class="page-tools">
-            <button id="page-edit" class="button" type="button" disabled>重命名 / 移动</button>
-            <button id="page-versions" class="button" type="button" disabled>版本</button>
-          </div>
         </div>
         <div class="viewer-actions">
           <button id="fullscreen" class="button icon-button" type="button" aria-label="全屏阅读" aria-pressed="false" title="全屏阅读" disabled>
@@ -444,7 +430,7 @@
         <button class="button icon-button" type="button" data-close="edit-dialog" aria-label="关闭">×</button>
       </div>
       <div id="edit-name-field" hidden>
-        <label for="edit-name">文件夹名称</label>
+        <label id="edit-name-label" for="edit-name">文件夹名称</label>
         <input id="edit-name" autocomplete="off" maxlength="120">
       </div>
       <div id="edit-path-field">
@@ -458,7 +444,6 @@
       <p id="edit-hint" class="subtle"></p>
       <p id="edit-error" class="dialog-error" role="alert"></p>
       <div class="dialog-actions">
-        <button id="folder-delete" class="button danger" type="button" hidden>删除空文件夹</button>
         <button id="edit-submit" class="button primary" type="submit">保存</button>
       </div>
     </form>
@@ -513,6 +498,7 @@
       </div>
     </form>
   </dialog>
+  <div id="context-menu" class="context-menu" role="menu" aria-label="文件操作" hidden></div>
   <div id="notice" role="status" hidden></div>
 
   <script>
@@ -557,6 +543,8 @@
     let movePending = false;
     let dropTarget = null;
     let expandTimer;
+    let contextMenuState = null;
+    let versionsPage = null;
 
     function notify(message) {
       clearTimeout(noticeTimer);
@@ -584,6 +572,7 @@
     }
 
     function setNavigation(open, restoreFocus = false) {
+      closeContextMenu();
       if (compact.matches) mobileNavOpen = open;
       else desktopNavOpen = open;
       applyNavigation();
@@ -611,8 +600,7 @@
       selected = null;
       historical = null;
       $('history-banner').hidden = true;
-      $('page-edit').disabled = true;
-      $('page-versions').disabled = true;
+      closeContextMenu();
       $('page-title').textContent = '图解阅读器';
       $('page-title').removeAttribute('title');
       $('page-meta').textContent = '从列表中选择一份图解';
@@ -665,6 +653,7 @@
     }
 
     function chooseFolder(entityId = null, path = '') {
+      closeContextMenu();
       currentFolder = { entityId, path };
       if (entityId) expandPath(entityId, path);
       updateControls();
@@ -678,7 +667,7 @@
     function showEmptyLibrary() {
       clearPreview();
       history.replaceState(null, '', location.pathname + location.search);
-      showPlaceholder('还没有图解', '新建文件夹后，通过文件夹的 API 发布图解。', () => loadPages(true), '刷新列表');
+      showPlaceholder('还没有图解', '在左侧空白处右键新建文件夹，再通过文件夹的 API 发布图解。', () => loadPages(true), '刷新列表');
     }
 
     function revealPage(page) {
@@ -689,6 +678,7 @@
 
     function renderList() {
       if (dragging || movePending) return;
+      closeContextMenu();
       const query = $('search').value.trim().toLocaleLowerCase();
       const filtered = pages.filter(page => (page.title + ' ' + fullPagePath(page)).toLocaleLowerCase().includes(query));
       const active = $('list').contains(document.activeElement) ? document.activeElement : null;
@@ -696,7 +686,7 @@
       const scrollTop = $('list').scrollTop;
       const fragment = document.createDocumentFragment();
       $('count').textContent = !libraryLoaded ? '—' : String(entityCatalog.totalCount);
-      $('list-caption').textContent = query ? `${filtered.length} 个搜索结果` : '文件夹 · 最近更新';
+      $('list-caption').textContent = query ? `${filtered.length} 个搜索结果` : '文件夹与图解';
       updateControls();
 
       function pageButton(page) {
@@ -711,18 +701,15 @@
         button.draggable = authenticated && role === 'admin';
         button.dataset.dragKind = 'page';
         button.dataset.focusKey = 'page:' + page.filename;
-        button.title = pageTitle(page) + '\n' + pagePath(page);
+        button.dataset.contextKind = 'page';
+        button.setAttribute('aria-keyshortcuts', 'Shift+F10');
+        button.title = pageTitle(page) + '\n' + fullPagePath(page) + '\n更新于 ' + formatDate(page.modified);
+        button.setAttribute('aria-label', pagePath(page).split('/').pop() + ' · ' + pageTitle(page));
         if (selected?.filename === page.filename) button.setAttribute('aria-current', 'page');
-        for (const [className, text] of [
-          ['report-title', pageTitle(page)],
-          ['report-file', pagePath(page)],
-          ['report-date', formatDate(page.modified)],
-        ]) {
-          const span = document.createElement('span');
-          span.className = className;
-          span.textContent = text;
-          button.append(span);
-        }
+        const label = document.createElement('span');
+        label.className = 'report-title';
+        label.textContent = pageRowName(page);
+        button.append(treeIcon('file'), label);
         return button;
       }
 
@@ -766,6 +753,8 @@
           details.open = query ? true : folderExpansion.get(key) ?? true;
           const summary = document.createElement('summary');
           summary.dataset.focusKey = 'folder:' + key;
+          summary.dataset.contextKind = 'folder';
+          summary.setAttribute('aria-keyshortcuts', 'Shift+F10');
           summary.draggable = authenticated && role === 'admin';
           summary.dataset.dragKind = 'folder';
           summary.dataset.entityId = child.entityId;
@@ -778,15 +767,7 @@
           const label = document.createElement('span');
           label.className = 'folder-name';
           label.textContent = child.name;
-          const manage = makeButton('⋯', event => {
-            event.preventDefault();
-            event.stopPropagation();
-            requireAdmin(() => openEditor('folder', { entityId: child.entityId, path: child.path }));
-          }, 'button folder-action');
-          manage.setAttribute('aria-label', '管理文件夹 ' + folderLabel(child.entityId, child.path));
-          manage.title = '重命名 / 移动 / 删除空文件夹';
-          manage.dataset.focusKey = 'manage:' + key;
-          summary.append(label, manage);
+          summary.append(treeIcon('chevron'), treeIcon('folder'), label);
           details.append(summary);
           const children = document.createElement('div');
           children.className = 'folder-children';
@@ -817,7 +798,7 @@
           : query ? '没有匹配的图解' : '还没有图解';
         detail.textContent = listState === 'error' && !libraryLoaded ? listError
           : query ? '试试其他标题或路径。'
-          : libraryLoaded ? '新建文件夹，再通过 API 发布图解。' : '';
+          : libraryLoaded ? '右键空白处新建文件夹，再通过 API 发布图解。' : '';
         message.append(title, detail);
         if (query) message.append(makeButton('清除搜索', () => {
           $('search').value = '';
@@ -896,6 +877,7 @@
     }
 
     function selectPage(page, explicit = false) {
+      closeContextMenu();
       const changed = selected?.filename !== page.filename || selected?.modified !== page.modified;
       const leaveHistory = historical && (explicit || historical.filename !== page.filename);
       if (leaveHistory) historical = null;
@@ -932,7 +914,7 @@
     }
 
     async function loadPages(manual = false) {
-      if (pageRequest || signingOut || $('login').open || dragging || movePending) return false;
+      if (pageRequest || signingOut || $('login').open || dragging || movePending || contextMenuState) return false;
       const request = new AbortController();
       pageRequest = request;
       const timeout = setTimeout(() => request.abort(), REQUEST_TIMEOUT);
@@ -949,7 +931,7 @@
       try {
         const responses = await Promise.all(['/api/tree', '/api/session'].map(path =>
           fetch(path, { cache: 'no-store', signal: request.signal })));
-        if (pageRequest !== request || $('login').open || dragging || movePending) return false;
+        if (pageRequest !== request || $('login').open || dragging || movePending || contextMenuState) return false;
         if (responses.some(response => response.status === 401)) {
           showLogin();
           return false;
@@ -962,7 +944,7 @@
           }
           return response.json();
         }));
-        if (pageRequest !== request || $('login').open || dragging || movePending) return false;
+        if (pageRequest !== request || $('login').open || dragging || movePending || contextMenuState) return false;
         pages = data.pages;
         entityCatalog = data;
         treeFolders = data.folders;
@@ -1236,6 +1218,7 @@
         event.preventDefault();
         return;
       }
+      closeContextMenu();
       dragging = row.dataset.dragKind === 'page' ? { kind: 'page', filename: row.dataset.filename }
         : { kind: 'folder', entityId: row.dataset.entityId, path: row.dataset.path };
       event.dataTransfer.effectAllowed = 'move';
@@ -1311,6 +1294,11 @@
       return title && title !== page.filename && title !== page.filename?.replace(/\.html?$/i, '')
         ? title : pagePath(page).split('/').pop();
     }
+    function pageRowName(page) {
+      const name = pagePath(page).split('/').pop();
+      // Older unassigned pages can expose an internal UUID instead of a human filename.
+      return /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\.html?$/i.test(name) ? pageTitle(page) : name;
+    }
     function entityRoute(id) { return '/api/entities/' + encodeURIComponent(id); }
     function fileRoute(id, path) {
       return entityRoute(id) + '/files/' + path.split('/').map(encodeURIComponent).join('/');
@@ -1331,6 +1319,191 @@
       button.addEventListener('click', action);
       return button;
     }
+    function treeIcon(kind) {
+      const paths = {
+        chevron: 'm9 5 7 7-7 7',
+        folder: 'M3 7V5a1 1 0 0 1 1-1h6l2 3h8a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7z',
+        file: 'M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h5',
+      };
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'icon ' + (kind === 'folder' ? 'folder-icon' : kind));
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('aria-hidden', 'true');
+      const path = document.createElementNS(svg.namespaceURI, 'path');
+      path.setAttribute('d', paths[kind]);
+      svg.append(path);
+      return svg;
+    }
+
+    // Context targets are explicit snapshots, never an implicit use of the preview selection.
+    function contextTarget(element) {
+      const row = element.closest('[data-context-kind]');
+      if (row && $('library').contains(row)) {
+        if (row.dataset.contextKind === 'page') {
+          const page = pages.find(item => item.filename === row.dataset.filename);
+          return page && { kind: 'page', page, row };
+        }
+        return { kind: row.dataset.contextKind, entityId: row.dataset.entityId || null, path: row.dataset.path || '', row };
+      }
+      if ($('list').contains(element) || element.closest('.folder-location')) return { kind: 'root', row: $('folder-root') };
+      if (element.closest('.viewer-title') && selected) return { kind: 'page', page: selected, row: $('page-title') };
+      return null;
+    }
+    function closeContextMenu(restoreFocus = false) {
+      const state = contextMenuState;
+      contextMenuState = null;
+      $('context-menu').hidden = true;
+      state?.row.classList.remove('context-target');
+      if (restoreFocus && state?.row.isConnected) state.row.focus({ preventScroll: true });
+    }
+    function showContextMenu(target, x, y) {
+      closeContextMenu();
+      if (!authenticated || dragging || movePending || document.querySelector('dialog[open]')) return;
+      contextMenuState = { ...target, listScrollTop: $('list').scrollTop };
+      target.row.classList.add('context-target');
+      const menu = $('context-menu');
+      // Keep the menu in the compact navigation dialog's accessibility/focus scope.
+      (compact.matches && mobileNavOpen ? $('library') : document.body).append(menu);
+      menu.replaceChildren();
+      const label = document.createElement('div');
+      label.className = 'context-label';
+      label.setAttribute('role', 'presentation');
+      label.textContent = target.kind === 'root' ? '根目录'
+        : target.kind === 'page' ? pageRowName(target.page)
+        : target.row.querySelector('.folder-name').textContent;
+      menu.setAttribute('aria-label', label.textContent + ' · 操作');
+      menu.append(label);
+      function item(text, action, { danger = false, href, disabled = false } = {}) {
+        const control = document.createElement(href ? 'a' : 'button');
+        if (!href) control.type = 'button';
+        control.textContent = text;
+        control.setAttribute('role', 'menuitem');
+        control.tabIndex = -1;
+        if (danger) control.classList.add('danger');
+        if (href) {
+          control.href = href;
+          control.target = '_blank';
+          control.rel = 'noopener noreferrer';
+        } else control.disabled = disabled;
+        control.addEventListener('click', () => {
+          closeContextMenu(true);
+          action?.();
+        });
+        menu.append(control);
+      }
+      function separator() {
+        const line = document.createElement('div');
+        line.setAttribute('role', 'separator');
+        menu.append(line);
+      }
+      if (target.kind === 'page') {
+        const page = target.page;
+        item('打开图解', () => {
+          selectPage(page, true);
+          if (compact.matches) setNavigation(false);
+          $('page-title').focus({ preventScroll: true });
+        });
+        item('独立打开', null, { href: page.url });
+        item('版本历史', () => openVersions(page));
+        if (role === 'admin') {
+          separator();
+          item('重命名', () => requireAdmin(() => openEditor('page', { page, operation: 'rename' })));
+          item('移动到…', () => requireAdmin(() => openEditor('page', { page, operation: 'move' })));
+        }
+      } else {
+        const parent = { entityId: target.entityId || null, path: target.path || '' };
+        if (role === 'admin') item('新建文件夹', () => requireAdmin(() => openEditor('new-folder', parent)));
+        else if (target.kind === 'root') item('只读查看', null, { disabled: true });
+        if (target.kind === 'folder') {
+          if (role === 'admin') {
+            separator();
+            item('重命名', () => requireAdmin(() => openEditor('folder', { ...parent, operation: 'rename' })));
+            item('移动到…', () => requireAdmin(() => openEditor('folder', { ...parent, operation: 'move' })));
+            separator();
+          }
+          item('文件夹 API', () => openApi(parent));
+          if (role === 'admin') {
+            separator();
+            item('删除空文件夹', () => requireAdmin(() => deleteFolder(parent)), { danger: true });
+          }
+        }
+      }
+      menu.hidden = false;
+      const bounds = menu.getBoundingClientRect();
+      menu.style.left = Math.max(8, Math.min(x, innerWidth - bounds.width - 8)) + 'px';
+      menu.style.top = Math.max(8, Math.min(y, innerHeight - bounds.height - 8)) + 'px';
+      menu.querySelector('[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true });
+    }
+    document.addEventListener('contextmenu', event => {
+      if ($('context-menu').contains(event.target)) { event.preventDefault(); return; }
+      const target = contextTarget(event.target);
+      closeContextMenu();
+      if (!target || !authenticated || document.querySelector('dialog[open]')) return;
+      event.preventDefault();
+      showContextMenu(target, event.clientX, event.clientY);
+    });
+    document.addEventListener('pointerdown', event => {
+      if (!$('context-menu').contains(event.target)) closeContextMenu();
+    });
+    document.addEventListener('scroll', event => {
+      if (!contextMenuState || event.target === $('context-menu')) return;
+      // A row may have just scrolled into view: its queued pre-menu event isn't a new scroll.
+      if (event.target === $('list') && $('list').scrollTop === contextMenuState.listScrollTop) return;
+      closeContextMenu();
+    }, true);
+    window.addEventListener('resize', () => closeContextMenu());
+    window.addEventListener('blur', () => closeContextMenu());
+    document.addEventListener('keydown', event => {
+      if (contextMenuState) {
+        const items = [...$('context-menu').querySelectorAll('[role="menuitem"]:not(:disabled)')];
+        const index = items.indexOf(document.activeElement);
+        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+            : (index + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+          items[next]?.focus();
+        } else if (event.key === 'Escape' || event.key === 'Tab') {
+          closeContextMenu(true);
+          if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); }
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          items[index]?.click();
+        }
+        return;
+      }
+      if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+        const target = contextTarget(event.target);
+        if (!target || !authenticated || document.querySelector('dialog[open]')) return;
+        event.preventDefault();
+        const bounds = target.row.getBoundingClientRect();
+        showContextMenu(target, bounds.left + 20, bounds.bottom);
+      }
+    }, true);
+    $('library').addEventListener('keydown', event => {
+      if (contextMenuState || document.querySelector('dialog[open]') || !event.target.matches('[data-context-kind]')) return;
+      const row = event.target;
+      const rows = [$('folder-root'), ...$('list').querySelectorAll('summary, .report')].filter(item => item.getClientRects().length);
+      const index = rows.indexOf(row);
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1
+          : Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowUp' ? -1 : 1)));
+        rows[next]?.focus();
+      } else if (event.key === 'ArrowRight' && row.tagName === 'SUMMARY') {
+        event.preventDefault();
+        if (!row.parentElement.open) row.parentElement.open = true;
+        else rows[index + 1]?.focus();
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        if (row.tagName === 'SUMMARY' && row.parentElement.open) row.parentElement.open = false;
+        else {
+          const parent = (row.tagName === 'SUMMARY' ? row.parentElement.parentElement : row.parentElement).closest('.folder');
+          (parent?.querySelector('summary') || $('folder-root')).focus();
+        }
+      }
+    });
+
     async function apiRequest(path, { method = 'GET', body, signal } = {}) {
       const response = await fetch(path, {
         method, cache: 'no-store', signal: signal || AbortSignal.timeout(REQUEST_TIMEOUT),
@@ -1348,15 +1521,10 @@
     function updateControls() {
       $('admin-unlock').hidden = !authenticated || role === 'admin';
       $('logout').hidden = !authenticated || role !== 'admin';
-      $('folder-api').disabled = !authenticated || !currentFolder.entityId;
-      $('folder-create').disabled = !authenticated;
       $('folder-root').disabled = !authenticated;
       $('folder-root').setAttribute('aria-current', currentFolder.entityId ? 'false' : 'location');
       $('folder-location').textContent = folderLabel(currentFolder.entityId, currentFolder.path);
       $('folder-location').title = $('folder-location').textContent;
-      $('folder-create').title = '新建文件夹于 ' + ($('folder-location').textContent || '根目录');
-      $('page-edit').disabled = !authenticated || !selected;
-      $('page-versions').disabled = !authenticated || !selected;
       $('history-restore').textContent = role === 'admin' ? '恢复此版' : '登录后恢复';
       $('api-admin').hidden = role !== 'admin';
       $('api-unlock').hidden = role === 'admin';
@@ -1403,32 +1571,26 @@
       });
     }
     $('admin-unlock').addEventListener('click', () => requireAdmin(() => {}));
-    $('folder-create').addEventListener('click', () => {
-      const parent = { ...currentFolder };
-      requireAdmin(() => openEditor('new-folder', parent));
-    });
-    $('page-edit').addEventListener('click', () => {
-      const page = selected;
-      if (page) requireAdmin(() => openEditor('page', { page }));
-    });
 
     function openEditor(mode, context = {}) {
       editContext = { mode, ...context };
       const anchored = mode === 'folder' && !context.path;
       const anchor = anchored && entityCatalog.entities.find(entry => entry.id === context.entityId);
-      const nameOnly = mode === 'new-folder' || anchored;
+      const rename = context.operation === 'rename';
+      const nameOnly = mode === 'new-folder' || rename;
       $('edit-title').textContent = mode === 'new-folder' ? '新建文件夹'
-        : mode === 'folder' ? '重命名 / 移动文件夹' : '重命名 / 移动图解';
+        : (rename ? '重命名' : '移动') + (mode === 'folder' ? '文件夹' : '图解');
       $('edit-name-field').hidden = !nameOnly;
       $('edit-name').required = nameOnly;
-      $('edit-name').value = anchored ? anchor.name : '';
-      $('edit-path-field').hidden = mode === 'new-folder';
-      $('edit-path').required = mode !== 'new-folder' && !anchored;
+      $('edit-name-label').textContent = mode === 'page' ? '文件名' : '文件夹名称';
+      $('edit-name').value = anchored ? anchor.name : (context.path || (context.page ? pagePath(context.page) : '')).split('/').pop();
+      $('edit-path-field').hidden = nameOnly;
+      $('edit-path').required = !nameOnly && !anchored;
       $('edit-path').readOnly = false;
-      $('edit-path-label').textContent = anchored ? '目标目录（可留空）' : '路径';
+      $('edit-path-label').textContent = anchored ? '目标目录（可留空）' : '目标路径（含名称）';
       $('edit-path').value = anchored ? anchor.parent?.path || '' : context.path || (context.page ? pagePath(context.page) : '');
       $('edit-path').placeholder = mode === 'page' ? '主题/图解.html' : '主题/子文件夹';
-      $('edit-entity-field').hidden = mode === 'new-folder';
+      $('edit-entity-field').hidden = nameOnly;
       $('edit-entity').replaceChildren(...[{ id: '', name: '根目录' }, ...entityCatalog.entities].map(entity => {
         const option = document.createElement('option');
         option.value = entity.id;
@@ -1437,18 +1599,18 @@
       }));
       $('edit-entity').required = false;
       $('edit-entity').value = anchored ? anchor.parent?.entityId || '' : context.entityId || context.page?.entityId || '';
-      $('folder-delete').hidden = mode !== 'folder';
       $('edit-hint').textContent = mode === 'new-folder' ? '创建于：' + (folderLabel(context.entityId, context.path) || '根目录')
-        : anchored ? '移动或重命名不改变此文件夹的 API 地址与 Key；上级 Key 的范围随目录变化。'
+        : rename ? '只更改名称，位置不变；已有链接与历史保留。'
+        : anchored ? '移动不改变此文件夹的 API 地址与 Key；上级 Key 的范围随目录变化。'
         : '输入相对目标文件夹的完整路径；用 / 划分多级文件夹。根目录只接受名称。';
       $('edit-error').textContent = '';
-      $('edit-submit').textContent = mode === 'new-folder' ? '创建' : '保存';
-      if (mode === 'page') updateMoveDestination();
+      $('edit-submit').textContent = mode === 'new-folder' ? '创建' : rename ? '重命名' : '移动';
+      if (mode === 'page' && !rename) updateMoveDestination();
       $('edit-dialog').showModal();
       (nameOnly ? $('edit-name') : $('edit-path')).focus();
     }
     function updateMoveDestination() {
-      if (editContext?.mode !== 'page') return;
+      if (editContext?.mode !== 'page' || editContext.operation === 'rename') return;
       $('edit-path').readOnly = false;
       $('edit-hint').textContent = $('edit-entity').value
         ? '输入相对目标文件夹的完整路径；用 / 划分多级文件夹。'
@@ -1459,15 +1621,22 @@
       event.preventDefault();
       if (role !== 'admin' || !editContext) return;
       const context = editContext;
-      const path = $('edit-path').value;
+      let path = $('edit-path').value.trim();
+      const name = $('edit-name').value.trim();
       $('edit-error').textContent = '';
       setBusy($('edit-dialog'), true);
       try {
-        if (context.mode === 'new-folder') {
-          const name = $('edit-name').value.trim();
+        if (context.mode === 'new-folder' || context.operation === 'rename') {
           if (!name || name.startsWith('.') || /[/\\\p{Cc}]/u.test(name) || /\.src\.html?$/i.test(name)) {
-            throw new Error('请输入文件夹名称，不要包含 /、\\\\ 或以 . 开头。');
+            throw new Error('请输入名称，不要包含 /、\\\\ 或以 . 开头。');
           }
+          if (context.mode === 'page' && !/\.html?$/i.test(name)) throw new Error('图解文件名应以 .html 或 .htm 结束。');
+          if (context.operation === 'rename' && (context.path || context.page)) {
+            const original = context.path || pagePath(context.page);
+            path = [...original.split('/').slice(0, -1), name].join('/');
+          }
+        }
+        if (context.mode === 'new-folder') {
           let entityId = context.entityId;
           let folderPath = '';
           if (!entityId) {
@@ -1507,7 +1676,7 @@
         $('edit-dialog').close();
         await reloadPages();
         if (context.mode === 'folder' || context.mode === 'new-folder') {
-          const key = (context.mode === 'new-folder' ? 'folder:' : 'manage:') + currentFolder.entityId + ':' + currentFolder.path;
+          const key = 'folder:' + currentFolder.entityId + ':' + currentFolder.path;
           const item = [...$('list').querySelectorAll('[data-focus-key]')].find(element => element.dataset.focusKey === key);
           item?.focus({ preventScroll: true });
         }
@@ -1552,19 +1721,16 @@
       }
     });
     $('confirm-dialog').addEventListener('close', () => { confirmation = null; });
-    $('folder-delete').addEventListener('click', () => {
-      const context = editContext;
-      if (!context || context.mode !== 'folder') return;
+    function deleteFolder(context) {
       askConfirmation('删除空文件夹？', folderLabel(context.entityId, context.path), async () => {
         const route = entityRoute(context.entityId) + (context.path ? '/folders?path=' + encodeURIComponent(context.path) : '');
         await apiRequest(route, { method: 'DELETE' });
         if (currentFolder.entityId === context.entityId && currentFolder.path === context.path) {
           chooseFolder(context.path ? context.entityId : null, context.path.split('/').slice(0, -1).join('/'));
         }
-        $('edit-dialog').close();
         await reloadPages();
       }, '删除');
-    });
+    }
 
     function shellQuote(value) { return "'" + value.replaceAll("'", "'\\''") + "'"; }
     function usableApiKey(key) {
@@ -1598,17 +1764,17 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
       $('api-payload').value = usable ? instructions.split('\n').map(line => '# ' + line).join('\n') + '\n'
         + `curl --fail-with-body --request PUT \\\n  ${shellQuote(location.origin + fileRoute(context.entityId, examplePath))} \\\n  --header ${shellQuote('Authorization: Bearer ' + key.secret)} \\\n  --header 'Content-Type: text/html; charset=utf-8' \\\n  --data-binary @./diagram.html` : '';
     }
-    $('folder-api').addEventListener('click', () => {
-      if (!currentFolder.entityId) return;
-      apiContext = { ...currentFolder };
-      $('api-title').textContent = folderLabel(currentFolder.entityId, currentFolder.path) + ' · API';
+    function openApi(context) {
+      if (!context.entityId) return;
+      apiContext = { ...context };
+      $('api-title').textContent = folderLabel(context.entityId, context.path) + ' · API';
       $('api-status').textContent = '';
       $('api-payload').hidden = true;
       updateControls();
       updateApiExample(apiContext);
       $('api-dialog').showModal();
       prepareApiKey(apiContext);
-    });
+    }
     $('api-dialog').addEventListener('close', () => {
       apiContext = null;
       $('api-secret').value = '';
@@ -1698,13 +1864,13 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
     }
     $('copy-api').addEventListener('click', () => copyApi($('api-payload')));
 
-    async function openVersions() {
-      const page = selected;
+    async function openVersions(page = versionsPage) {
       if (!page) return;
+      versionsPage = page;
       versionsRequest?.abort();
       const request = new AbortController();
       versionsRequest = request;
-      $('versions-path').textContent = pagePath(page);
+      $('versions-path').textContent = fullPagePath(page);
       $('versions-list').textContent = '正在读取…';
       $('versions-error').textContent = '';
       $('versions-retry').hidden = true;
@@ -1753,11 +1919,11 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
         $('versions-retry').hidden = false;
       }
     }
-    $('page-versions').addEventListener('click', openVersions);
-    $('versions-retry').addEventListener('click', openVersions);
+    $('versions-retry').addEventListener('click', () => openVersions());
     $('versions-dialog').addEventListener('close', () => {
       versionsRequest?.abort();
       versionsRequest = null;
+      versionsPage = null;
     });
     $('history-current').addEventListener('click', () => {
       if (selected) selectPage(selected, true);
