@@ -4,7 +4,9 @@ import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { execFileSync } from 'node:child_process';
 import { createCatalog } from '../remote-app/catalog.mjs';
+import { createHistory } from '../remote-app/history.mjs';
 
 const date = '2025-01-01T00:00:00.000Z';
 const entity = id => ({ id, name: id.toUpperCase(), createdAt: date, updatedAt: date });
@@ -33,6 +35,42 @@ for (const version of [1, 2]) test(`v${version} migrates to backed-up v3 without
     assert.equal(await readFile(join(dir, '.entities.json'), 'utf8'), before);
     assert.equal((await readdir(dir)).filter(name => name.startsWith('.entities.pre-v3.')).length, 1);
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('history preserves legacy root companion suffixes/case and projects genuinely renamed root sources', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 've-root-sources-'));
+  const settings = ['GIT_HISTORY_REMOTE', 'GIT_HISTORY_SSH_KEY', 'GIT_HISTORY_KNOWN_HOSTS'];
+  const saved = settings.map(name => process.env[name]);
+  for (const name of settings) delete process.env[name]; // Never use a developer's history remote or credentials.
+  try {
+    const fixtures = [['edge.htm', 'edge.src.html'], ['mixed.HTM', 'mixed.src.HTML']];
+    for (const [page, source] of fixtures) {
+      await writeFile(join(dir, page), `<html>${page}</html>\n`);
+      await writeFile(join(dir, source), `<!-- exact source ${source} -->\n`);
+    }
+    const c = await createCatalog(dir);
+    await c.create('a', 'A');
+    const history = await createHistory(dir, c);
+    const initial = await history.snapshot('Legacy root sources');
+    const paths = () => execFileSync('git', [`--git-dir=${join(dir, '.git')}`, 'ls-tree', '-r', '--name-only', 'main'], { encoding: 'utf8' }).trim().split('\n');
+    for (const [page, source] of fixtures) {
+      assert.ok(paths().includes('_unassigned/' + source), 'Unmoved root sources retain their exact extension and case');
+      assert.equal((await history.version(page, initial)).html, `<!-- exact source ${source} -->\n`);
+    }
+    await c.assign('edge.htm', 'a', 'nested/renamed.htm');
+    const assigned = await history.snapshot('Assign legacy source');
+    assert.ok(paths().includes('a/nested/renamed.src.htm'));
+    assert.equal((await history.version('edge.htm', assigned)).html, '<!-- exact source edge.src.html -->\n');
+    await c.assign('edge.htm', null, 'renamed-root.html');
+    const root = await history.snapshot('Rename at root');
+    assert.ok(paths().includes('_unassigned/renamed-root.src.html'));
+    assert.equal((await history.version('edge.htm', root)).html, '<!-- exact source edge.src.html -->\n');
+    assert.equal((await history.version('edge.htm', initial)).html, '<!-- exact source edge.src.html -->\n');
+    for (const [, source] of fixtures) assert.equal(await readFile(join(dir, source), 'utf8'), `<!-- exact source ${source} -->\n`);
+  } finally {
+    for (const [index, name] of settings.entries()) if (saved[index] === undefined) delete process.env[name]; else process.env[name] = saved[index];
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test('atomic hierarchy moves, mixed anchored subtrees, scoped resolution and root promotion survive reload', async () => {

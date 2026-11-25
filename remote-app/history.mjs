@@ -301,9 +301,10 @@ export async function createHistory(outputDir, catalog) {
             let logical = location.path;
             if (source(name)) {
               const primary = pairs.get(page)?.[0];
-              // Preserve legacy alternate companions too, without conflating
-              // their bytes with the canonical source in the logical tree.
-              logical = !page ? name : name === primary ? sourceFilename(location.path) :
+              // Unrenamed root files retain legacy source suffixes/case. Only
+              // assigned or logically renamed pages use canonical projection;
+              // preserve alternate companions without conflating their bytes.
+              logical = !page || (!location.entityId && location.path === page) ? name : name === primary ? sourceFilename(location.path) :
                 location.path.replace(/\.html?$/i, /\.htm$/i.test(location.path) ? '.src.html' : '.src.htm');
             }
             path = `${location.entityId ?? '_unassigned'}/${logical}`;
