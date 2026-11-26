@@ -1778,20 +1778,34 @@
       $('copy-api').disabled = !usable || !!key.pending;
       $('api-expiry').textContent = usable ? (key.token.expiresAt ? '到期：' + new Date(key.token.expiresAt).toLocaleString('zh-CN') : '不过期')
         + ' · 修改有效期沿用当前 Key，从现在起计时。' : '正在获取 Key…';
-      const instructions = `请通过此文件夹的 HTTP API 管理图解，不使用 MCP，也不要索取全局管理密钥。
+      const original = location.origin + '/api/visual-explainer';
+      const instructions = `先读取并遵守原版 visual-explainer，再生成图解；不是仅上传任意 HTML。只用 HTTP 和当前 Key，无需 MCP、仓库克隆、本机 skill 安装或全局管理密钥。
+先只执行下方三个 GET，读取原版索引、SKILL.md 和 references/style-guide.md；读完后再写源文件和执行最后的 PUT。
+原版索引：${original}（与本服务渲染器相同的已安装固定版本，含 revision、资源 URL、原版工具及提示词参数）。
+原版 SKILL：${original}/SKILL.md
+原版风格指南：${original}/references/style-guide.md
+按任务继续 GET 索引中相关 references/<名称>.md、commands/<名称>.md；文档相对链接以此原版 API 层级解析，不换用自拟风格说明。
+需要原版准备时，POST ${original}/prepare，JSON 参数按索引的 visual_explainer_prepare.inputSchema，例如 {"topic":"用户的实际主题"}。
+使用任务对应的原版提示词时，POST ${original}/prompts/<原版提示词名>，例如 generate-web-diagram，JSON 为 {"request":"用户的实际请求"}；服务调用原版 getPrompt 插值，读取返回 messages 后执行。
+所有请求使用下方相同的 Authorization: Bearer Key；POST JSON 用 Content-Type: application/json。prepare/提示词不会替你读项目、调用模型或生成 HTML，事实由你在本机核对。
+遵守已读原版文档，先在本机写 ./diagram.src.html。这里只映射远程 I/O：原版 render 的 html+filename 对应下方文件夹 PUT 的原始源文和发布路径，不传本机路径给服务端。
+PUT 将调用原版渲染器；读取 ./diagram.render.json 的 render.structuredContent.report 和 render.content 全部诊断。将 type=image 的 data 按 base64 解码为 mimeType 所示图片，实际查看原版检查图（checksheet）。
+修正原版诊断的每个 ✗；按原版 Before delivery 检查图与页面。只对 .src.html 做小改动并重新 PUT 同一路径，再读诊断、看检查图；不要重新生成整页，不用自写截图脚本代替原版检查。
+最终用响应 page.url 交付；原版 Comment/Ask/Reply 在浏览器里由读者复制粘贴回工作 agent，远程 API 不提供自动回传。
 文件夹 API：${base}
-Key 范围：文件夹「${folderLabel(context.entityId)}」及其所有子文件夹，不限当前子文件夹；移动后 API 地址与 Key 不变。
+Key 范围：文件夹「${folderLabel(context.entityId)}」及其所有子文件夹，不限当前子文件夹；移动后 API 地址与 Key 不变。另可读公共原版资源/调用只读 prepare 和提示词，不授予其他文件夹或管理权限。
 当前发布目标：${examplePath}；路径相对于此 API 文件夹，逐段 URL 编码。选中子文件夹只改变发布目标，不缩小 Key 权限。
-GET ${base}/tree 查看目录和图解。
-GET ${base}/files/<路径> 读取可编辑源文件；PUT 同一路径发布或更新 HTML，Content-Type: text/html; charset=utf-8，正文为原始 HTML，最多 12 MiB。
-路径以 .html 或 .htm 结束，不使用 .src.html；父目录自动创建，同路径更新保留 Git 版本。
-POST ${base}/folders {"path":"主题/目录"} 创建空文件夹；PATCH 同端点 {"path":"旧目录","newPath":"新目录"} 移动文件夹；DELETE 同端点加 ?path=<编码路径> 只删除空文件夹。
+GET ${base}/tree 查看目录；GET ${base}/files/<路径> 读取可编辑源文。PUT 同一路径发布或更新，Content-Type: text/html; charset=utf-8，原始 HTML 最多 12 MiB。
+发布路径以 .html 或 .htm 结束，不使用 .src.html；本机保留 .src.html。父目录自动创建，同路径更新保留 Git 版本。
+POST ${base}/folders {"path":"主题/目录"} 创建空文件夹；PATCH 同端点 {"path":"旧目录","newPath":"新目录"} 移动；DELETE 加 ?path=<编码路径> 只删除空文件夹。
 PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，保留页面标识和分享链接。
-页面响应的 filename 是稳定标识；GET ${location.origin}/api/pages/<filename>/versions 获取真实 Git 版本，POST ${location.origin}/api/pages/<filename>/restore {"revision":"完整提交 SHA"} 恢复为新版本。
-仅可访问此 Key 范围内的页面及所属历史。不要将版本另存为 v1/v2 文件，不要泄露 Key。
-先将待发布的完整 HTML 保存为当前目录的 ./diagram.html，再执行下方命令；返回的 page.url 可用于查看图解。`;
+页面 filename 是稳定标识；GET ${location.origin}/api/pages/<filename>/versions 获取真实 Git 版本；POST ${location.origin}/api/pages/<filename>/restore {"revision":"完整提交 SHA"} 恢复为新版本。
+仅可访问 Key 范围内的页面及所属历史。不要另存 v1/v2，不要泄露 Key。`;
+      const readCommand = path => `curl --fail-with-body ${shellQuote(original + path)} \\\n  --header ${shellQuote('Authorization: Bearer ' + key.secret)}`;
       $('api-payload').value = usable ? instructions.split('\n').map(line => '# ' + line).join('\n') + '\n'
-        + `curl --fail-with-body --request PUT \\\n  ${shellQuote(location.origin + fileRoute(context.entityId, examplePath))} \\\n  --header ${shellQuote('Authorization: Bearer ' + key.secret)} \\\n  --header 'Content-Type: text/html; charset=utf-8' \\\n  --data-binary @./diagram.html` : '';
+        + ['', '/SKILL.md', '/references/style-guide.md'].map(readCommand).join('\n')
+        + '\n# 读完原版及任务相关资源/提示词，按其规则写好 ./diagram.src.html 后才执行发布；响应保存为 ./diagram.render.json。\n'
+        + `curl --fail-with-body --request PUT \\\n  ${shellQuote(location.origin + fileRoute(context.entityId, examplePath))} \\\n  --header ${shellQuote('Authorization: Bearer ' + key.secret)} \\\n  --header 'Content-Type: text/html; charset=utf-8' \\\n  --data-binary @./diagram.src.html \\\n  --output ./diagram.render.json` : '';
     }
     function openApi(context) {
       if (!context.entityId) return;

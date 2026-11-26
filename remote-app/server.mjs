@@ -22,7 +22,8 @@ const outputDir = resolve(process.env.VISUAL_EXPLAINER_OUTPUT_DIR ?? '/data');
 const token = (await readFile(process.env.TOKEN_FILE ?? '/run/secrets/api_token', 'utf8')).trim();
 if (token.length < 32) throw new Error('API token must contain at least 32 characters');
 const upstreamDir = process.env.UPSTREAM_DIR ?? fileURLToPath(new URL('./node_modules/visual-explainer/', import.meta.url));
-const bridgeVersion = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8')).version;
+const bridgePackage = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
+const bridgeVersion = bridgePackage.version;
 const instructions = 'Remote Visual Explainer; no LLM is called. Read visual-explainer://skill/SKILL.md and relevant resources/prompts, inspect your LOCAL project yourself, then send html and filename to visual_explainer_render_html. Do not send local paths or request a server-side browser window. Render results include a persistent browser URL. Anyone with a page URL can read that page; keep it private. Executable ve-flow models are disabled; use declarative data instead. Repository citation checks and video export require local project access and are not remote MCP tools.';
 const galleryHtml = await readFile(new URL('./index.html', import.meta.url));
 const cjkFont = await readFile(new URL('./static/cjk.woff2', import.meta.url));
@@ -317,6 +318,60 @@ await upstream.connect(new StdioClientTransport({
   stderr: 'inherit',
 }));
 
+// Only documents actually registered by this same renderer process are HTTP-readable.
+// Paths are resource identifiers, never filesystem inputs.
+const originalPrefix = '/api/visual-explainer';
+const [originalResources, originalPrompts, originalTools] = await Promise.all([
+  upstream.listResources(), upstream.listPrompts(), upstream.listTools(),
+]);
+const originalDocuments = new Map(originalResources.resources.flatMap(resource => {
+  const path = resource.uri === 'visual-explainer://skill/SKILL.md' ? '/SKILL.md'
+    : /^visual-explainer:\/\/(?:references|commands)\/[a-z0-9-]+\.md$/.test(resource.uri) || resource.uri === 'visual-explainer://kit/kit.css'
+      ? resource.uri.replace('visual-explainer://', '/') : null;
+  return path ? [[path, resource]] : [];
+}));
+const originalPromptNames = new Set(originalPrompts.prompts.map(prompt => prompt.name));
+const originalSource = bridgePackage.dependencies['visual-explainer'];
+const originalRevision = originalSource.match(/\/([a-f0-9]{40})$/)?.[1];
+if (!originalRevision || !originalDocuments.has('/SKILL.md')) throw new Error('Expected pinned official visual-explainer resources');
+const originalIndex = {
+  package: { name: 'visual-explainer', version: upstream.getServerVersion().version, revision: originalRevision, source: originalSource },
+  resources: [...originalDocuments].map(([path, resource]) => ({ ...resource, url: new URL(originalPrefix + path, publicUrl).href })),
+  prompts: originalPrompts.prompts.map(prompt => ({ ...prompt, url: new URL(`${originalPrefix}/prompts/${encodeURIComponent(prompt.name)}`, publicUrl).href })),
+  tools: originalTools.tools,
+  prepareUrl: new URL(`${originalPrefix}/prepare`, publicUrl).href,
+  publish: { method: 'PUT', path: '/api/entities/:id/files/<path>.html', contentType: 'text/html; charset=utf-8' },
+};
+function originalReadonly(parts, method) {
+  return parts[0] === 'visual-explainer' && (method === 'GET' || (method === 'POST' &&
+    ((parts.length === 2 && parts[1] === 'prepare') || (parts.length === 3 && parts[1] === 'prompts'))));
+}
+async function originalRequest(call) {
+  try { return await call(); }
+  catch (error) { throw new ApiError(502, `Official visual-explainer request failed: ${error.message}`); }
+}
+async function serveOriginal(req, res, parts) {
+  if (parts.length === 1 && req.method === 'GET') return json(res, 200, originalIndex);
+  if (req.method === 'GET') {
+    const resource = originalDocuments.get('/' + parts.slice(1).join('/'));
+    if (resource) {
+      const result = await originalRequest(() => upstream.readResource({ uri: resource.uri }));
+      if (result.contents.length !== 1 || typeof result.contents[0].text !== 'string') throw new ApiError(502, 'Official resource did not return one text document');
+      return send(res, 200, result.contents[0].text, `${resource.mimeType}; charset=utf-8`);
+    }
+  }
+  if (parts.length === 2 && parts[1] === 'prepare' && req.method === 'POST') {
+    const args = await readJson(req, 65536);
+    return json(res, 200, await originalRequest(() => upstream.callTool({ name: 'visual_explainer_prepare', arguments: args })));
+  }
+  if (parts.length === 3 && parts[1] === 'prompts' && req.method === 'POST') {
+    if (!originalPromptNames.has(parts[2])) throw new ApiError(404, 'Official prompt not found');
+    const args = await readJson(req, 65536);
+    return json(res, 200, await originalRequest(() => upstream.getPrompt({ name: parts[2], arguments: args })));
+  }
+  throw new ApiError(404, 'Official resource or endpoint not found');
+}
+
 async function renderLocked(args, apiFilename = false, params = { name: 'visual_explainer_render_html' }, location = null, sourceBytes = null) {
   fields(args, ['filename', 'html', 'entityId'], ['filename', 'html']);
   if (typeof args.filename !== 'string' || typeof args.html !== 'string' || !args.html.length) throw new ApiError(400, 'Send filename and nonempty html strings');
@@ -483,11 +538,13 @@ const http = createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/')) {
       return await catalog.run(async () => {
-        const auth = identity(req), mutation = !['GET', 'HEAD'].includes(req.method);
+        const auth = identity(req);
+        const parts = url.pathname.split('/').slice(2).map(decodeSegment);
+        const originalRead = originalReadonly(parts, req.method);
+        const mutation = !['GET', 'HEAD'].includes(req.method) && !originalRead;
         if (req.headers.origin && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
         if (mutation && auth.role === 'viewer') throw new ApiError(401, 'Admin authentication required');
         if (mutation && auth.role === 'admin' && !auth.bearer && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Same-origin Origin required');
-        const parts = url.pathname.split('/').slice(2).map(decodeSegment);
         const [resource, id, action] = parts;
         if (resource === 'session' && parts.length === 1 && req.method === 'GET') {
           if (auth.legacy) setSession(res, 'admin');
@@ -501,9 +558,10 @@ const http = createServer(async (req, res) => {
           const ownHistory = resource === 'pages' &&
             ((action === 'versions' && [3, 4].includes(parts.length) && req.method === 'GET') ||
              (action === 'restore' && parts.length === 3 && req.method === 'POST'));
-          if (!scoped && !ownHistory) throw new ApiError(403, 'Entity-scoped access only');
+          if (!scoped && !ownHistory && !originalRead) throw new ApiError(403, 'Entity-scoped access only');
           if (ownHistory && !catalog.inScope(auth.entityId, catalog.assignment(id))) throw new ApiError(403, 'Page is outside current folder scope');
         }
+        if (resource === 'visual-explainer') return serveOriginal(req, res, parts);
         if (resource === 'moves' && parts.length === 1 && req.method === 'POST') {
           const body = await readJson(req, 8192); fields(body, ['source', 'destination', 'name'], ['source', 'destination']);
           if (!body.source || !body.destination) throw new ApiError(400, 'Source and destination required');

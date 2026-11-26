@@ -30,12 +30,18 @@ try {
   assert.equal(syntax.status, 0, 'Combined clipboard payload must be valid shell syntax');
   directory = await mkdtemp(join(tmpdir(), 've-copied-curl-'));
   const source = '<!doctype html>\n<html><head><meta charset="utf-8"><title>Clipboard curl</title></head>\n<body><h1>EXACT_CLIPBOARD_CURL</h1><p>精确源码 — café</p></body></html>\n';
-  await writeFile(join(directory, 'diagram.html'), source);
+  await writeFile(join(directory, 'diagram.src.html'), source);
   const published = spawnSync('bash', ['--noprofile', '--norc', '-e'], {
     input: copyPayload, encoding: 'utf8', cwd: directory, timeout: 180000, env: { ...process.env, BASH_ENV: '/dev/null' },
   });
   assert.equal(published.status, 0, redact(published.stderr || 'Copied curl failed'));
-  const result = JSON.parse(published.stdout);
+  for (const path of ['/api/visual-explainer', '/api/visual-explainer/SKILL.md', '/api/visual-explainer/references/style-guide.md']) {
+    const official = await fetch(new URL(path, base), { headers: { Authorization: `Bearer ${key}` } });
+    assert.equal(official.status, 200);
+    assert.ok(published.stdout.includes(await official.text()), 'Copied curls must really fetch the official bootstrap documents before PUT');
+  }
+  const result = JSON.parse(await readFile(join(directory, 'diagram.render.json'), 'utf8'));
+  assert.ok(result.render.structuredContent.report, 'Copy command retains original diagnostics in the response file');
   assert.equal(result.page.entityId, entityId);
   assert.equal(result.page.path, path);
   const raw = await fetch(url, { headers: { Authorization: `Bearer ${key}` } });
@@ -51,7 +57,7 @@ try {
   const listed = await fetch(new URL(route, base), { headers: { Authorization: `Bearer ${admin}` } });
   assert.equal(listed.status, 200);
   assert.deepEqual((await listed.json()).tokens, legacyTokens, 'Revocation leaves legacy credentials unchanged');
-  console.log('PASS real browser auto-key + single clipboard action, shell syntax and exact copied curl publication; same-key validity edits, in-flight/open/close/library-refresh reuse, legacy credentials, revoke, viewer isolation, folder tree/versions/mobile');
+  console.log('PASS real browser auto-key + single clipboard action, shell syntax, executed official resource GETs then exact source PUT with original diagnostics; same-key validity edits, in-flight/open/close/library-refresh reuse, legacy credentials, revoke, viewer isolation, folder tree/versions/mobile');
 } catch (error) {
   console.error(redact(error.stack ?? String(error)));
   process.exitCode = 1;

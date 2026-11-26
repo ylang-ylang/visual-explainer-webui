@@ -278,7 +278,24 @@ try {
   const commandLine = lines.findIndex(line => line.startsWith('curl '));
   assert.ok(commandLine > 5 && lines.slice(0, commandLine).every(line => line.startsWith('# ')), 'Every prose line must be a shell comment');
   assert.ok(!copyPayload.includes('```') && !copyPayload.includes('YOUR_FOLDER_TOKEN'));
+  assert.ok(copyPayload.includes('/api/visual-explainer/SKILL.md') && copyPayload.includes('/api/visual-explainer/references/style-guide.md'));
+  assert.ok(copyPayload.indexOf('/api/visual-explainer/SKILL.md') < copyPayload.indexOf('--request PUT'), 'Original resources must come before publishing');
+  for (const marker of ['/prepare', '/prompts/', 'diagram.src.html', 'diagram.render.json', 'render.content', 'checksheet']) assert.ok(copyPayload.includes(marker));
+  assert.equal(await page.locator('#api-dialog button:visible').count(), 2, 'No extra bootstrap, copy or generation buttons');
   assert.equal(await page.locator('#api-payload').isVisible(), false);
+  // Show the actual copied instructions for evidence, but never screenshot a credential.
+  await page.evaluate(() => {
+    const payload = document.querySelector('#api-payload');
+    payload.value = payload.value.replace(/ve_[A-Za-z0-9_-]{43}/g, '[redacted]');
+    document.querySelector('#api-secret').value = '[redacted]';
+    payload.hidden = false;
+    payload.style.height = '420px';
+    payload.setSelectionRange(0, 0);
+    payload.scrollTop = 0;
+  });
+  await page.screenshot({ path: '/tmp/ve-original-copy-instructions.png' });
+  await page.locator('#api-payload').evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await page.screenshot({ path: '/tmp/ve-original-copy-commands.png' });
   await closeApi();
   await api(`/api/entities/${created.id}/tree`, { auth: fresh.secret });
   for (const existing of [named, unnamed]) await api(`/api/entities/${created.id}/tree`, { auth: existing.secret });
