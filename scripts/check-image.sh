@@ -129,6 +129,13 @@ docker exec --interactive --env VE_DELETE_SMOKE=1 --env VE_DELETE_PHASE=persiste
 docker exec --interactive --env VE_ORIGINAL_API_SMOKE=1 --workdir /opt/bridge \
   "$name" node --input-type=module < scripts/original-api-smoke.mjs
 
+docker exec --interactive --env VE_COMMENTS_SMOKE=1 --workdir /opt/bridge \
+  "$name" node --input-type=module < scripts/comments-smoke.mjs
+docker restart "$name" >/dev/null
+wait_ready
+docker exec --interactive --env VE_COMMENTS_SMOKE=1 --env VE_COMMENTS_PHASE=persistence --workdir /opt/bridge \
+  "$name" node --input-type=module < scripts/comments-smoke.mjs
+
 # Existing bare, already-projected v1 history is a distinct migration path.
 docker rm --force "$name" >/dev/null
 mkdir -p "$fixture/projected/data" "$fixture/projected/remote"

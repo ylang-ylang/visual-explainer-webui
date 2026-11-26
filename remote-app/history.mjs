@@ -234,43 +234,94 @@ export async function createHistory(outputDir, catalog) {
     }
   }
   const publicVersion = ({ storedPath, blob, sourceBlob, ancestry, ...version }) => version;
+  function extractNote(message) {
+    if (typeof message !== 'string') return '';
+    const match = message.match(/^(?:Publish|Restore) page [^:]+:\s*(.+)$/);
+    return match ? match[1].trim() : '';
+  }
   async function historicalScope(scope, version) {
     const saved = await record(version.revision);
     return scopePath(saved.metadata?.entities ?? [], scope, version.entityId) !== null;
+  }
+
+  async function allSnapshots(filename) {
+    const revisions = (await git(['rev-list', 'refs/heads/main'])).stdout.trim().split('\n').filter(Boolean);
+    const snapshots = [];
+    let previous = null;
+    let number = 0;
+    // Walk oldest first to attribute a snapshot to the commit which changed
+    // this identity, not the newest unrelated catalog mutation.
+    for (const revision of revisions.reverse()) {
+      let version;
+      try { version = await locate(filename, revision); }
+      catch (error) { if (error instanceof ApiError && error.status === 404) { previous = null; continue; } throw error; }
+      const current = fingerprint(version);
+      if (current !== previous) {
+        number += 1;
+        snapshots.push({ ...version, version: number, label: `v${number}`, note: extractNote(version.message) });
+      }
+      previous = current;
+    }
+    return snapshots;
   }
 
   return {
     async versions(filename, entity = undefined) {
       try {
         phase = 'read';
-        const revisions = (await git(['rev-list', 'refs/heads/main'])).stdout.trim().split('\n').filter(Boolean);
-        const snapshots = [];
-        let previous = null;
-        // Walk oldest first to attribute a snapshot to the commit which changed
-        // this identity, not the newest unrelated catalog mutation.
-        for (const revision of revisions.reverse()) {
-          let version;
-          try { version = await locate(filename, revision); }
-          catch (error) { if (error instanceof ApiError && error.status === 404) { previous = null; continue; } throw error; }
-          const current = fingerprint(version);
-          if (current !== previous && (entity === undefined || await historicalScope(entity, version))) snapshots.push(publicVersion(version));
-          previous = current;
+        const snapshots = await allSnapshots(filename);
+        const visible = [];
+        for (const version of snapshots) {
+          if (entity === undefined || await historicalScope(entity, version)) visible.push(publicVersion(version));
         }
-        return snapshots.reverse().slice(0, 50);
+        return visible.reverse().slice(0, 50);
       } catch (error) { if (error instanceof ApiError) throw error; throw unavailable(error); }
     },
-    async version(filename, revision, entity = undefined) {
+    async latestVersion(filename) {
       try {
         phase = 'read';
+        const snapshots = await allSnapshots(filename);
+        const latest = snapshots.at(-1);
+        return latest ? publicVersion(latest) : null;
+      } catch (error) { if (error instanceof ApiError) throw error; throw unavailable(error); }
+    },
+    async version(filename, revisionOrVersion, entity = undefined) {
+      try {
+        phase = 'read';
+        let revision = revisionOrVersion;
+        let numbered = null;
+        const versionMatch = typeof revisionOrVersion === 'number'
+          ? [null, String(revisionOrVersion)]
+          : typeof revisionOrVersion === 'string' ? revisionOrVersion.trim().match(/^v?(\d+)$/i) : null;
+        if (versionMatch) {
+          const target = Number(versionMatch[1]);
+          if (!Number.isInteger(target) || target < 1) throw new ApiError(400, 'Expected a valid version number or full commit revision');
+          const snapshots = await allSnapshots(filename);
+          const found = snapshots.find(item => item.version === target);
+          if (!found) throw new ApiError(404, `Version v${target} not found`);
+          revision = found.revision;
+          numbered = found;
+        }
         await reachable(revision);
-        const version = await locate(filename, revision);
+        const version = numbered ?? await locate(filename, revision);
         if (entity !== undefined && !await historicalScope(entity, version)) throw new ApiError(403, 'Version is outside folder scope');
-        const parent = (await record(revision)).parent;
-        if (parent) {
-          let previous;
-          try { previous = await locate(filename, parent); }
-          catch (error) { if (!(error instanceof ApiError && error.status === 404)) throw error; }
-          if (previous && fingerprint(previous) === fingerprint(version)) throw new ApiError(404, 'Page did not change in this revision');
+        if (!numbered) {
+          const parent = (await record(revision)).parent;
+          if (parent) {
+            let previous;
+            try { previous = await locate(filename, parent); }
+            catch (error) { if (!(error instanceof ApiError && error.status === 404)) throw error; }
+            if (previous && fingerprint(previous) === fingerprint(version)) throw new ApiError(404, 'Page did not change in this revision');
+          }
+          const snapshots = await allSnapshots(filename);
+          const match = snapshots.find(item => item.revision === revision);
+          if (match) {
+            version.version = match.version;
+            version.label = match.label;
+            version.note = match.note;
+          } else {
+            version.note = extractNote(version.message);
+          }
         }
         return {
           version: publicVersion(version),

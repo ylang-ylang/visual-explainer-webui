@@ -87,7 +87,7 @@ try {
   await page.locator('#key').fill(token);
   await page.locator('#login-submit').click();
   await page.locator('#login').waitFor({ state: 'hidden' });
-  const settled = () => page.waitForFunction(() => !pageRequest && document.querySelector('#sync').textContent.startsWith('已同步'));
+  const settled = () => page.waitForFunction(() => !pageRequest && document.documentElement.dataset.sync === 'ready');
   await settled();
   const row = name => page.locator(`.report[data-filename="${name}"]`);
   await row(keep.page.filename).click();
@@ -97,14 +97,14 @@ try {
   page.on('request', request => { if (request.method() === 'DELETE') deletes++; });
   async function deletionMenu(name) {
     await row(name).click({ button: 'right' });
-    assert.equal(await page.getByRole('menuitem').last().innerText(), '删除图解');
+    assert.equal(await page.getByRole('menuitem').last().innerText(), 'Delete diagram');
     assert.equal(await page.getByRole('menuitem').last().evaluate(node => node.classList.contains('danger')), true);
-    await page.getByRole('menuitem', { name: '删除图解', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Delete diagram', exact: true }).click();
   }
   await deletionMenu(nested.page.filename);
   assert.equal(await page.evaluate(() => selected.filename), keep.page.filename, 'Right-click never retargets selected preview');
   const detail = await page.locator('#confirm-detail').innerText();
-  assert.ok(detail.includes('待删除嵌套图解') && detail.includes('delete-parent / delete-child / nested/目标图解.html'));
+  assert.ok(detail.includes('待删除嵌套图解') && detail.includes('delete-parent / delete-child / nested/目标图解'));
   await page.screenshot({ path: '/tmp/ve-delete-confirm-fixture.png' });
   await page.locator('#confirm-dialog .dialog-actions [data-close]').click();
   assert.equal(deletes, 0);
@@ -123,7 +123,7 @@ try {
     await held;
     await route.fulfill({ response }).catch(() => {}); // The deletion intentionally aborts this stale refresh.
   }, { times: 1 });
-  await page.locator('#refresh').click();
+  await page.evaluate(() => { void loadPages(true); });
   await started;
   await deletionMenu(nested.page.filename);
   await page.locator('#confirm-submit').click();
@@ -139,8 +139,8 @@ try {
   // Deleting a selected historical preview replaces its frame/hash/open-link with a surviving diagram.
   await row(root.page.filename).click();
   await row(root.page.filename).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: '版本历史', exact: true }).click();
-  await page.locator('.version-row').first().getByRole('button', { name: '预览', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Version history', exact: true }).click();
+  await page.locator('.version-row').first().getByRole('button', { name: 'Preview', exact: true }).click();
   await page.locator('#history-banner').waitFor({ state: 'visible' });
   await deletionMenu(root.page.filename);
   await page.locator('#confirm-submit').click();
@@ -159,9 +159,9 @@ try {
   await viewer.addCookies([{ name: 've_reader', value: cookie('viewer').split('=')[1], url: base.origin }]);
   const reader = await viewer.newPage();
   await reader.goto(base.href);
-  await reader.waitForFunction(() => document.querySelector('#sync').textContent.startsWith('已同步'));
+  await reader.waitForFunction(() => document.documentElement.dataset.sync === 'ready');
   await reader.locator(`.report[data-filename="${keep.page.filename}"]`).click({ button: 'right' });
-  assert.equal(await reader.getByRole('menuitem', { name: '删除图解', exact: true }).count(), 0);
+  assert.equal(await reader.getByRole('menuitem', { name: 'Delete diagram', exact: true }).count(), 0);
   assert.deepEqual(errors, []);
   await viewer.close();
   await context.close();

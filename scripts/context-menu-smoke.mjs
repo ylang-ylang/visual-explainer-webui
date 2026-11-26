@@ -50,7 +50,7 @@ try {
   await page.locator('#key').fill(token);
   await page.locator('#login-submit').click();
   await page.locator('#login').waitFor({ state: 'hidden' });
-  const settled = () => page.waitForFunction(() => !pageRequest && document.querySelector('#sync').textContent.startsWith('已同步'));
+  const settled = () => page.waitForFunction(() => !pageRequest && document.documentElement.dataset.sync === 'ready');
   await settled();
   loggedIn = true;
   const folder = (id, path = '', p = page) => p.locator(`.folder[data-entity-id="${id}"][data-path="${path}"] > summary`);
@@ -68,11 +68,11 @@ try {
   async function blankMenu() {
     const box = await page.locator('#list').boundingBox();
     await page.mouse.click(box.x + box.width - 6, box.y + box.height - 6, { button: 'right' });
-    assert.equal(await menu.locator('.context-label').innerText(), '根目录');
+    assert.equal(await menu.locator('.context-label').innerText(), 'Root');
   }
   assert.equal(await page.locator('#folder-create, #folder-api, #page-edit, #page-versions, .folder-action, .page-tools, .library-tools').count(), 0);
   assert.equal(await page.locator('.report-date, .report-file').count(), 0);
-  assert.equal(await report(first).locator('.report-title').innerText(), '架构总览.html');
+  assert.equal(await report(first).locator('.report-title').innerText(), '架构总览');
   assert.equal(await report(legacy).locator('.report-title').innerText(), '已有图解的可读标题', 'Opaque legacy filenames use the meaningful document title');
   assert.ok((await report(first).getAttribute('title')).includes('架构总览 · 修订'));
   assert.equal(await folder(c).locator('.folder-icon').count(), 1);
@@ -83,7 +83,7 @@ try {
   // Blank space is Root, even with a selected nested diagram/folder.
   await blankMenu();
   assert.equal(await page.evaluate(() => selected.filename), selection);
-  await page.getByRole('menuitem', { name: '新建文件夹', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'New folder', exact: true }).click();
   await page.locator('#edit-name').fill('右键新建');
   await save();
   const created = (await api('/api/tree')).entities.find(item => item.name === '右键新建');
@@ -95,81 +95,100 @@ try {
   await folder(a, '方案').click({ button: 'right' });
   assert.equal(await details.evaluate(node => node.open), false);
   assert.equal(await page.evaluate(() => selected.filename), selection);
-  await page.getByRole('menuitem', { name: '新建文件夹', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'New folder', exact: true }).click();
   await page.locator('#edit-name').fill('评审资料');
   await save();
   assert.ok((await api('/api/tree')).folders.some(item => item.entityId === a && item.path === '方案/评审资料'));
   // Invalid names stay in the existing dialog; no hidden path/ID fields are required.
-  await action(folder(a), '新建文件夹');
+  await action(folder(a), 'New folder');
   await page.locator('#edit-name').fill('not/a/name');
   await page.locator('#edit-submit').click();
-  await page.locator('#edit-error').filter({ hasText: '请输入名称' }).waitFor();
+  await page.locator('#edit-error').filter({ hasText: 'Enter a valid name' }).waitFor();
   await page.locator('[data-close="edit-dialog"]').click();
   // Separate rename/move menu actions cover ordinary, root and nested API folders.
-  await action(folder(a, '草稿'), '重命名');
+  await action(folder(a, '草稿'), 'Rename');
   assert.equal(await page.locator('#edit-path').isVisible(), false);
   await page.locator('#edit-name').fill('修订草稿');
   await save();
-  await action(folder(a, '修订草稿'), '移动到…');
+  await action(folder(a, '修订草稿'), 'Move to…');
   await page.locator('#edit-entity').selectOption(b);
   await page.locator('#edit-path').fill('参考/待审');
   await save();
   assert.ok((await api('/api/tree')).folders.some(item => item.entityId === b && item.path === '参考/待审'));
-  await action(folder(created.id), '重命名');
+  await action(folder(created.id), 'Rename');
   await page.locator('#edit-name').fill('设计归档');
   await save();
-  await action(folder(created.id), '移动到…');
+  await action(folder(created.id), 'Move to…');
   await page.locator('#edit-entity').selectOption(a);
   await page.locator('#edit-path').fill('方案');
   await save();
   assert.deepEqual((await api('/api/tree')).entities.find(item => item.id === created.id).parent, { entityId: a, path: '方案' });
-  await action(folder(created.id), '重命名');
+  await action(folder(created.id), 'Rename');
   await page.locator('#edit-name').fill('归档材料');
   await save();
-  await action(folder(created.id), '移动到…');
+  await action(folder(created.id), 'Move to…');
   await page.locator('#edit-entity').selectOption('');
   await page.locator('#edit-path').fill('');
   await save();
   assert.equal((await api('/api/tree')).entities.find(item => item.id === created.id).parent, null);
   // Delete is a direct, confirmed empty-folder action, not another toolbar/dialog.
-  await action(folder(created.id), '删除空文件夹');
+  await action(folder(created.id), 'Delete empty folder');
   await page.locator('#confirm-submit').click();
   await page.locator('#confirm-dialog').waitFor({ state: 'hidden' });
   await settled();
   assert.ok(!(await api('/api/tree')).entities.some(item => item.id === created.id));
-  // A non-selected file's menu must address that file for rename, move, versions/open.
+  // A non-selected file's menu must address that file for rename, move, versions/open/API.
   await report(first).click();
-  await action(report(second), '重命名');
-  assert.equal(await page.locator('#edit-name').inputValue(), '流程说明.html');
+  await action(report(second), 'Rename');
+  assert.equal(await page.locator('#edit-name').inputValue(), '流程说明');
   assert.equal(await page.evaluate(() => selected.filename), selection);
-  await page.locator('#edit-name').fill('操作流程.html');
+  await page.locator('#edit-name').fill('操作流程');
   await save();
   assert.equal((await api('/api/pages/' + second.page.filename)).page.path, '方案/操作流程.html');
   assert.equal((await api('/api/pages/' + first.page.filename)).page.path, '方案/架构总览.html');
-  await action(report(second), '移动到…');
+  await action(report(second), 'Move to…');
   await page.locator('#edit-entity').selectOption('');
-  await page.locator('#edit-path').fill('操作流程.html');
+  await page.locator('#edit-path').fill('操作流程');
   await save();
   assert.equal((await api('/api/pages/' + second.page.filename)).page.entityId, null);
   await report(first).click();
-  await action(report(second), '版本历史');
+  await action(report(second), 'Version history');
   assert.equal(await page.evaluate(() => selected.filename), selection);
   await page.locator('.version-row').first().waitFor();
-  assert.equal(await page.locator('#versions-path').innerText(), '操作流程.html');
+  assert.equal(await page.locator('#versions-path').innerText(), '操作流程');
   await page.locator('[data-close="versions-dialog"]').click();
+  // Root file API explains moving to a folder without exposing admin keys.
+  await action(report(second), 'File API');
+  assert.equal(await page.locator('#api-admin').isVisible(), false);
+  assert.equal(await page.locator('#api-title').innerText(), '操作流程 · API');
+  assert.ok((await page.locator('#api-scope').innerText()).includes('Move this diagram into a folder'));
+  await page.locator('[data-close="api-dialog"]').click();
+  // Folder-scoped file API targets that exact file and shares the folder's key.
+  await action(report(first), 'File API');
+  await page.waitForFunction(() => !document.querySelector('#copy-api').disabled);
+  assert.equal(await page.locator('#api-title').innerText(), '研究项目 / 方案/架构总览 · API');
+  assert.ok((await page.locator('#api-base').innerText()).includes('/files/' + encodeURIComponent('方案') + '/' + encodeURIComponent('架构总览.html')));
+  const fileSecret = await page.locator('#api-secret').inputValue();
+  const filePayload = await page.locator('#api-payload').inputValue();
+  assert.ok(filePayload.includes(first.page.filename) && filePayload.includes(encodeURIComponent('方案/架构总览.html')));
+  await page.locator('[data-close="api-dialog"]').click();
+  await action(folder(a), 'Folder API');
+  await page.waitForFunction(() => !document.querySelector('#copy-api').disabled);
+  assert.equal(await page.locator('#api-secret').inputValue(), fileSecret, 'File API and Folder API must reuse the same scoped key');
+  await page.locator('[data-close="api-dialog"]').click();
   const popupPromise = page.waitForEvent('popup');
-  await action(report(second), '独立打开');
+  await action(report(second), 'Open in new tab');
   const popup = await popupPromise;
   await popup.waitForLoadState();
   assert.equal(popup.url(), second.page.url);
   await popup.close();
-  await action(report(first), '版本历史');
-  await page.locator(`.version-row[data-revision="${first.revision}"]`).getByRole('button', { name: '预览', exact: true }).click();
+  await action(report(first), 'Version history');
+  await page.locator(`.version-row[data-revision="${first.revision}"]`).getByRole('button', { name: 'Preview', exact: true }).click();
   await page.frameLocator('#preview').getByRole('heading', { name: '架构总览', exact: true }).waitFor();
   await page.locator('#history-current').click();
   await page.frameLocator('#preview').getByRole('heading', { name: '架构总览 · 修订', exact: true }).waitFor();
   // API retains the simplified key/validity/single-copy flow, including nested anchors.
-  await action(folder(c), '文件夹 API');
+  await action(folder(c), 'Folder API');
   await page.waitForFunction(() => !document.querySelector('#copy-api').disabled);
   assert.ok((await page.locator('#api-base').innerText()).endsWith(folderRoute(c)));
   assert.equal(await page.locator('#api-dialog button:visible').count(), 2);
@@ -179,7 +198,7 @@ try {
   await page.waitForFunction(() => !document.querySelector('#copy-api').disabled);
   assert.equal(await page.locator('#api-secret').inputValue(), secret);
   await page.locator('[data-close="api-dialog"]').click();
-  await action(folder(c), '文件夹 API');
+  await action(folder(c), 'Folder API');
   await page.waitForFunction(() => !document.querySelector('#copy-api').disabled);
   assert.equal(await page.locator('#api-secret').inputValue(), secret);
   assert.equal((await api(folderRoute(c) + '/tokens')).tokens.length, 1);
@@ -189,16 +208,16 @@ try {
   await page.keyboard.press('Shift+F10');
   assert.equal(await menu.isVisible(), true);
   await page.keyboard.press('ArrowDown');
-  assert.equal(await page.evaluate(() => document.activeElement.textContent), '重命名');
+  assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Rename');
   await page.keyboard.press('Enter');
-  assert.equal(await page.locator('#edit-title').innerText(), '重命名文件夹');
+  assert.equal(await page.locator('#edit-title').innerText(), 'Rename folder');
   await page.keyboard.press('Escape');
   await folder(c).focus();
   await page.keyboard.press('ContextMenu');
   await page.keyboard.press('End');
-  assert.equal(await page.evaluate(() => document.activeElement.textContent), '删除空文件夹');
+  assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Delete empty folder');
   await page.keyboard.press('Home');
-  assert.equal(await page.evaluate(() => document.activeElement.textContent), '新建文件夹');
+  assert.equal(await page.evaluate(() => document.activeElement.textContent), 'New folder');
   await page.keyboard.press('Escape');
   assert.equal(await menu.isVisible(), false);
   assert.equal(await folder(c).evaluate(node => node === document.activeElement), true);
@@ -246,7 +265,7 @@ try {
   for (let index = 0; index < 16; index++) await api(folderRoute(b) + '/folders', {
     method: 'POST', body: { path: '资料目录 ' + String(index + 1).padStart(2, '0') }, status: 201,
   });
-  await page.locator('#refresh').click();
+  await page.evaluate(() => loadPages(true));
   await settled();
   async function lowerEdgeMenu(row) {
     await row.evaluate(node => {
@@ -284,24 +303,24 @@ try {
   const readOnly = await viewer.newPage();
   const access = createHmac('sha256', token).update('viewer-access').digest('hex');
   await readOnly.goto(new URL('/?access=' + access, base).href);
-  await readOnly.waitForFunction(() => document.querySelector('#sync').textContent.startsWith('已同步'));
+  await readOnly.waitForFunction(() => document.documentElement.dataset.sync === 'ready');
   const requests = [];
   readOnly.on('request', request => { if (new URL(request.url()).pathname.includes('/tokens')) requests.push(request); });
   const before = await readFile(join(dir, '.tokens.json'), 'utf8');
   await folder(c, '', readOnly).click({ button: 'right' });
   assert.equal(await readOnly.locator('#context-menu').isVisible(), true, 'A queued scroll-into-view event must not dismiss a newly opened menu');
-  assert.deepEqual(await readOnly.getByRole('menuitem').allTextContents(), ['文件夹 API']);
-  await readOnly.getByRole('menuitem', { name: '文件夹 API', exact: true }).click();
+  assert.deepEqual(await readOnly.getByRole('menuitem').allTextContents(), ['Folder API']);
+  await readOnly.getByRole('menuitem', { name: 'Folder API', exact: true }).click();
   assert.equal(await readOnly.locator('#api-admin').isVisible(), false);
   assert.equal(await readOnly.locator('#api-secret').inputValue(), '');
   assert.equal(await readOnly.locator('#api-payload').inputValue(), '');
   assert.equal(await readOnly.locator('#login[open]').count(), 0);
   await readOnly.locator('[data-close="api-dialog"]').click();
   await report(first, readOnly).click({ button: 'right' });
-  assert.deepEqual(await readOnly.getByRole('menuitem').allTextContents(), ['打开图解', '独立打开', '版本历史']);
+  assert.deepEqual(await readOnly.getByRole('menuitem').allTextContents(), ['Open', 'Open in new tab', 'Version history', 'File API']);
   await readOnly.keyboard.press('Escape');
   await readOnly.locator('#folder-root').click({ button: 'right' });
-  assert.equal(await readOnly.getByRole('menuitem', { name: '只读查看', exact: true }).isDisabled(), true);
+  assert.equal(await readOnly.getByRole('menuitem', { name: 'Read-only', exact: true }).isDisabled(), true);
   await readOnly.keyboard.press('Escape');
   assert.equal(await readOnly.locator('#list [draggable="true"]').count(), 0);
   const denial = await readOnly.evaluate(async () => (await fetch('/api/entities', {

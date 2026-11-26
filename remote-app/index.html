@@ -1,11 +1,23 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>图解工作台 · Visual Explainer</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c665d'/%3E%3Cpath d='M8 8h6v16H8zm10 0h6v7h-6zm0 11h6v5h-6z' fill='white'/%3E%3C/svg%3E">
+  <meta name="color-scheme" content="light dark">
+  <title>Visual Explainer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Cpath d='M8 8h6v16H8zm10 0h6v7h-6zm0 11h6v5h-6z' fill='white'/%3E%3C/svg%3E">
+  <script>
+    (() => {
+      try {
+        const saved = localStorage.getItem('ve-theme');
+        const mode = saved === 'dark' || saved === 'light' ? saved : 'auto';
+        const resolved = mode === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
+        document.documentElement.dataset.themeMode = mode;
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.style.colorScheme = resolved;
+      } catch {}
+    })();
+  </script>
   <style>
     @font-face {
       font-family: VisualCJK;
@@ -13,503 +25,965 @@
       font-display: swap;
     }
 
-    :root {
+    :root, :root[data-theme="light"] {
       color-scheme: light;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", VisualCJK, "PingFang SC", "Microsoft YaHei", sans-serif;
+      --bg: #f7f7f8;
+      --surface: #ffffff;
+      --surface-2: #f1f2f4;
+      --hover: #ededf0;
+      --active: #e6e8ec;
+      --border: #e5e7eb;
+      --border-strong: #d1d5db;
+      --ink: #111318;
+      --ink-2: #4b5563;
+      --ink-3: #8b93a1;
+      --primary: #111318;
+      --primary-hover: #262a33;
+      --primary-fg: #ffffff;
+      --accent: #2563eb;
+      --accent-soft: rgba(37, 99, 235, 0.09);
+      --accent-border: rgba(37, 99, 235, 0.28);
+      --danger: #dc2626;
+      --danger-soft: rgba(220, 38, 38, 0.10);
+      --shadow: 0 10px 28px rgba(0, 0, 0, 0.10);
+      --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.16);
+      --bar-h: 52px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", VisualCJK, sans-serif;
+      --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      font-family: var(--font-sans);
       font-synthesis: none;
-      color: #26332f;
-      background: #fff;
-      --ink: #26332f;
-      --muted: #707a76;
-      --line: #e5e9e6;
-      --soft: #f6f8f6;
-      --accent: #2c665d;
-      --accent-soft: #eaf2ee;
-      --danger: #a13d32;
-      --bar-height: 54px;
+      color: var(--ink);
+      background: var(--surface);
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0e1014;
+      --surface: #14171d;
+      --surface-2: #1c2028;
+      --hover: #212630;
+      --active: #272d39;
+      --border: #242934;
+      --border-strong: #363d4d;
+      --ink: #f0f2f6;
+      --ink-2: #9ba3b4;
+      --ink-3: #687182;
+      --primary: #f0f2f6;
+      --primary-hover: #d8dce5;
+      --primary-fg: #0e1014;
+      --accent: #5b9bff;
+      --accent-soft: rgba(91, 155, 255, 0.14);
+      --accent-border: rgba(91, 155, 255, 0.34);
+      --danger: #f87171;
+      --danger-soft: rgba(248, 113, 113, 0.14);
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      --shadow-lg: 0 24px 72px rgba(0, 0, 0, 0.65);
     }
 
     * { box-sizing: border-box; }
+    html.theme-switching, html.theme-switching * { transition: none !important; }
     [hidden] { display: none !important; }
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-    body { display: flex; flex-direction: column; height: 100dvh; font-size: 14px; }
-    button, input, select, a { font: inherit; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--surface); color: var(--ink); }
+    body { display: flex; height: 100dvh; font-size: 13px; -webkit-font-smoothing: antialiased; }
+    button, input, select, textarea, a { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
     button, a { touch-action: manipulation; }
     button { cursor: pointer; }
-    button:disabled { cursor: default; opacity: .45; }
-    button, a, input, select { outline-offset: 3px; }
-    :focus-visible { outline: 2px solid var(--accent); }
-    button { color: inherit; }
+    button:disabled { cursor: default; opacity: .4; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     svg { display: block; flex: none; }
     h1, h2, p { margin: 0; }
 
     .icon {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       fill: none;
       stroke: currentColor;
-      stroke-width: 1.65;
+      stroke-width: 1.7;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
-    .button {
+
+    .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 7px;
-      min-height: 34px;
-      padding: 6px 10px;
+      gap: 6px;
+      height: 30px;
+      padding: 0 10px;
       border: 1px solid transparent;
-      border-radius: 6px;
+      border-radius: 7px;
       background: transparent;
-      color: var(--ink);
+      color: var(--ink-2);
       text-decoration: none;
       white-space: nowrap;
-      font-size: 12px;
-      line-height: 1.4;
+      font-size: 12.5px;
+      font-weight: 500;
+      line-height: 1;
+      transition: background 110ms ease, border-color 110ms ease, color 110ms ease;
     }
-    .button:hover:not(:disabled) { background: #edf1ee; }
-    .button.bordered { border-color: var(--line); background: #fff; }
-    .button.bordered:hover:not(:disabled) { background: var(--soft); }
-    .button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .button.primary:hover:not(:disabled) { background: #23564e; }
-    .icon-button { width: 34px; padding: 7px; }
+    .btn:hover:not(:disabled) { background: var(--hover); color: var(--ink); }
+    .btn.bordered { border-color: var(--border); background: var(--surface); color: var(--ink); }
+    .btn.bordered:hover:not(:disabled) { background: var(--surface-2); border-color: var(--border-strong); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); font-weight: 600; }
+    .btn.primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); color: var(--primary-fg); }
+    .btn.icon-only { width: 30px; padding: 0; }
+    .btn[aria-pressed="true"], .btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
     .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-      border: 0;
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
     }
 
-    .appbar {
-      position: relative;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex: 0 0 var(--bar-height);
-      padding: 0 16px;
-      border-bottom: 1px solid var(--line);
-      background: #fff;
-    }
-    .appbar-start, .appbar-actions, .brand { display: flex; align-items: center; }
-    .appbar-start { gap: 16px; min-width: 0; }
-    .brand { gap: 9px; white-space: nowrap; font-size: 14px; font-weight: 600; }
-    .brand-mark {
-      display: grid;
-      place-items: center;
-      width: 26px;
-      height: 26px;
-      border-radius: 7px;
-      color: #fff;
-      background: var(--accent);
-    }
-    #nav-toggle { border-color: var(--line); }
-    #nav-toggle[aria-expanded="true"] { background: var(--soft); }
-    .appbar-actions { gap: 5px; flex-shrink: 0; }
-    .connection { display: inline-flex; align-items: center; gap: 7px; margin-right: 10px; color: var(--muted); font-size: 11px; }
-    .connection::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #a4aca7; }
-    .connection[data-state="online"]::before { background: #43816b; }
-    .connection[data-state="error"]::before { background: #b87540; }
-    #refresh[aria-busy="true"] .icon { animation: spin 1s linear infinite; }
+    /* Workspace */
+    .workspace { display: flex; flex: 1; width: 100%; min-width: 0; min-height: 0; }
 
-    .workspace { display: flex; flex: 1; min-height: 0; min-width: 0; }
+    /* Sidebar */
     .library {
       display: flex;
       flex-direction: column;
-      flex: 0 0 280px;
-      width: 280px;
+      flex: 0 0 264px;
+      width: 264px;
       min-height: 0;
-      border-right: 1px solid var(--line);
-      background: #fafbf9;
+      border-right: 1px solid var(--border);
+      background: var(--bg);
     }
-    .library-top { padding: 22px 16px 12px; }
-    .library-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
-    .library-heading h2 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
-    .count { flex-shrink: 0; min-width: 22px; padding: 1px 6px; border-radius: 5px; background: #eaf0eb; color: #647168; text-align: center; font-size: 11px; font-variant-numeric: tabular-nums; }
-    #close-library { flex-shrink: 0; margin: -7px -6px -7px auto; }
-    .folder-location { margin: 0 8px 3px; }
-    #folder-root { justify-content: flex-start; width: 100%; gap: 7px; min-height: 32px; padding: 5px 8px; font-size: 12px; }
-    #folder-root .icon { width: 16px; height: 16px; color: var(--accent); }
-    #folder-root[aria-current="location"] { background: var(--accent-soft); color: var(--accent); }
+    .library-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex: 0 0 var(--bar-h);
+      height: var(--bar-h);
+      padding: 0 10px 0 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 13.5px; font-weight: 600; letter-spacing: -.015em; color: var(--ink); }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: var(--primary);
+      color: var(--primary-fg);
+    }
+    .brand-mark .icon { width: 13px; height: 13px; }
+
+    .library-search-wrap { padding: 4px 12px 10px; }
     .search {
       display: flex;
       align-items: center;
       gap: 8px;
-      height: 38px;
+      height: 34px;
       padding: 0 10px;
-      border: 1px solid #dce3dc;
-      border-radius: 7px;
-      background: #fff;
-      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink-3);
+      transition: border-color 120ms ease;
     }
-    .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px #2c665d12; }
-    .search .icon { width: 15px; height: 15px; }
-    .search input { width: 100%; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font-size: 12px; }
-    .search input::placeholder { color: #89918d; }
-    .search-hint { margin: 11px 1px 0; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
-    kbd { font: inherit; color: #8b948e; }
-    #list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 8px 12px; scrollbar-width: thin; scrollbar-color: #cbd3cc transparent; }
-    .report { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; height: 32px; margin: 1px 0; padding: 5px 6px; border: 0; border-radius: 5px; background: transparent; text-align: left; }
+    .search:focus-within { border-color: var(--border-strong); color: var(--ink-2); }
+    .search .icon { width: 14px; height: 14px; }
+    .search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; color: var(--ink); font-size: 12.5px; }
+    .search input::placeholder { color: var(--ink-3); }
+
+    .folder-location { padding: 0 10px 4px; }
+    #folder-root { justify-content: flex-start; width: 100%; height: 30px; padding: 0 8px; font-size: 12.5px; color: var(--ink-2); }
+    #folder-root .icon { width: 15px; height: 15px; color: var(--ink-3); }
+    #folder-root[aria-current="location"] { background: var(--active); color: var(--ink); font-weight: 600; }
+
+    #list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 0 10px 12px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+    }
+    .folder { margin: 2px 0; min-width: 0; }
+    .folder > summary {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      height: 32px;
+      padding: 0 8px;
+      border-radius: 7px;
+      cursor: pointer;
+      list-style: none;
+      color: var(--ink-2);
+    }
+    .folder > summary::-webkit-details-marker { display: none; }
+    .folder > summary:hover { background: var(--hover); color: var(--ink); }
+    .folder > summary[aria-current="location"] { background: var(--active); color: var(--ink); }
+    .folder > summary > .chevron { width: 12px; height: 12px; color: var(--ink-3); transition: transform 120ms ease; }
+    .folder[open] > summary > .chevron { transform: rotate(90deg); }
+    .folder > summary > .folder-icon { width: 15px; height: 15px; color: var(--ink-3); }
+    .folder-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
+    .folder-children { margin-left: 16px; }
+
+    .report {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      width: 100%;
+      min-width: 0;
+      height: 32px;
+      margin: 1px 0;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--ink-2);
+      text-align: left;
+    }
     .report::before { content: ""; width: 12px; flex: none; }
-    .report > .icon { width: 16px; height: 16px; color: #758b91; }
-    .report:hover { background: #f0f3ef; }
-    .report[aria-current="page"] { background: var(--accent-soft); color: #24594f; }
-    .report-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 22px; }
+    .report > .icon { width: 15px; height: 15px; color: var(--ink-3); }
+    .report:hover { background: var(--hover); color: var(--ink); }
+    .report[aria-current="page"] { background: var(--active); color: var(--ink); }
+    .report[aria-current="page"] > .icon { color: var(--ink); }
+    .report-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
     .report[aria-current="page"] .report-title { font-weight: 600; }
-    .list-message { padding: 34px 18px; text-align: center; }
-    .list-message strong { display: block; font-size: 13px; font-weight: 500; }
-    .list-message p { margin: 8px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
-    .library-foot { flex: none; padding: 13px 18px 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.8; }
-    #sync { display: block; color: #58685e; font-size: 11px; }
-    #sync[data-state="error"] { color: var(--danger); }
+    .report-badge {
+      flex: none;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 9px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font: 600 10.5px/18px var(--font-mono);
+      text-align: center;
+    }
+
+    .library-account {
+      flex: none;
+      padding: 8px 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+    }
+    .library-account .btn { width: 100%; justify-content: flex-start; height: 32px; color: var(--ink-3); font-size: 12.5px; }
+    .library-account .btn:hover { color: var(--ink); }
+
+    .list-message { padding: 40px 14px; text-align: center; }
+    .list-message strong { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+    .list-message p { margin: 6px 0 12px; color: var(--ink-3); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+
+    [draggable="true"] { cursor: grab; }
+    .drag-source { opacity: .4; }
+    .drop-target { background: var(--accent-soft) !important; outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
+    .drop-invalid { background: var(--danger-soft) !important; outline: 1.5px solid var(--danger); outline-offset: -1.5px; }
+    #drag-status {
+      position: fixed; left: 16px; bottom: 16px; z-index: 45;
+      padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface); color: var(--ink); font-size: 12px; box-shadow: var(--shadow);
+    }
+    #drag-status[data-error="true"] { border-color: var(--danger); color: var(--danger); }
+
     .nav-backdrop { display: none; }
 
-    .viewer { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: #fff; }
-    .viewer-toolbar { display: flex; flex: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; min-height: 76px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
-    .viewer-title { flex: 1 1 200px; min-width: 0; }
-    .viewer-title h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600; line-height: 1.6; }
-    .viewer-title p { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; line-height: 1.5; }
-    .viewer-actions { display: flex; align-items: center; flex-shrink: 0; gap: 8px; }
-    .stage { position: relative; display: flex; justify-content: center; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: #fff; }
-    #preview { display: block; flex: none; width: 100%; height: 100%; border: 0; background: #fff; }
-    .placeholder { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; padding: 28px; overflow-y: auto; background: #fff; text-align: center; }
-    .placeholder-icon { display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: 19px; border-radius: 12px; background: var(--soft); color: #829187; }
-    .placeholder-icon .icon { width: 24px; height: 24px; stroke-width: 1.4; }
-    .placeholder h2 { font-size: 17px; font-weight: 500; line-height: 1.6; }
-    .placeholder p { max-width: 330px; margin-top: 9px; color: var(--muted); font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; }
-    .placeholder .button { margin-top: 20px; }
-    .spinner { width: 22px; height: 22px; border: 2px solid #dce7df; border-top-color: var(--accent); border-radius: 50%; animation: spin .85s linear infinite; }
-    .placeholder[data-loading="true"] .placeholder-icon > .icon { display: none; }
-    .placeholder:not([data-loading="true"]) .spinner { display: none; }
-    .viewer-footer { display: flex; align-items: center; justify-content: space-between; flex: none; gap: 16px; min-height: 29px; padding: 5px 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
-    #page-detail { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .share-hint { white-space: nowrap; color: #8a938c; }
-    .stage:fullscreen { width: 100%; height: 100%; }
-    #exit-fullscreen { position: absolute; right: 16px; top: 12px; z-index: 3; box-shadow: 0 2px 10px #26332f1a; }
+    /* Viewer Area */
+    .viewer { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: var(--surface); }
+    .viewer-toolbar {
+      display: flex;
+      flex: 0 0 var(--bar-h);
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      height: var(--bar-h);
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .viewer-head-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .viewer-title { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; }
+    .viewer-title h1 {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14.5px;
+      font-weight: 600;
+      letter-spacing: -.015em;
+      color: var(--ink);
+    }
+    .viewer-title p {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--ink-3);
+      font-size: 12px;
+    }
+    .viewer-actions { display: flex; align-items: center; flex-shrink: 0; gap: 6px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 17px;
+      height: 17px;
+      padding: 0 5px;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #fff;
+      font: 600 10.5px/1 var(--font-mono);
+    }
+    .ver-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--surface-2);
+      color: var(--ink-2);
+      font: 600 11px/1.3 var(--font-mono);
+    }
+    #viewer-version { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+    #theme-toggle .icon { display: none; }
+    :root[data-theme-mode="auto"] #theme-toggle .icon-auto { display: block; }
+    :root[data-theme-mode="light"] #theme-toggle .icon-light { display: block; }
+    :root[data-theme-mode="dark"] #theme-toggle .icon-dark { display: block; }
 
-    dialog { width: 408px; max-width: calc(100% - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 32px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: #fff; box-shadow: 0 24px 90px #24372c26; }
-    dialog::backdrop { background: #e8ede8d9; backdrop-filter: blur(4px); }
-    .login-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 27px; color: var(--muted); font-size: 12px; }
-    dialog h2 { font-size: 22px; font-weight: 600; letter-spacing: -.4px; }
-    .login-description { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.9; }
-    dialog label { display: block; margin: 26px 0 9px; font-size: 12px; font-weight: 500; }
-    dialog input { width: 100%; height: 44px; padding: 10px 12px; border: 1px solid #d5ddd6; border-radius: 7px; color: var(--ink); background: #fff; font-size: 16px; }
-    dialog input[aria-invalid="true"] { border-color: var(--danger); }
-    dialog .primary { width: 100%; min-height: 43px; margin-top: 17px; font-size: 13px; }
-    #login-error { min-height: 19px; margin-top: 12px; color: var(--danger); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
-    #notice { position: fixed; z-index: 50; bottom: 44px; left: 50%; width: max-content; max-width: calc(100% - 32px); transform: translateX(-50%); padding: 10px 16px; border: 1px solid #dce4dd; border-radius: 8px; background: #fff; color: var(--ink); box-shadow: 0 5px 22px #24372c1c; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+    .history-banner {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 7px 16px;
+      border-bottom: 1px solid var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--ink);
+      font-size: 12.5px;
+    }
+    #history-label { flex: 1; min-width: 120px; overflow-wrap: anywhere; font-weight: 500; }
+
+    .viewer-body { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+    .stage { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--surface); }
+    #preview { display: block; width: 100%; height: 100%; border: 0; background: transparent; }
+    .stage:fullscreen { width: 100%; height: 100%; background: var(--surface); }
+    #exit-fullscreen { position: absolute; right: 16px; top: 14px; z-index: 5; box-shadow: var(--shadow); }
+
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      padding: 28px;
+      background: var(--surface);
+      text-align: center;
+    }
+    .placeholder h2 { font-size: 15px; font-weight: 600; color: var(--ink); }
+    .placeholder p { max-width: 300px; margin-top: 6px; color: var(--ink-3); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+    .placeholder .btn { margin-top: 16px; }
+    .spinner { width: 18px; height: 18px; margin-bottom: 12px; border: 2px solid var(--border); border-top-color: var(--ink); border-radius: 50%; animation: spin .75s linear infinite; }
+    .placeholder:not([data-loading="true"]) .spinner { display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    @media (max-width: 1100px) and (min-width: 761px) {
-      .library { flex-basis: 250px; width: 250px; }
-      .viewer-toolbar { padding: 12px 16px; }
-      .viewer-title { flex-basis: 100%; }
-      .viewer-actions { margin-left: auto; }
+    /* Raft Comments Panel */
+    .comments-panel {
+      display: flex;
+      flex-direction: column;
+      flex: 0 0 364px;
+      width: 364px;
+      min-height: 0;
+      border-left: 1px solid var(--border);
+      background: var(--bg);
     }
-    @media (max-width: 760px) {
-      :root { --bar-height: 52px; }
-      .appbar { gap: 8px; padding: 0 12px; }
-      .appbar-start { gap: 12px; }
-      .brand { gap: 7px; font-size: 13px; }
-      .brand-mark { width: 23px; height: 23px; border-radius: 6px; }
-      .brand-mark .icon { width: 16px; height: 16px; }
-      .connection { margin: 0 6px 0 0; }
-      .connection span, .refresh-label { display: none; }
-      #refresh { width: 34px; padding: 7px; }
-      .appbar-actions { gap: 2px; }
-      .library { position: fixed; z-index: 30; inset: 0 auto 0 0; width: min(340px, calc(100% - 40px)); border-right: 0; box-shadow: 8px 0 35px #26332f1a; }
-      .library-top { padding-top: 23px; }
-      .library-heading { margin-bottom: 20px; }
-      .library-heading h2 { font-size: 16px; }
-      #close-library { width: 40px; height: 40px; }
-      .search { height: 42px; }
-      .search input { font-size: 16px; }
-      .search-hint kbd { display: none; }
-      .library-foot { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
-      .nav-backdrop { position: fixed; z-index: 20; inset: 0; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: #26332f38; }
-      .viewer-toolbar { display: block; min-height: 0; padding: 12px 14px 10px; }
-      .viewer-title h1 { font-size: 14px; }
-      .viewer-title p { font-size: 10px; }
-      .viewer-actions { justify-content: flex-end; gap: 7px; margin-top: 11px; }
-      .viewer-actions > .button { min-height: 36px; }
-      .viewer-footer { min-height: 28px; padding: 5px 14px max(5px, env(safe-area-inset-bottom)); }
-      .share-hint { display: none; }
-      .placeholder { padding: 24px; }
-      dialog { padding: 27px 24px; }
+    .comments-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 var(--bar-h);
+      height: var(--bar-h);
+      padding: 0 12px 0 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
     }
-    @media (max-width: 360px) {
-      .brand-mark, .connection { display: none; }
-      .appbar-start { gap: 9px; }
-      .viewer-actions { gap: 4px; }
-      .viewer-actions .button { padding-left: 7px; padding-right: 7px; }
+    .comments-head h2 { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+
+    .comment-composer {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: grid;
+      gap: 10px;
     }
-    @media (prefers-reduced-motion: reduce) {
-      .spinner, #refresh[aria-busy="true"] .icon { animation: none; }
+    .anchor-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border: 1px solid var(--accent-border);
+      border-radius: 7px;
+      background: var(--accent-soft);
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--ink);
+    }
+    .anchor-chip .icon { width: 14px; height: 14px; color: var(--accent); }
+    .anchor-chip-quote {
+      flex: 1;
+      min-width: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      color: var(--ink-2);
+    }
+    .anchor-box-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+      color: var(--accent);
+      font-weight: 500;
+      font-size: 12px;
+    }
+    .anchor-clear {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--ink-2);
+      font-size: 16px;
+      line-height: 1;
+    }
+    .anchor-clear:hover { background: var(--hover); color: var(--ink); }
+
+    .comment-composer textarea, .reply-box textarea, .edit-box textarea {
+      width: 100%;
+      min-height: 68px;
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.55;
+      resize: vertical;
+      transition: border-color 110ms ease, background 110ms ease;
+    }
+    .comment-composer textarea:focus, .reply-box textarea:focus, .edit-box textarea:focus {
+      border-color: var(--accent);
+      background: var(--surface);
+      outline: none;
+    }
+    .composer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+
+    .comments-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+    }
+    .comments-empty { padding: 40px 16px; text-align: center; color: var(--ink-3); font-size: 12.5px; line-height: 1.8; }
+
+    .comment-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 13px 14px;
+      display: grid;
+      gap: 10px;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .comment-card:hover { border-color: var(--border-strong); }
+    .comment-card.flash { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .comment-card.resolved { background: var(--bg); opacity: .86; }
+    .comment-card.resolved .comment-body { color: var(--ink-2); }
+
+    .comment-meta { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-3); }
+    .avatar-dot {
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      color: var(--ink);
+      font: 700 10.5px/1 var(--font-sans);
+      flex: none;
+    }
+    .avatar-dot.agent { background: var(--accent-soft); color: var(--accent); }
+    .comment-author { font-weight: 600; color: var(--ink); font-size: 12.5px; }
+    .comment-ver {
+      padding: 1px 6px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--bg);
+      color: var(--ink-2);
+      font: 600 10.5px/1.35 var(--font-mono);
+    }
+    .comment-ver:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .comment-locate {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 1px solid var(--accent-border);
+      border-radius: 5px;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .comment-locate:hover { border-color: var(--accent); }
+    .comment-locate .icon { width: 13px; height: 13px; }
+    .comment-time { margin-left: auto; font-size: 11px; color: var(--ink-3); }
+
+    .comment-quote-btn {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      background: var(--bg);
+      text-align: left;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--ink-2);
+    }
+    .comment-quote-btn:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--ink); }
+
+    .comment-body { font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+    .comment-replies { display: grid; gap: 10px; padding: 2px 0 2px 12px; border-left: 2px solid var(--border); }
+    .comment-reply { display: grid; gap: 3px; }
+    .comment-reply-head { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); }
+    .comment-reply-head strong { color: var(--ink); font-size: 12px; font-weight: 600; }
+    .comment-reply .comment-body { font-size: 13px; }
+
+    .comment-actions { display: flex; align-items: center; gap: 4px; padding-top: 6px; border-top: 1px solid var(--border); }
+    .link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .link-btn:hover:not(:disabled) { background: var(--hover); color: var(--ink); }
+    .link-btn.accent { color: var(--accent); font-weight: 600; }
+    .link-btn.accent:hover:not(:disabled) { background: var(--accent-soft); }
+    .link-btn.quiet { color: var(--ink-3); font-weight: 400; opacity: .7; }
+    .comment-card:hover .link-btn.quiet { opacity: 1; }
+    .link-btn.push-right { margin-left: auto; }
+    .link-btn.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
+
+    .resolved-note { font-size: 11.5px; color: var(--ink-3); }
+    .reply-box, .edit-box { display: grid; gap: 8px; }
+    .reply-box-actions, .edit-box-actions { display: flex; justify-content: flex-end; gap: 6px; }
+
+    .resolved-section { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .resolved-section > summary {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 8px;
+      border-radius: 7px;
+      color: var(--ink-2);
+      font-size: 12.5px;
+      font-weight: 500;
+      user-select: none;
+      list-style: none;
+    }
+    .resolved-section > summary::-webkit-details-marker { display: none; }
+    .resolved-section > summary:hover { background: var(--hover); color: var(--ink); }
+    .resolved-section > summary::before { content: "▸"; font-size: 10px; color: var(--ink-3); transition: transform 120ms ease; }
+    .resolved-section[open] > summary::before { transform: rotate(90deg); }
+    .resolved-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+
+    /* Context Menu */
+    .context-target { box-shadow: inset 0 0 0 1px var(--border-strong); background: var(--hover) !important; }
+    .context-menu {
+      position: fixed;
+      z-index: 60;
+      width: 196px;
+      max-width: calc(100vw - 16px);
+      max-height: calc(100dvh - 16px);
+      overflow-y: auto;
+      padding: 5px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .context-label { padding: 5px 8px 6px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+    .context-menu [role="menuitem"] {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-height: 31px;
+      padding: 5px 8px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      text-align: left;
+      text-decoration: none;
+      font-size: 12.5px;
+    }
+    .context-menu [role="menuitem"]:hover, .context-menu [role="menuitem"]:focus { outline: none; background: var(--hover); }
+    .context-menu [role="menuitem"].danger { color: var(--danger); }
+    .context-menu [role="menuitem"].danger:hover, .context-menu [role="menuitem"].danger:focus { background: var(--danger-soft); }
+    .context-menu [role="menuitem"]:disabled { color: var(--ink-3); background: transparent; }
+    .context-menu [role="separator"] { height: 1px; margin: 4px; background: var(--border); }
+
+    /* Dialogs */
+    dialog {
+      width: 380px;
+      max-width: calc(100% - 28px);
+      max-height: calc(100dvh - 28px);
+      overflow-y: auto;
+      margin: auto;
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: var(--shadow-lg);
+    }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.42); backdrop-filter: blur(4px); }
+    dialog.panel { width: 520px; }
+    .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .dialog-heading h2, dialog h2 { min-width: 0; font-size: 16px; font-weight: 600; letter-spacing: -.015em; overflow-wrap: anywhere; }
+    .login-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 18px; color: var(--ink-2); font-size: 13px; font-weight: 600; }
+    .login-description { margin-top: 6px; color: var(--ink-3); font-size: 12.5px; line-height: 1.6; }
+    dialog label { display: block; margin: 14px 0 6px; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+    dialog input, dialog select {
+      width: 100%;
+      height: 36px;
+      padding: 0 11px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      color: var(--ink);
+      background: var(--bg);
+      font-size: 13px;
+    }
+    dialog input:focus, dialog select:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+    dialog input[aria-invalid="true"] { border-color: var(--danger); }
+    #login .primary { width: 100%; height: 36px; margin-top: 14px; font-size: 13px; }
+    #login-cancel { width: 100%; height: 34px; margin-top: 6px; }
+    #login-error, .dialog-error { min-height: 16px; margin-top: 10px; color: var(--danger); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .dialog-actions .btn { height: 32px; padding: 0 12px; }
+    .subtle { margin-top: 8px; color: var(--ink-3); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+    .code-field {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      margin-top: 12px;
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--ink);
+      font: 11.5px/1.6 var(--font-mono);
+      overflow-wrap: anywhere;
+    }
+    textarea.code-field { resize: vertical; min-height: 110px; white-space: pre-wrap; }
+    #api-secret { font-family: var(--font-mono); font-size: 12px; }
+    #api-unlock { margin-top: 10px; }
+
+    #versions-list { margin-top: 12px; }
+    .version-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+    .version-row:last-child { border-bottom: 0; }
+    .row-copy { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 12.5px; line-height: 1.55; }
+    .row-copy small { display: block; margin-top: 2px; color: var(--ink-3); font-size: 11.5px; }
+    .version-title-line { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+    .version-current-tag { padding: 1px 6px; border-radius: 4px; background: var(--primary); color: var(--primary-fg); font-size: 10.5px; font-weight: 600; }
+    .version-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+
+    #notice {
+      position: fixed;
+      z-index: 70;
+      bottom: 20px;
+      left: 50%;
+      width: max-content;
+      max-width: calc(100% - 32px);
+      transform: translateX(-50%);
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--primary);
+      color: var(--primary-fg);
+      box-shadow: var(--shadow);
+      font-size: 12.5px;
+      font-weight: 500;
     }
 
-    .folder { margin: 1px 0; min-width: 0; }
-    .folder > summary { display: flex; align-items: center; gap: 6px; height: 32px; padding: 5px 6px; border-radius: 5px; cursor: pointer; list-style: none; }
-    .folder > summary::-webkit-details-marker { display: none; }
-    .folder > summary > .chevron { width: 12px; height: 12px; color: var(--muted); }
-    .folder[open] > summary > .chevron { transform: rotate(90deg); }
-    .folder > summary > .folder-icon { width: 16px; height: 16px; color: #a3874b; }
-    .folder > summary:hover { background: #edf1ee; }
-    [draggable="true"] { cursor: grab; }
-    .drag-source { opacity: .45; }
-    .drop-target { background: #dceee5 !important; outline: 2px solid var(--accent); outline-offset: -2px; }
-    .drop-invalid { background: #f9e8e4 !important; outline: 2px solid var(--danger); outline-offset: -2px; }
-    #drag-status { margin: 0 0 7px; color: var(--accent); font-size: 11px; }
-    #drag-status[data-error="true"] { color: var(--danger); }
-    .folder > summary[aria-current="location"] { background: var(--accent-soft); color: var(--accent); }
-    .folder-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-    .folder-children { margin-left: 12px; padding-left: 9px; border-left: 1px solid #dce3dd; }
-    .folder-children > .folder > summary, .folder-children > .report { position: relative; }
-    .folder-children > .folder > summary::before, .folder-children > .report::after { content: ""; position: absolute; left: -9px; top: 16px; width: 8px; border-top: 1px solid #dce3dd; }
-    .folder-empty { padding: 5px 6px 5px 40px; color: var(--muted); font-size: 11px; }
-    .context-target { box-shadow: inset 0 0 0 1px #9eb9ad; background: #eff4f0; }
-    .context-menu { position: fixed; z-index: 60; width: 208px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow-y: auto; padding: 5px; border: 1px solid #d9e1da; border-radius: 8px; background: #fff; box-shadow: 0 8px 32px #26332f26; }
-    .context-label { padding: 5px 9px 7px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
-    .context-menu [role="menuitem"] { display: flex; align-items: center; width: 100%; min-height: 32px; padding: 6px 9px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); text-align: left; text-decoration: none; font-size: 12px; }
-    .context-menu [role="menuitem"]:hover, .context-menu [role="menuitem"]:focus { outline: none; background: var(--accent-soft); }
-    .context-menu [role="menuitem"].danger { color: var(--danger); }
-    .context-menu [role="menuitem"]:disabled { color: var(--muted); background: transparent; }
-    .context-menu [role="separator"] { height: 1px; margin: 4px 3px; background: var(--line); }
-    .history-banner { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 7px 16px; border-bottom: 1px solid var(--line); background: var(--accent-soft); font-size: 12px; }
-    #history-label { flex: 1; min-width: 100px; overflow-wrap: anywhere; }
-    dialog.panel { width: 560px; padding: 22px; }
-    .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .dialog-heading h2 { min-width: 0; font-size: 18px; overflow-wrap: anywhere; }
-    .dialog-heading .button { flex: none; }
-    .panel label { margin: 18px 0 7px; }
-    .panel input, .panel select { height: 40px; font-size: 14px; }
-    .panel select { width: 100%; padding: 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: #fff; }
-    .panel .primary { width: auto; min-height: 34px; margin: 0; font-size: 12px; }
-    .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-    .dialog-error { min-height: 18px; margin-top: 12px; color: var(--danger); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
-    .subtle { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
-    .danger { color: var(--danger); }
-    .code-field { display: block; width: 100%; max-width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--soft); color: var(--ink); font: 11px/1.7 ui-monospace, monospace; overflow-wrap: anywhere; }
-    textarea.code-field { resize: vertical; min-height: 105px; white-space: pre-wrap; }
-    #api-secret { font-family: ui-monospace, monospace; font-size: 12px; }
-    .version-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-    .row-copy { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 12px; line-height: 1.7; }
-    .row-copy small { display: block; color: var(--muted); font-size: 10px; }
-    #versions-list { margin-top: 12px; }
-    #api-unlock { margin-top: 10px; }
-    #login-cancel { width: 100%; margin-top: 7px; }
+    @media (max-width: 960px) {
+      .comments-panel { position: absolute; z-index: 15; inset: 0 0 0 auto; width: min(364px, 100%); box-shadow: var(--shadow-lg); }
+      .viewer-title p { display: none; }
+    }
     @media (max-width: 760px) {
-      dialog.panel { padding: 18px; }
-      .viewer-actions { flex-wrap: wrap; }
-      .panel input, .panel select { font-size: 16px; }
-      .panel .code-field, #api-secret { font-size: 12px; }
-      .history-banner { padding-inline: 12px; }
+      .library {
+        position: fixed;
+        z-index: 30;
+        inset: 0 auto 0 0;
+        width: min(300px, calc(100% - 44px));
+        border-right: 0;
+        box-shadow: var(--shadow-lg);
+      }
+      .search input, dialog input, dialog select { font-size: 16px; }
+      .nav-backdrop { position: fixed; z-index: 20; inset: 0; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: rgba(0, 0, 0, 0.4); }
+      .viewer-toolbar { padding: 0 10px; gap: 8px; }
+      .viewer-actions { gap: 4px; }
+      .btn { padding: 0 8px; }
+      dialog { padding: 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .spinner { animation: none; }
     }
   </style>
 </head>
 <body>
-  <header class="appbar" id="appbar">
-    <div class="appbar-start">
-      <button id="nav-toggle" class="button" type="button" aria-label="收起图解列表" aria-controls="library" aria-expanded="true" title="展开或收起图解列表">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M5.5 8h1M5.5 12h1"/></svg>
-        <span>图解</span>
-      </button>
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><path d="M14 15h6m-6 5h6"/></svg></span>
-        <span>图解工作台</span>
-      </div>
-    </div>
-    <div class="appbar-actions">
-      <span id="connection" class="connection" data-state="pending" title="正在连接服务"><span>连接中</span></span>
-      <button id="refresh" class="button" type="button" aria-label="刷新图解列表" title="刷新图解列表">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></svg>
-        <span class="refresh-label">刷新</span>
-      </button>
-      <button id="admin-unlock" class="button" type="button" title="当前为只读查看，登录后可编辑" hidden>登录</button>
-      <button id="logout" class="button" type="button" hidden>退出</button>
-    </div>
-  </header>
-
   <main class="workspace">
-    <button id="nav-backdrop" class="nav-backdrop" type="button" aria-label="关闭图解列表" tabindex="-1" hidden></button>
-    <aside id="library" class="library" aria-labelledby="library-title">
-      <div class="library-top">
-        <div class="library-heading">
-          <h2 id="library-title">图解库</h2>
-          <span id="count" class="count" aria-label="图解数量">—</span>
-          <button id="close-library" class="button icon-button" type="button" aria-label="收起图解列表" title="收起图解列表">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/></svg>
-          </button>
+    <button id="nav-backdrop" class="nav-backdrop" type="button" aria-label="Close sidebar" tabindex="-1" hidden></button>
+    <aside id="library" class="library" aria-label="Library">
+      <div class="library-bar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><path d="M14 15h6m-6 5h6"/></svg></span>
+          <span>Visual Explainer</span>
         </div>
+        <button id="close-library" class="btn icon-only" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+        </button>
+      </div>
+      <div class="library-search-wrap">
         <label class="search">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
-          <input id="search" type="search" placeholder="搜索标题或路径" aria-label="搜索标题或路径" aria-keyshortcuts="Control+k Meta+k" autocomplete="off">
+          <input id="search" type="search" placeholder="Search…" aria-label="Search diagrams" aria-keyshortcuts="Control+k Meta+k" autocomplete="off">
         </label>
-        <div class="search-hint"><span id="list-caption">文件夹与图解</span><span title="聚焦条目后，也可按 Shift+F10 打开菜单；Ctrl K 搜索">右键操作</span></div>
       </div>
-      <nav class="folder-location" aria-label="当前文件夹">
-        <button id="folder-root" class="button" type="button" aria-current="location" data-context-kind="root" data-drop-entity-id="" data-drop-path="" title="根目录 · 右键新建文件夹" aria-keyshortcuts="Shift+F10">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2-3h9v16H3zM3 7h18"/></svg>根目录
+      <nav class="folder-location" aria-label="Root">
+        <button id="folder-root" class="btn" type="button" aria-current="location" data-context-kind="root" data-drop-entity-id="" data-drop-path="" title="Root" aria-keyshortcuts="Shift+F10">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2-3h9v16H3z"/></svg>
+          <span>Root</span>
         </button>
         <span id="folder-location" class="sr-only"></span>
       </nav>
-      <nav id="list" aria-label="文件夹与图解" aria-busy="true" tabindex="-1"></nav>
-      <div class="library-foot">
-        <p id="drag-status" role="status" aria-live="polite" hidden></p>
-        <span id="sync" role="status">正在读取图解…</span>
-        <span>页面可见时，每 15 秒自动更新</span>
+      <nav id="list" aria-label="Folders and diagrams" aria-busy="true" tabindex="-1"></nav>
+      <div class="library-account" id="library-account" hidden>
+        <button id="admin-unlock" class="btn" type="button" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-5-4 5-5-5-5m5 5H3"/></svg>
+          <span>Sign in</span>
+        </button>
+        <button id="logout" class="btn" type="button" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9"/></svg>
+          <span>Sign out</span>
+        </button>
       </div>
     </aside>
 
-    <section id="viewer" class="viewer" aria-label="图解阅读器">
-      <div class="viewer-toolbar">
-        <div class="viewer-title">
-          <h1 id="page-title" tabindex="0" aria-keyshortcuts="Shift+F10">图解阅读器</h1>
-          <p id="page-meta">从列表中选择一份图解</p>
+    <section id="viewer" class="viewer" aria-label="Viewer">
+      <header class="viewer-toolbar">
+        <div class="viewer-head-left">
+          <button id="nav-toggle" class="btn icon-only" type="button" aria-label="Open sidebar" aria-controls="library" aria-expanded="true" title="Open sidebar" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+          </button>
+          <div class="viewer-title">
+            <h1 id="page-title" tabindex="0" aria-keyshortcuts="Shift+F10">Visual Explainer</h1>
+            <p id="page-meta"></p>
+          </div>
         </div>
         <div class="viewer-actions">
-          <button id="fullscreen" class="button icon-button" type="button" aria-label="全屏阅读" aria-pressed="false" title="全屏阅读" disabled>
+          <button id="viewer-version" class="btn bordered" type="button" title="Version history" hidden>
+            <span id="viewer-version-label">v1</span>
+          </button>
+          <button id="comments-toggle" class="btn bordered" type="button" aria-expanded="false" aria-controls="comments-panel" title="Comments" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2.5v-10A7.5 7.5 0 0 1 10.5 4h3A7.5 7.5 0 0 1 21 11.5z"/></svg>
+            <span>Comments</span>
+            <span id="comments-badge" class="pill" hidden>0</span>
+          </button>
+          <button id="viewer-api" class="btn icon-only" type="button" aria-label="File API" title="File API" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9m-4 4 2 2m1-5 2 2"/></svg>
+          </button>
+          <button id="theme-toggle" class="btn icon-only" type="button" aria-label="Theme: Auto" title="Theme: Auto">
+            <svg class="icon icon-auto" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>
+            <svg class="icon icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/></svg>
+            <svg class="icon icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/></svg>
+          </button>
+          <button id="fullscreen" class="btn icon-only" type="button" aria-label="Fullscreen" aria-pressed="false" title="Fullscreen" disabled>
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>
           </button>
-          <a id="open" class="button bordered" target="_blank" rel="noopener noreferrer" title="在新标签页打开；持有链接的人可直接访问此图解" hidden>
-            独立打开
+          <a id="open" class="btn icon-only" target="_blank" rel="noopener noreferrer" aria-label="Open in new tab" title="Open in new tab" hidden>
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7m0-7L10 14M10 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>
           </a>
         </div>
-      </div>
+      </header>
+
       <div id="history-banner" class="history-banner" hidden>
         <span id="history-label"></span>
-        <button id="history-current" class="button bordered" type="button">返回当前</button>
-        <button id="history-restore" class="button" type="button">恢复此版</button>
+        <button id="history-current" class="btn bordered" type="button">Back to current</button>
+        <button id="history-restore" class="btn primary" type="button">Restore</button>
       </div>
-      <div id="stage" class="stage" aria-busy="true">
-        <div id="placeholder" class="placeholder" data-loading="true" role="status">
-          <div class="placeholder-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg>
-            <span class="spinner"></span>
+
+      <div class="viewer-body">
+        <div id="stage" class="stage" aria-busy="true">
+          <div id="placeholder" class="placeholder" data-loading="true" role="status">
+            <span class="spinner" aria-hidden="true"></span>
+            <h2 id="placeholder-title">Loading</h2>
+            <p id="placeholder-description"></p>
+            <button id="placeholder-action" class="btn bordered" type="button" hidden></button>
           </div>
-          <h2 id="placeholder-title">正在读取图解</h2>
-          <p id="placeholder-description">稍候，正在获取图解列表。</p>
-          <button id="placeholder-action" class="button bordered" type="button" hidden></button>
+          <iframe id="preview" title="Diagram preview" sandbox="allow-scripts" hidden></iframe>
+          <button id="exit-fullscreen" class="btn bordered" type="button" hidden>Exit fullscreen</button>
         </div>
-        <iframe id="preview" title="图解预览" sandbox="allow-scripts" hidden></iframe>
-        <button id="exit-fullscreen" class="button bordered" type="button" hidden>退出全屏</button>
-      </div>
-      <div class="viewer-footer">
-        <span id="page-detail">等待选择图解</span>
-        <span class="share-hint" title="持有独立链接的人无需登录即可访问对应图解">独立链接请谨慎分享</span>
+
+        <aside id="comments-panel" class="comments-panel" aria-label="Comments" hidden>
+          <div class="comments-head">
+            <h2><span>Comments</span><span id="comments-version-tag" class="ver-pill" hidden></span></h2>
+            <button id="pick-element" class="btn bordered" type="button" aria-pressed="false" title="Pick an element on the diagram" hidden>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2"/></svg>
+              <span id="pick-element-label">Pick</span>
+            </button>
+            <button id="comments-close" class="btn icon-only" type="button" aria-label="Close comments" title="Close">×</button>
+          </div>
+          <form id="comment-composer" class="comment-composer" hidden>
+            <div id="comment-anchor" class="anchor-chip" hidden>
+              <span id="comment-anchor-box" class="anchor-box-pill" hidden>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2"/></svg>
+                <span>Selected area</span>
+              </span>
+              <span id="comment-anchor-quote" class="anchor-chip-quote" hidden></span>
+              <button id="comment-anchor-clear" class="anchor-clear" type="button" title="Clear selection" aria-label="Clear selection">×</button>
+            </div>
+            <textarea id="comment-input" placeholder="Write a comment… (⌘↵)" maxlength="8000" required></textarea>
+            <div class="composer-actions">
+              <button id="comment-submit" class="btn primary" type="submit">Post</button>
+            </div>
+          </form>
+          <div id="comments-list" class="comments-list"></div>
+        </aside>
       </div>
     </section>
   </main>
+
+  <p id="drag-status" role="status" aria-live="polite" hidden></p>
 
   <dialog id="login" aria-labelledby="login-title" aria-describedby="login-description">
     <form id="login-form">
       <div class="login-brand">
         <span class="brand-mark" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><path d="M14 15h6m-6 5h6"/></svg></span>
-        图解工作台
+        <span>Visual Explainer</span>
       </div>
-      <h2 id="login-title">登录工作台</h2>
-      <p id="login-description" class="login-description">输入访问密钥。</p>
-      <label for="key">访问密钥</label>
+      <h2 id="login-title">Sign in</h2>
+      <p id="login-description" class="login-description">Enter your access key.</p>
+      <label for="key">Access key</label>
       <input id="key" name="key" type="password" autocomplete="off" aria-describedby="login-error" required>
-      <button id="login-submit" class="button primary" type="submit">进入工作台</button>
-      <button id="login-cancel" class="button" type="button" hidden>取消</button>
+      <button id="login-submit" class="btn primary" type="submit">Continue</button>
+      <button id="login-cancel" class="btn" type="button" hidden>Cancel</button>
       <p id="login-error" role="alert"></p>
     </form>
   </dialog>
+
   <dialog id="edit-dialog" class="panel" aria-labelledby="edit-title">
     <form id="edit-form">
       <div class="dialog-heading">
         <h2 id="edit-title"></h2>
-        <button class="button icon-button" type="button" data-close="edit-dialog" aria-label="关闭">×</button>
+        <button class="btn icon-only" type="button" data-close="edit-dialog" aria-label="Close">×</button>
       </div>
       <div id="edit-name-field" hidden>
-        <label id="edit-name-label" for="edit-name">文件夹名称</label>
+        <label id="edit-name-label" for="edit-name">Name</label>
         <input id="edit-name" autocomplete="off" maxlength="120">
       </div>
       <div id="edit-path-field">
-        <label id="edit-path-label" for="edit-path">路径</label>
+        <label id="edit-path-label" for="edit-path">Path</label>
         <input id="edit-path" autocomplete="off" spellcheck="false" required>
       </div>
       <div id="edit-entity-field" hidden>
-        <label for="edit-entity">目标文件夹</label>
+        <label for="edit-entity">Destination folder</label>
         <select id="edit-entity"></select>
       </div>
       <p id="edit-hint" class="subtle"></p>
       <p id="edit-error" class="dialog-error" role="alert"></p>
       <div class="dialog-actions">
-        <button id="edit-submit" class="button primary" type="submit">保存</button>
+        <button id="edit-submit" class="btn primary" type="submit">Save</button>
       </div>
     </form>
   </dialog>
+
   <dialog id="api-dialog" class="panel" aria-labelledby="api-title">
     <div class="dialog-heading">
-      <h2 id="api-title">文件夹 API</h2>
-      <button class="button icon-button" type="button" data-close="api-dialog" aria-label="关闭">×</button>
+      <h2 id="api-title">Folder API</h2>
+      <button class="btn icon-only" type="button" data-close="api-dialog" aria-label="Close">×</button>
     </div>
     <p id="api-base" class="code-field"></p>
-    <button id="api-unlock" class="button bordered" type="button" hidden>登录</button>
+    <button id="api-unlock" class="btn bordered" type="button" hidden>Sign in</button>
     <section id="api-admin" hidden>
       <label for="api-secret">Key</label>
       <input id="api-secret" readonly autocomplete="off" spellcheck="false" aria-describedby="api-expiry">
-      <label for="api-validity">有效期</label>
+      <label for="api-validity">Expiration</label>
       <select id="api-validity" aria-describedby="api-expiry">
-        <option value="86400">1 天</option>
-        <option value="604800" selected>7 天</option>
-        <option value="2592000">30 天</option>
-        <option value="none">不过期</option>
+        <option value="86400">1 day</option>
+        <option value="604800" selected>7 days</option>
+        <option value="2592000">30 days</option>
+        <option value="none">Never</option>
       </select>
       <p id="api-expiry" class="subtle" aria-live="polite"></p>
       <div class="dialog-actions">
-        <button id="copy-api" class="button bordered" type="button" disabled>复制提示词与命令</button>
+        <button id="copy-api" class="btn primary" type="button" disabled>Copy prompt &amp; commands</button>
       </div>
-      <textarea id="api-payload" class="code-field" rows="8" readonly spellcheck="false" aria-label="提示词与命令" hidden></textarea>
+      <textarea id="api-payload" class="code-field" rows="8" readonly spellcheck="false" aria-label="Prompt and commands" hidden></textarea>
     </section>
     <p id="api-scope" class="subtle"></p>
     <p id="api-status" class="dialog-error" role="status"></p>
   </dialog>
+
   <dialog id="versions-dialog" class="panel" aria-labelledby="versions-title">
     <div class="dialog-heading">
-      <h2 id="versions-title">版本</h2>
-      <button class="button icon-button" type="button" data-close="versions-dialog" aria-label="关闭">×</button>
+      <h2 id="versions-title">Version history</h2>
+      <button class="btn icon-only" type="button" data-close="versions-dialog" aria-label="Close">×</button>
     </div>
     <p id="versions-path" class="subtle"></p>
     <div id="versions-list"></div>
     <p id="versions-error" class="dialog-error" role="alert"></p>
-    <button id="versions-retry" class="button bordered" type="button" hidden>重试</button>
+    <button id="versions-retry" class="btn bordered" type="button" hidden>Retry</button>
   </dialog>
+
   <dialog id="confirm-dialog" class="panel" aria-labelledby="confirm-title">
     <form id="confirm-form">
       <div class="dialog-heading">
         <h2 id="confirm-title"></h2>
-        <button class="button icon-button" type="button" data-close="confirm-dialog" aria-label="关闭">×</button>
+        <button class="btn icon-only" type="button" data-close="confirm-dialog" aria-label="Close">×</button>
       </div>
       <p id="confirm-detail" class="subtle"></p>
       <p id="confirm-error" class="dialog-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="button bordered" type="button" data-close="confirm-dialog">取消</button>
-        <button id="confirm-submit" class="button primary" type="submit">确认</button>
+        <button class="btn bordered" type="button" data-close="confirm-dialog">Cancel</button>
+        <button id="confirm-submit" class="btn primary" type="submit">Confirm</button>
       </div>
     </form>
   </dialog>
-  <div id="context-menu" class="context-menu" role="menu" aria-label="文件操作" hidden></div>
+
+  <div id="context-menu" class="context-menu" role="menu" aria-label="Actions" hidden></div>
   <div id="notice" role="status" hidden></div>
 
   <script>
     const $ = id => document.getElementById(id);
     const compact = window.matchMedia('(max-width: 760px)');
-    const dates = new Intl.DateTimeFormat('zh-CN', {
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
-    const times = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    const dates = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
     const POLL_INTERVAL = 15000;
     const REQUEST_TIMEOUT = 15000;
+
     let pages = [];
     let entityCatalog = { entities: [], unassignedCount: 0, totalCount: 0 };
     let currentFolder = { entityId: null, path: '' };
@@ -536,7 +1010,6 @@
     let editContext = null;
     let confirmation = null;
     let apiContext = null;
-    // One-time secrets stay in this page's memory only, never browser storage.
     const apiKeys = new Map();
     let versionsRequest = null;
     let dragging = null;
@@ -547,11 +1020,64 @@
     let contextMenuState = null;
     let versionsPage = null;
 
+    let commentsPanelOpen = false;
+    let pickMode = false;
+    let commentThreads = [];
+    let commentCounts = { open: 0, resolved: 0, total: 0 };
+    let currentPageVersion = null;
+    let commentAnchor = null;
+    let commentsRequest = null;
+    let openReplyBoxId = null;
+    let openEditBoxId = null;
+    let resolvedExpanded = false;
+
+    /* Theme (Auto / Light / Dark) */
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+    function currentThemeMode() {
+      const m = document.documentElement.dataset.themeMode;
+      return m === 'light' || m === 'dark' ? m : 'auto';
+    }
+    function currentTheme() {
+      const mode = currentThemeMode();
+      return mode === 'auto' ? (systemDark.matches ? 'dark' : 'light') : mode;
+    }
+    function applyTheme(mode, persist = false) {
+      const nextMode = mode === 'light' || mode === 'dark' ? mode : 'auto';
+      const resolved = nextMode === 'auto' ? (systemDark.matches ? 'dark' : 'light') : nextMode;
+      const root = document.documentElement;
+      root.classList.add('theme-switching');
+      root.dataset.themeMode = nextMode;
+      root.dataset.theme = resolved;
+      root.style.colorScheme = resolved;
+      void root.offsetHeight;
+      root.classList.remove('theme-switching');
+      const labels = { auto: 'Theme: Auto', light: 'Theme: Light', dark: 'Theme: Dark' };
+      $('theme-toggle').setAttribute('aria-label', labels[nextMode]);
+      $('theme-toggle').title = labels[nextMode];
+      if (persist) {
+        try {
+          if (nextMode === 'auto') localStorage.removeItem('ve-theme');
+          else localStorage.setItem('ve-theme', nextMode);
+        } catch {}
+      }
+      sendToIframe({ type: 've-theme', mode: nextMode === 'auto' ? 'auto' : 'manual', theme: resolved });
+    }
+    $('theme-toggle').addEventListener('click', () => {
+      const mode = currentThemeMode();
+      const next = mode === 'auto' ? (systemDark.matches ? 'light' : 'dark')
+        : mode === 'dark' ? (systemDark.matches ? 'auto' : 'light')
+        : (systemDark.matches ? 'dark' : 'auto');
+      applyTheme(next, true);
+    });
+    systemDark.addEventListener('change', () => {
+      if (currentThemeMode() === 'auto') applyTheme('auto', false);
+    });
+
     function notify(message) {
       clearTimeout(noticeTimer);
       $('notice').textContent = message;
       $('notice').hidden = false;
-      noticeTimer = setTimeout(() => { $('notice').hidden = true; }, 5000);
+      noticeTimer = setTimeout(() => { $('notice').hidden = true; }, 3800);
     }
 
     function applyNavigation() {
@@ -559,9 +1085,8 @@
       const modal = compact.matches && open;
       $('library').hidden = !open;
       $('nav-backdrop').hidden = !modal;
+      $('nav-toggle').hidden = open && !compact.matches;
       $('nav-toggle').setAttribute('aria-expanded', String(open));
-      $('nav-toggle').setAttribute('aria-label', open ? '收起图解列表' : '打开图解列表');
-      $('appbar').inert = modal;
       $('viewer').inert = modal;
       if (modal) {
         $('library').setAttribute('role', 'dialog');
@@ -581,7 +1106,7 @@
       else if (restoreFocus) $('nav-toggle').focus();
     }
 
-    function showPlaceholder(title, description, action = null, actionLabel = '', loading = false) {
+    function showPlaceholder(title, description = '', action = null, actionLabel = '', loading = false) {
       $('placeholder-title').textContent = title;
       $('placeholder-description').textContent = description;
       $('placeholder').dataset.loading = String(loading);
@@ -602,15 +1127,28 @@
       historical = null;
       $('history-banner').hidden = true;
       closeContextMenu();
-      $('page-title').textContent = '图解阅读器';
+      $('page-title').textContent = 'Visual Explainer';
       $('page-title').removeAttribute('title');
-      $('page-meta').textContent = '从列表中选择一份图解';
+      $('page-meta').textContent = '';
       $('page-meta').removeAttribute('title');
-      $('page-detail').textContent = '等待选择图解';
       $('open').hidden = true;
       $('open').removeAttribute('href');
       $('fullscreen').disabled = true;
-      document.title = '图解工作台 · Visual Explainer';
+      $('viewer-version').hidden = true;
+      $('viewer-api').hidden = true;
+      $('pick-element').hidden = true;
+      $('comments-toggle').hidden = true;
+      setPickMode(false);
+      setCommentsPanel(false);
+      commentsRequest?.abort();
+      commentsRequest = null;
+      commentThreads = [];
+      commentCounts = { open: 0, resolved: 0, total: 0 };
+      currentPageVersion = null;
+      commentAnchor = null;
+      openReplyBoxId = null;
+      openEditBoxId = null;
+      document.title = 'Visual Explainer';
     }
 
     function showLogin() {
@@ -628,12 +1166,12 @@
       libraryLoaded = false;
       pendingFilename = hashFilename();
       listState = 'locked';
+      document.documentElement.dataset.sync = 'locked';
+      $('library-account').hidden = true;
       $('logout').hidden = true;
-      $('sync').textContent = '登录后自动更新';
-      $('sync').dataset.state = '';
       clearPreview();
       renderList();
-      showPlaceholder('登录后查看图解', '使用访问密钥打开你的图解库。');
+      showPlaceholder('Sign in', 'Enter your access key to view diagrams.');
       if (compact.matches) setNavigation(false);
       if (!$('login').open) {
         $('login-error').textContent = '';
@@ -649,8 +1187,16 @@
       return [prefix, folder.name, path].filter(Boolean).join(' / ');
     }
 
+    function stripHtmlExt(value) {
+      return typeof value === 'string' ? value.replace(/\.html?$/i, '') : '';
+    }
+
     function fullPagePath(page) {
       return [folderLabel(page.entityId), pagePath(page)].filter(Boolean).join(' / ');
+    }
+
+    function displayPagePath(page) {
+      return [folderLabel(page.entityId), stripHtmlExt(pagePath(page))].filter(Boolean).join(' / ');
     }
 
     function chooseFolder(entityId = null, path = '') {
@@ -668,7 +1214,7 @@
     function showEmptyLibrary() {
       clearPreview();
       history.replaceState(null, '', location.pathname + location.search);
-      showPlaceholder('还没有图解', '在左侧空白处右键新建文件夹，再通过文件夹的 API 发布图解。', () => loadPages(true), '刷新列表');
+      showPlaceholder('No diagrams yet', 'Right-click in the sidebar to create a folder and publish via its API.');
     }
 
     function revealPage(page) {
@@ -686,8 +1232,6 @@
       const focusKey = active?.dataset.focusKey;
       const scrollTop = $('list').scrollTop;
       const fragment = document.createDocumentFragment();
-      $('count').textContent = !libraryLoaded ? '—' : String(entityCatalog.totalCount);
-      $('list-caption').textContent = query ? `${filtered.length} 个搜索结果` : '文件夹与图解';
       updateControls();
 
       function pageButton(page) {
@@ -704,13 +1248,20 @@
         button.dataset.focusKey = 'page:' + page.filename;
         button.dataset.contextKind = 'page';
         button.setAttribute('aria-keyshortcuts', 'Shift+F10');
-        button.title = pageTitle(page) + '\n' + fullPagePath(page) + '\n更新于 ' + formatDate(page.modified);
-        button.setAttribute('aria-label', pagePath(page).split('/').pop() + ' · ' + pageTitle(page));
+        button.title = pageTitle(page) + '\n' + displayPagePath(page);
+        button.setAttribute('aria-label', pageRowName(page) + ' · ' + pageTitle(page));
         if (selected?.filename === page.filename) button.setAttribute('aria-current', 'page');
         const label = document.createElement('span');
         label.className = 'report-title';
         label.textContent = pageRowName(page);
         button.append(treeIcon('file'), label);
+        if (page.openComments > 0) {
+          const badge = document.createElement('span');
+          badge.className = 'report-badge';
+          badge.textContent = String(page.openComments);
+          badge.title = `${page.openComments} open comment${page.openComments === 1 ? '' : 's'}`;
+          button.append(badge);
+        }
         return button;
       }
 
@@ -745,7 +1296,7 @@
         directory(page.entityId, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '').pages.push(page);
       }
       function appendNode(node, container) {
-        for (const child of [...node.folders.values()].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))) {
+        for (const child of [...node.folders.values()].sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
           const details = document.createElement('details');
           details.className = 'folder';
           details.dataset.entityId = child.entityId;
@@ -773,12 +1324,6 @@
           const children = document.createElement('div');
           children.className = 'folder-children';
           appendNode(child, children);
-          if (!children.childElementCount) {
-            const empty = document.createElement('p');
-            empty.className = 'folder-empty';
-            empty.textContent = '空文件夹';
-            children.append(empty);
-          }
           details.append(children);
           details.addEventListener('toggle', () => {
             if (!query && details.isConnected) folderExpansion.set(key, details.open);
@@ -793,20 +1338,20 @@
         message.className = 'list-message';
         const title = document.createElement('strong');
         const detail = document.createElement('p');
-        title.textContent = listState === 'locked' ? '尚未登录'
-          : listState === 'loading' ? '正在读取…'
-          : listState === 'error' && !libraryLoaded ? '暂时无法读取'
-          : query ? '没有匹配的图解' : '还没有图解';
+        title.textContent = listState === 'locked' ? 'Signed out'
+          : listState === 'loading' ? 'Loading…'
+          : listState === 'error' && !libraryLoaded ? 'Unavailable'
+          : query ? 'No matches' : 'Empty';
         detail.textContent = listState === 'error' && !libraryLoaded ? listError
-          : query ? '试试其他标题或路径。'
-          : libraryLoaded ? '右键空白处新建文件夹，再通过 API 发布图解。' : '';
+          : query ? 'Try a different search.'
+          : libraryLoaded ? 'Right-click to create a folder.' : '';
         message.append(title, detail);
-        if (query) message.append(makeButton('清除搜索', () => {
+        if (query) message.append(makeButton('Clear search', () => {
           $('search').value = '';
           renderList();
           $('search').focus();
         }));
-        else if (listState === 'error') message.append(makeButton('重试', () => loadPages(true)));
+        else if (listState === 'error') message.append(makeButton('Retry', () => loadPages(true)));
         fragment.append(message);
       }
       $('list').replaceChildren(fragment);
@@ -826,25 +1371,20 @@
       const timeout = setTimeout(() => request.abort(), REQUEST_TIMEOUT);
       $('preview').hidden = true;
       $('preview').removeAttribute('src');
-      showPlaceholder('正在打开图解', page.title, null, '', true);
+      showPlaceholder('Loading', page.title, null, '', true);
       const url = new URL(page.url, location.href);
       if (page.modified) url.searchParams.set('v', page.modified);
+      url.searchParams.set('embed', '1');
       try {
-        // The sandbox is opaque. Check the HTTP status without reading or modifying its document.
         const response = await fetch(url, { method: 'HEAD', cache: 'no-store', signal: request.signal });
         if (previewRequest !== request) return;
-        if (response.status === 401) {
-          showLogin();
-          return;
-        }
+        if (response.status === 401) { showLogin(); return; }
         if (!response.ok) {
-          throw new Error(response.status === 404
-            ? '这份图解已不存在，请刷新列表或选择其他图解。'
-            : `服务器暂时无法打开这份图解（${response.status}）。`);
+          throw new Error(response.status === 404 ? 'Diagram not found.' : `Failed to load diagram (${response.status}).`);
         }
         const frame = document.createElement('iframe');
         frame.id = 'preview';
-        frame.title = page.title + ' · 图解预览';
+        frame.title = page.title;
         frame.setAttribute('sandbox', 'allow-scripts');
         frame.hidden = true;
         frame.addEventListener('load', () => {
@@ -853,25 +1393,24 @@
           frame.hidden = false;
           $('placeholder').hidden = true;
           $('stage').setAttribute('aria-busy', 'false');
+          syncIframeComments();
         });
         frame.addEventListener('error', () => {
           if (previewRequest !== request) return;
           clearTimeout(previewTimer);
-          showPlaceholder('无法打开图解', '请重试，或使用上方的“独立打开”。',
-            () => loadPreview(page), '重新打开');
+          showPlaceholder('Failed to load', '', () => loadPreview(page), 'Retry');
         });
         frame.src = url.href;
         $('preview').replaceWith(frame);
         previewTimer = setTimeout(() => {
           if (previewRequest !== request) return;
-          showPlaceholder('图解仍在加载', '可以继续等待、重新打开，或在新标签页阅读。',
-            () => loadPreview(page), '重新打开');
+          showPlaceholder('Request timed out', '', () => loadPreview(page), 'Retry');
         }, REQUEST_TIMEOUT);
       } catch (error) {
         if (previewRequest !== request) return;
-        const message = request.signal.aborted ? '连接超时，请检查网络后重试。'
-          : error instanceof TypeError ? '无法连接到服务，请检查网络后重试。' : error.message;
-        showPlaceholder('无法打开图解', message, () => loadPreview(page), '重新打开');
+        const message = request.signal.aborted ? 'Request timed out.'
+          : error instanceof TypeError ? 'Cannot reach server.' : error.message;
+        showPlaceholder('Failed to load', message, () => loadPreview(page), 'Retry');
       } finally {
         clearTimeout(timeout);
       }
@@ -879,7 +1418,9 @@
 
     function selectPage(page, explicit = false) {
       closeContextMenu();
-      const changed = selected?.filename !== page.filename || selected?.modified !== page.modified;
+      const prevFilename = selected?.filename;
+      const commentsChanged = selected?.openComments !== page.openComments || selected?.totalComments !== page.totalComments;
+      const changed = prevFilename !== page.filename || selected?.modified !== page.modified;
       const leaveHistory = historical && (explicit || historical.filename !== page.filename);
       if (leaveHistory) historical = null;
       selected = page;
@@ -889,14 +1430,24 @@
       }
       $('page-title').textContent = pageTitle(page);
       $('page-title').title = pageTitle(page);
-      $('page-meta').textContent = fullPagePath(page);
-      $('page-meta').title = fullPagePath(page);
-      $('page-detail').textContent = `更新于 ${formatDate(page.modified)} · ${Math.max(1, Math.round(page.bytes / 1024))} KB`;
+      $('page-meta').textContent = displayPagePath(page);
+      $('page-meta').title = displayPagePath(page);
       $('open').href = historical?.version.url || page.url;
       $('open').hidden = false;
       $('fullscreen').disabled = false;
+      $('viewer-version').hidden = false;
+      $('viewer-api').hidden = false;
+      $('comments-toggle').hidden = false;
+      $('pick-element').hidden = role !== 'admin';
+      if (prevFilename !== page.filename) {
+        clearCommentAnchor();
+        openReplyBoxId = null;
+        openEditBoxId = null;
+        setPickMode(false);
+      }
+      updateCommentToolbar(page);
       $('history-banner').hidden = !historical;
-      document.title = pageTitle(page) + ' · 图解工作台';
+      document.title = pageTitle(page) + ' · Visual Explainer';
       history.replaceState(null, '', '#' + encodeURIComponent(page.filename));
       updateControls();
       for (const button of $('list').querySelectorAll('.report')) {
@@ -904,14 +1455,13 @@
         else button.removeAttribute('aria-current');
       }
       if (!historical && (changed || leaveHistory)) loadPreview(page);
+      if (changed || commentsChanged || leaveHistory || commentThreads.some(t => t.filename !== page.filename) || !currentPageVersion) {
+        void loadComments(page.filename, true);
+      }
     }
 
     function hashFilename() {
-      try {
-        return decodeURIComponent(location.hash.slice(1));
-      } catch {
-        return '';
-      }
+      try { return decodeURIComponent(location.hash.slice(1)); } catch { return ''; }
     }
 
     async function loadPages(manual = false) {
@@ -919,29 +1469,23 @@
       const request = new AbortController();
       pageRequest = request;
       const timeout = setTimeout(() => request.abort(), REQUEST_TIMEOUT);
-      $('refresh').disabled = true;
-      $('refresh').setAttribute('aria-busy', 'true');
       $('list').setAttribute('aria-busy', 'true');
-      $('sync').textContent = '正在更新图解…';
-      $('sync').dataset.state = '';
+      document.documentElement.dataset.sync = 'loading';
       if (!libraryLoaded) {
         listState = 'loading';
         renderList();
-        showPlaceholder('正在读取图解', '稍候，正在获取图解列表。', null, '', true);
+        showPlaceholder('Loading', '', null, '', true);
       }
       try {
         const responses = await Promise.all(['/api/tree', '/api/session'].map(path =>
           fetch(path, { cache: 'no-store', signal: request.signal })));
         if (pageRequest !== request || $('login').open || dragging || movePending || contextMenuState) return false;
-        if (responses.some(response => response.status === 401)) {
-          showLogin();
-          return false;
-        }
+        if (responses.some(response => response.status === 401)) { showLogin(); return false; }
         const [data, session] = await Promise.all(responses.map(async (response, index) => {
-          const label = ['读取图解库', '读取身份'][index];
+          const label = ['Load library', 'Load session'][index];
           if (!response.ok) {
             const detail = await response.json().catch(() => null);
-            throw new Error(`${label}失败（${response.status}）${detail?.error ? '：' + detail.error : '，请稍后重试。'}`);
+            throw new Error(`${label} failed (${response.status})${detail?.error ? ': ' + detail.error : ''}`);
           }
           return response.json();
         }));
@@ -953,7 +1497,7 @@
         authenticated = true;
         role = session.role;
         listState = 'ready';
-        $('logout').hidden = false;
+        document.documentElement.dataset.sync = 'ready';
         updateControls();
         if (currentFolder.entityId && (!data.entities.some(entity => entity.id === currentFolder.entityId)
           || (currentFolder.path && !treeFolders.some(folder => folder.entityId === currentFolder.entityId && folder.path === currentFolder.path)))) chooseFolder();
@@ -967,48 +1511,25 @@
           else showEmptyLibrary();
         }
         renderList();
-        $('sync').textContent = '已同步 ' + times.format(new Date());
-        if (manual) notify('图解列表已更新');
         return true;
       } catch (error) {
         if (pageRequest !== request) return false;
         listState = 'error';
-        listError = request.signal.aborted ? '连接超时，请检查网络后重试。'
-          : error instanceof TypeError ? '无法连接到服务，请检查网络后重试。' : error.message;
-        $('sync').textContent = '同步失败 · ' + listError;
-        $('sync').dataset.state = 'error';
+        document.documentElement.dataset.sync = 'error';
+        listError = request.signal.aborted ? 'Connection timed out.'
+          : error instanceof TypeError ? 'Cannot reach server.' : error.message;
         if (!libraryLoaded) {
           renderList();
-          showPlaceholder('暂时无法读取图解', listError, () => loadPages(true), '重新加载');
+          showPlaceholder('Cannot connect', listError, () => loadPages(true), 'Retry');
         } else if (manual) notify(listError);
         return false;
       } finally {
         clearTimeout(timeout);
         if (pageRequest === request) {
           pageRequest = null;
-          $('refresh').disabled = false;
-          $('refresh').setAttribute('aria-busy', 'false');
           $('list').setAttribute('aria-busy', 'false');
         }
       }
-    }
-
-    async function checkConnection() {
-      try {
-        const response = await fetch('/health', { cache: 'no-store', signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
-        $('connection').dataset.state = response.ok ? 'online' : 'error';
-        $('connection').firstElementChild.textContent = response.ok ? '已连接' : '连接异常';
-        $('connection').title = response.ok ? '服务连接正常' : `服务返回异常（${response.status}）`;
-      } catch {
-        $('connection').dataset.state = 'error';
-        $('connection').firstElementChild.textContent = '连接中断';
-        $('connection').title = '无法连接服务';
-      }
-    }
-
-    function refresh() {
-      checkConnection();
-      loadPages(true);
     }
 
     $('login-form').addEventListener('submit', async event => {
@@ -1017,32 +1538,29 @@
       $('key').removeAttribute('aria-invalid');
       $('login-submit').disabled = true;
       $('login-cancel').disabled = true;
-      $('login-submit').textContent = '正在登录…';
+      $('login-submit').textContent = 'Signing in…';
       const body = new URLSearchParams({ key: $('key').value });
       $('key').value = '';
       try {
-        const response = await fetch('/api/login', {
-          method: 'POST', body, signal: AbortSignal.timeout(REQUEST_TIMEOUT),
-        });
+        const response = await fetch('/api/login', { method: 'POST', body, signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
         if (!response.ok) {
           if (response.status === 401) {
             $('key').setAttribute('aria-invalid', 'true');
-            throw new Error('访问密钥不正确，请重新输入。');
+            throw new Error('Invalid access key.');
           }
-          throw new Error(`暂时无法登录（${response.status}）。`);
+          throw new Error(`Sign-in failed (${response.status}).`);
         }
         const session = await apiRequest('/api/session');
         role = session.role;
         authenticated = true;
         updateControls();
-        if (unlocking && role !== 'admin') throw new Error('当前为只读查看，请使用网页登录凭据登录。');
+        if (unlocking && role !== 'admin') throw new Error('Admin access key required.');
         const resume = afterUnlock;
         afterUnlock = null;
         $('login').close();
         await reloadPages();
         if (apiContext) await prepareApiKey(apiContext);
         resume?.();
-        checkConnection();
       } catch (error) {
         $('login-error').textContent = errorMessage(error);
         $('key').focus();
@@ -1050,53 +1568,36 @@
         body.delete('key');
         $('login-submit').disabled = false;
         $('login-cancel').disabled = false;
-        $('login-submit').textContent = '进入工作台';
+        $('login-submit').textContent = 'Continue';
       }
     });
-    $('login').addEventListener('cancel', event => {
-      if (!authenticated || $('login-submit').disabled) event.preventDefault();
-    });
-    $('login').addEventListener('close', () => {
-      $('key').value = '';
-      afterUnlock = null;
-    });
+    $('login').addEventListener('cancel', event => { if (!authenticated || $('login-submit').disabled) event.preventDefault(); });
+    $('login').addEventListener('close', () => { $('key').value = ''; afterUnlock = null; });
     $('login-cancel').addEventListener('click', () => $('login').close());
-    $('key').addEventListener('input', () => {
-      $('key').removeAttribute('aria-invalid');
-      $('login-error').textContent = '';
-    });
+    $('key').addEventListener('input', () => { $('key').removeAttribute('aria-invalid'); $('login-error').textContent = ''; });
 
     $('logout').addEventListener('click', async () => {
       signingOut = true;
       pageRequest?.abort();
       pageRequest = null;
-      $('refresh').disabled = true;
-      $('refresh').setAttribute('aria-busy', 'false');
       $('list').setAttribute('aria-busy', 'false');
       $('logout').disabled = true;
-      $('logout').textContent = '退出中…';
       try {
-        const response = await fetch('/api/logout', {
-          method: 'POST', signal: AbortSignal.timeout(REQUEST_TIMEOUT),
-        });
-        if (!response.ok) throw new Error(`退出失败（${response.status}），请重试。`);
+        const response = await fetch('/api/logout', { method: 'POST', signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
+        if (!response.ok) throw new Error(`Sign-out failed (${response.status}).`);
         $('search').value = '';
         history.replaceState(null, '', location.pathname + location.search);
         showLogin();
       } catch (error) {
-        notify(error.name === 'TimeoutError' ? '退出超时，请重试。'
-          : error instanceof TypeError ? '无法连接服务，尚未确认退出，请重试。' : error.message);
+        notify(errorMessage(error));
       } finally {
         signingOut = false;
-        $('refresh').disabled = false;
         $('logout').disabled = false;
-        $('logout').textContent = '退出';
       }
     });
 
     $('search').addEventListener('input', renderList);
     $('folder-root').addEventListener('click', () => chooseFolder());
-    $('refresh').addEventListener('click', refresh);
     $('placeholder-action').addEventListener('click', () => placeholderAction?.());
     $('nav-toggle').addEventListener('click', () => {
       const open = compact.matches ? mobileNavOpen : desktopNavOpen;
@@ -1117,6 +1618,11 @@
         setNavigation(true);
         $('search').select();
       }
+      if (event.key === 'Escape' && pickMode) {
+        event.preventDefault();
+        setPickMode(false);
+        return;
+      }
       if (!compact.matches || !mobileNavOpen) return;
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -1125,31 +1631,18 @@
       if (event.key === 'Tab') {
         const controls = Array.from($('library').querySelectorAll('button:not(:disabled), input, select:not(:disabled)'))
           .filter(control => control.offsetParent !== null);
-        const first = controls[0];
-        const last = controls[controls.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
+        const first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }
     });
 
     $('fullscreen').addEventListener('click', async () => {
-      try {
-        await $('stage').requestFullscreen();
-      } catch {
-        notify('当前浏览器无法进入全屏，可以使用“独立打开”。');
-      }
+      try { await $('stage').requestFullscreen(); }
+      catch { notify('Fullscreen is not available in this browser.'); }
     });
     $('exit-fullscreen').addEventListener('click', async () => {
-      try {
-        await document.exitFullscreen();
-      } catch {
-        notify('请按 Esc 或使用浏览器的退出全屏功能。');
-      }
+      try { await document.exitFullscreen(); } catch {}
     });
     document.addEventListener('fullscreenchange', () => {
       const active = document.fullscreenElement === $('stage');
@@ -1160,25 +1653,13 @@
       pendingFilename = hashFilename();
       if (!authenticated) return;
       const page = pages.find(item => item.filename === pendingFilename);
-      if (page) {
-        pendingFilename = '';
-        revealPage(page);
-        renderList();
-      } else loadPages();
+      if (page) { pendingFilename = ''; revealPage(page); renderList(); }
+      else loadPages();
     });
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && authenticated) {
-        loadPages();
-        checkConnection();
-      }
-    });
-    setInterval(() => {
-      if (!document.hidden && authenticated) {
-        loadPages();
-        checkConnection();
-      }
-    }, POLL_INTERVAL);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && authenticated) loadPages(); });
+    setInterval(() => { if (!document.hidden && authenticated) loadPages(); }, POLL_INTERVAL);
 
+    /* Drag & Drop */
     function dragMessage(message, invalid = false) {
       $('drag-status').hidden = false;
       $('drag-status').textContent = message;
@@ -1203,7 +1684,7 @@
       let id = target.entityId, path = target.path;
       while (id) {
         if (id === source.entityId && (!source.path || path === source.path || path.startsWith(source.path + '/'))) {
-          return '不能移入自身或子文件夹';
+          return 'Cannot move a folder into itself';
         }
         const parent = entityCatalog.entities.find(entry => entry.id === id);
         if (!parent?.parent) break;
@@ -1225,7 +1706,7 @@
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', row.title);
       row.classList.add('drag-source');
-      dragMessage('拖到文件夹或根目录；按 Esc 取消');
+      dragMessage('Drop on a folder or Root');
     });
     function updateDropTarget(event) {
       if (!dragging || role !== 'admin') return;
@@ -1239,7 +1720,7 @@
       }
       if (!target) {
         event.dataTransfer.dropEffect = 'none';
-        dragMessage('请放到文件夹或根目录；不改变同级排序');
+        dragMessage('Drop on a folder or Root');
         return;
       }
       const destination = dropDestination(target);
@@ -1247,13 +1728,11 @@
       target.classList.toggle('drop-invalid', Boolean(invalid));
       target.classList.toggle('drop-target', !invalid);
       event.dataTransfer.dropEffect = invalid ? 'none' : 'move';
-      dragMessage(invalid || '移入 ' + (folderLabel(destination.entityId, destination.path) || '根目录'), Boolean(invalid));
+      dragMessage(invalid || 'Move to ' + (folderLabel(destination.entityId, destination.path) || 'Root'), Boolean(invalid));
       if (!invalid) event.preventDefault();
     }
     for (const event of ['dragenter', 'dragover']) $('library').addEventListener(event, updateDropTarget);
-    $('library').addEventListener('dragleave', event => {
-      if (!$('library').contains(event.relatedTarget)) clearDropTarget();
-    });
+    $('library').addEventListener('dragleave', event => { if (!$('library').contains(event.relatedTarget)) clearDropTarget(); });
     $('library').addEventListener('drop', event => {
       if (!dragging || role !== 'admin') return;
       event.preventDefault();
@@ -1263,7 +1742,7 @@
       if (!destination || invalidDestination(source, destination)) return;
       movePending = true;
       endDrag();
-      dragMessage('正在移动…');
+      dragMessage('Moving…');
       void (async () => {
         try {
           const { move } = await apiRequest('/api/moves', { method: 'POST', body: { source, destination } });
@@ -1272,10 +1751,10 @@
             if (destination.entityId) expandPath(destination.entityId, destination.path);
             if (source.kind === 'folder') chooseFolder(move.entityId, move.path);
             else chooseFolder(destination.entityId, destination.path);
-            notify('已移动到 ' + (folderLabel(destination.entityId, destination.path) || '根目录'));
-          } else notify('位置未改变');
+            notify('Moved to ' + (folderLabel(destination.entityId, destination.path) || 'Root'));
+          }
         } catch (error) {
-          notify((error.status && error.status < 500 ? '未移动：' : '移动结果待确认：') + errorMessage(error));
+          notify((error.status && error.status < 500 ? 'Not moved: ' : 'Move failed: ') + errorMessage(error));
         } finally {
           movePending = false;
           $('drag-status').hidden = true;
@@ -1283,36 +1762,30 @@
         }
       })();
     });
-    document.addEventListener('dragend', () => {
-      if (!dragging) return;
-      endDrag();
-      void reloadPages();
-    });
+    document.addEventListener('dragend', () => { if (!dragging) return; endDrag(); void reloadPages(); });
 
+    /* Helpers */
     function pagePath(page) { return page.path || page.filename; }
     function pageTitle(page) {
       const title = page.title;
-      return title && title !== page.filename && title !== page.filename?.replace(/\.html?$/i, '')
-        ? title : pagePath(page).split('/').pop();
+      return title && title !== page.filename && title !== stripHtmlExt(page.filename)
+        ? title : stripHtmlExt(pagePath(page).split('/').pop());
     }
     function pageRowName(page) {
       const name = pagePath(page).split('/').pop();
-      // Older unassigned pages can expose an internal UUID instead of a human filename.
-      return /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\.html?$/i.test(name) ? pageTitle(page) : name;
+      return /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\.html?$/i.test(name) ? pageTitle(page) : stripHtmlExt(name);
     }
     function entityRoute(id) { return '/api/entities/' + encodeURIComponent(id); }
-    function fileRoute(id, path) {
-      return entityRoute(id) + '/files/' + path.split('/').map(encodeURIComponent).join('/');
-    }
+    function fileRoute(id, path) { return entityRoute(id) + '/files/' + path.split('/').map(encodeURIComponent).join('/'); }
     function formatDate(value) {
       const date = new Date(value);
       return Number.isNaN(date.getTime()) ? '' : dates.format(date);
     }
     function errorMessage(error) {
-      return error.name === 'TimeoutError' || error.name === 'AbortError' ? '请求超时，请重试。'
-        : error instanceof TypeError ? '无法连接服务，请检查网络。' : error.message;
+      return error.name === 'TimeoutError' || error.name === 'AbortError' ? 'Request timed out.'
+        : error instanceof TypeError ? 'Cannot reach server.' : error.message;
     }
-    function makeButton(label, action, className = 'button bordered') {
+    function makeButton(label, action, className = 'btn bordered') {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = className;
@@ -1335,8 +1808,23 @@
       svg.append(path);
       return svg;
     }
+    function boxIcon() {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'icon');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('aria-hidden', 'true');
+      const rect = document.createElementNS(svg.namespaceURI, 'rect');
+      rect.setAttribute('x', '4');
+      rect.setAttribute('y', '4');
+      rect.setAttribute('width', '16');
+      rect.setAttribute('height', '16');
+      rect.setAttribute('rx', '2');
+      rect.setAttribute('stroke-dasharray', '3 2');
+      svg.append(rect);
+      return svg;
+    }
 
-    // Context targets are explicit snapshots, never an implicit use of the preview selection.
+    /* Context Menu */
     function contextTarget(element) {
       const row = element.closest('[data-context-kind]');
       if (row && $('library').contains(row)) {
@@ -1363,16 +1851,15 @@
       contextMenuState = { ...target, listScrollTop: $('list').scrollTop };
       target.row.classList.add('context-target');
       const menu = $('context-menu');
-      // Keep the menu in the compact navigation dialog's accessibility/focus scope.
       (compact.matches && mobileNavOpen ? $('library') : document.body).append(menu);
       menu.replaceChildren();
       const label = document.createElement('div');
       label.className = 'context-label';
       label.setAttribute('role', 'presentation');
-      label.textContent = target.kind === 'root' ? '根目录'
+      label.textContent = target.kind === 'root' ? 'Root'
         : target.kind === 'page' ? pageRowName(target.page)
         : target.row.querySelector('.folder-name').textContent;
-      menu.setAttribute('aria-label', label.textContent + ' · 操作');
+      menu.setAttribute('aria-label', label.textContent);
       menu.append(label);
       function item(text, action, { danger = false, href, disabled = false } = {}) {
         const control = document.createElement(href ? 'a' : 'button');
@@ -1381,15 +1868,9 @@
         control.setAttribute('role', 'menuitem');
         control.tabIndex = -1;
         if (danger) control.classList.add('danger');
-        if (href) {
-          control.href = href;
-          control.target = '_blank';
-          control.rel = 'noopener noreferrer';
-        } else control.disabled = disabled;
-        control.addEventListener('click', () => {
-          closeContextMenu(true);
-          action?.();
-        });
+        if (href) { control.href = href; control.target = '_blank'; control.rel = 'noopener noreferrer'; }
+        else control.disabled = disabled;
+        control.addEventListener('click', () => { closeContextMenu(true); action?.(); });
         menu.append(control);
       }
       function separator() {
@@ -1399,35 +1880,36 @@
       }
       if (target.kind === 'page') {
         const page = target.page;
-        item('打开图解', () => {
+        item('Open', () => {
           selectPage(page, true);
           if (compact.matches) setNavigation(false);
           $('page-title').focus({ preventScroll: true });
         });
-        item('独立打开', null, { href: page.url });
-        item('版本历史', () => openVersions(page));
+        item('Open in new tab', null, { href: page.url });
+        item('Version history', () => openVersions(page));
+        item('File API', () => openFileApi(page));
         if (role === 'admin') {
           separator();
-          item('重命名', () => requireAdmin(() => openEditor('page', { page, operation: 'rename' })));
-          item('移动到…', () => requireAdmin(() => openEditor('page', { page, operation: 'move' })));
+          item('Rename', () => requireAdmin(() => openEditor('page', { page, operation: 'rename' })));
+          item('Move to…', () => requireAdmin(() => openEditor('page', { page, operation: 'move' })));
           separator();
-          item('删除图解', () => requireAdmin(() => deleteDiagram(page)), { danger: true });
+          item('Delete diagram', () => requireAdmin(() => deleteDiagram(page)), { danger: true });
         }
       } else {
         const parent = { entityId: target.entityId || null, path: target.path || '' };
-        if (role === 'admin') item('新建文件夹', () => requireAdmin(() => openEditor('new-folder', parent)));
-        else if (target.kind === 'root') item('只读查看', null, { disabled: true });
+        if (role === 'admin') item('New folder', () => requireAdmin(() => openEditor('new-folder', parent)));
+        else if (target.kind === 'root') item('Read-only', null, { disabled: true });
         if (target.kind === 'folder') {
           if (role === 'admin') {
             separator();
-            item('重命名', () => requireAdmin(() => openEditor('folder', { ...parent, operation: 'rename' })));
-            item('移动到…', () => requireAdmin(() => openEditor('folder', { ...parent, operation: 'move' })));
+            item('Rename', () => requireAdmin(() => openEditor('folder', { ...parent, operation: 'rename' })));
+            item('Move to…', () => requireAdmin(() => openEditor('folder', { ...parent, operation: 'move' })));
             separator();
           }
-          item('文件夹 API', () => openApi(parent));
+          item('Folder API', () => openApi(parent));
           if (role === 'admin') {
             separator();
-            item('删除空文件夹', () => requireAdmin(() => deleteFolder(parent)), { danger: true });
+            item('Delete empty folder', () => requireAdmin(() => deleteFolder(parent)), { danger: true });
           }
         }
       }
@@ -1445,15 +1927,15 @@
       event.preventDefault();
       showContextMenu(target, event.clientX, event.clientY);
     });
-    document.addEventListener('pointerdown', event => {
-      if (!$('context-menu').contains(event.target)) closeContextMenu();
-    });
+    document.addEventListener('pointerdown', event => { if (!$('context-menu').contains(event.target)) closeContextMenu(); });
     document.addEventListener('scroll', event => {
       if (!contextMenuState || event.target === $('context-menu')) return;
-      // A row may have just scrolled into view: its queued pre-menu event isn't a new scroll.
       if (event.target === $('list') && $('list').scrollTop === contextMenuState.listScrollTop) return;
       closeContextMenu();
     }, true);
+    document.addEventListener('wheel', event => {
+      if (contextMenuState && !$('context-menu').contains(event.target)) closeContextMenu();
+    }, { passive: true, capture: true });
     window.addEventListener('resize', () => closeContextMenu());
     window.addEventListener('blur', () => closeContextMenu());
     document.addEventListener('keydown', event => {
@@ -1507,6 +1989,7 @@
       }
     });
 
+    /* API & Auth */
     async function apiRequest(path, { method = 'GET', body, signal } = {}) {
       const response = await fetch(path, {
         method, cache: 'no-store', signal: signal || AbortSignal.timeout(REQUEST_TIMEOUT),
@@ -1515,23 +1998,27 @@
       if (response.status === 204) return null;
       const data = await response.json();
       if (!response.ok) {
-        const error = new Error(data.error || `请求失败（${response.status}）。`);
+        const error = new Error(data.error || `Request failed (${response.status}).`);
         error.status = response.status;
         throw error;
       }
       return data;
     }
     function updateControls() {
+      $('library-account').hidden = !authenticated;
       $('admin-unlock').hidden = !authenticated || role === 'admin';
       $('logout').hidden = !authenticated || role !== 'admin';
       $('folder-root').disabled = !authenticated;
       $('folder-root').setAttribute('aria-current', currentFolder.entityId ? 'false' : 'location');
       $('folder-location').textContent = folderLabel(currentFolder.entityId, currentFolder.path);
-      $('folder-location').title = $('folder-location').textContent;
-      $('history-restore').textContent = role === 'admin' ? '恢复此版' : '登录后恢复';
-      $('api-admin').hidden = role !== 'admin';
-      $('api-unlock').hidden = role === 'admin';
+      $('history-restore').textContent = role === 'admin' ? 'Restore' : 'Sign in to restore';
+      const hasScopedEntity = !apiContext || Boolean(apiContext.entityId);
+      $('api-admin').hidden = role !== 'admin' || !hasScopedEntity;
+      $('api-unlock').hidden = role === 'admin' || !hasScopedEntity;
+      $('pick-element').hidden = !selected || role !== 'admin';
+      $('comment-composer').hidden = !selected || role !== 'admin';
       if (role !== 'admin') {
+        setPickMode(false);
         apiKeys.clear();
         $('api-secret').value = '';
         $('api-payload').value = '';
@@ -1539,9 +2026,9 @@
     }
     function configureLogin(admin) {
       unlocking = admin;
-      $('login-title').textContent = '登录工作台';
-      $('login-description').textContent = admin ? '当前为只读查看，登录后可编辑。' : '输入访问密钥。';
-      $('login-submit').textContent = '进入工作台';
+      $('login-title').textContent = 'Sign in';
+      $('login-description').textContent = admin ? 'Read-only session. Sign in to edit.' : 'Enter your access key.';
+      $('login-submit').textContent = 'Continue';
       $('login-cancel').hidden = !admin;
       $('login-error').textContent = '';
       $('key').value = '';
@@ -1560,7 +2047,6 @@
       pageRequest = null;
       return loadPages();
     }
-
     function setBusy(dialog, busy) {
       dialog.dataset.busy = String(busy);
       for (const button of dialog.querySelectorAll('button')) button.disabled = busy;
@@ -1569,32 +2055,33 @@
       button.addEventListener('click', () => $(button.dataset.close).close());
     }
     for (const dialog of document.querySelectorAll('dialog.panel')) {
-      dialog.addEventListener('cancel', event => {
-        if (dialog.dataset.busy === 'true') event.preventDefault();
-      });
+      dialog.addEventListener('cancel', event => { if (dialog.dataset.busy === 'true') event.preventDefault(); });
     }
     $('admin-unlock').addEventListener('click', () => requireAdmin(() => {}));
 
+    /* Folder / Page Editor */
     function openEditor(mode, context = {}) {
       editContext = { mode, ...context };
       const anchored = mode === 'folder' && !context.path;
       const anchor = anchored && entityCatalog.entities.find(entry => entry.id === context.entityId);
       const rename = context.operation === 'rename';
       const nameOnly = mode === 'new-folder' || rename;
-      $('edit-title').textContent = mode === 'new-folder' ? '新建文件夹'
-        : (rename ? '重命名' : '移动') + (mode === 'folder' ? '文件夹' : '图解');
+      $('edit-title').textContent = mode === 'new-folder' ? 'New folder'
+        : (rename ? 'Rename ' : 'Move ') + (mode === 'folder' ? 'folder' : 'diagram');
       $('edit-name-field').hidden = !nameOnly;
       $('edit-name').required = nameOnly;
-      $('edit-name-label').textContent = mode === 'page' ? '文件名' : '文件夹名称';
-      $('edit-name').value = anchored ? anchor.name : (context.path || (context.page ? pagePath(context.page) : '')).split('/').pop();
+      $('edit-name-label').textContent = mode === 'page' ? 'Name' : 'Folder name';
+      const rawLeaf = anchored ? anchor.name : (context.path || (context.page ? pagePath(context.page) : '')).split('/').pop();
+      $('edit-name').value = mode === 'page' ? stripHtmlExt(rawLeaf) : rawLeaf;
       $('edit-path-field').hidden = nameOnly;
       $('edit-path').required = !nameOnly && !anchored;
       $('edit-path').readOnly = false;
-      $('edit-path-label').textContent = anchored ? '目标目录（可留空）' : '目标路径（含名称）';
-      $('edit-path').value = anchored ? anchor.parent?.path || '' : context.path || (context.page ? pagePath(context.page) : '');
-      $('edit-path').placeholder = mode === 'page' ? '主题/图解.html' : '主题/子文件夹';
+      $('edit-path-label').textContent = anchored ? 'Destination subfolder (optional)' : 'Target path';
+      const rawPath = anchored ? anchor.parent?.path || '' : context.path || (context.page ? pagePath(context.page) : '');
+      $('edit-path').value = mode === 'page' ? stripHtmlExt(rawPath) : rawPath;
+      $('edit-path').placeholder = mode === 'page' ? 'topic/diagram' : 'topic/subfolder';
       $('edit-entity-field').hidden = nameOnly;
-      $('edit-entity').replaceChildren(...[{ id: '', name: '根目录' }, ...entityCatalog.entities].map(entity => {
+      $('edit-entity').replaceChildren(...[{ id: '', name: 'Root' }, ...entityCatalog.entities].map(entity => {
         const option = document.createElement('option');
         option.value = entity.id;
         option.textContent = entity.id ? folderLabel(entity.id) : entity.name;
@@ -1602,12 +2089,12 @@
       }));
       $('edit-entity').required = false;
       $('edit-entity').value = anchored ? anchor.parent?.entityId || '' : context.entityId || context.page?.entityId || '';
-      $('edit-hint').textContent = mode === 'new-folder' ? '创建于：' + (folderLabel(context.entityId, context.path) || '根目录')
-        : rename ? '只更改名称，位置不变；已有链接与历史保留。'
-        : anchored ? '移动不改变此文件夹的 API 地址与 Key；上级 Key 的范围随目录变化。'
-        : '输入相对目标文件夹的完整路径；用 / 划分多级文件夹。根目录只接受名称。';
+      $('edit-hint').textContent = mode === 'new-folder' ? 'Location: ' + (folderLabel(context.entityId, context.path) || 'Root')
+        : rename ? 'Links and history remain unchanged.'
+        : anchored ? 'API endpoint and key remain unchanged after moving.'
+        : 'Use / for nested folders. Root accepts a single name.';
       $('edit-error').textContent = '';
-      $('edit-submit').textContent = mode === 'new-folder' ? '创建' : rename ? '重命名' : '移动';
+      $('edit-submit').textContent = mode === 'new-folder' ? 'Create' : rename ? 'Rename' : 'Move';
       if (mode === 'page' && !rename) updateMoveDestination();
       $('edit-dialog').showModal();
       (nameOnly ? $('edit-name') : $('edit-path')).focus();
@@ -1615,9 +2102,7 @@
     function updateMoveDestination() {
       if (editContext?.mode !== 'page' || editContext.operation === 'rename') return;
       $('edit-path').readOnly = false;
-      $('edit-hint').textContent = $('edit-entity').value
-        ? '输入相对目标文件夹的完整路径；用 / 划分多级文件夹。'
-        : '根目录只接受文件名；移动和重命名不改变分享链接。';
+      $('edit-hint').textContent = $('edit-entity').value ? 'Use / for nested folders.' : 'Root accepts a single filename. Share link stays unchanged.';
     }
     $('edit-entity').addEventListener('change', updateMoveDestination);
     $('edit-form').addEventListener('submit', async event => {
@@ -1629,19 +2114,21 @@
       $('edit-error').textContent = '';
       setBusy($('edit-dialog'), true);
       try {
+        const pageExt = context.mode === 'page' ? (pagePath(context.page).match(/\.html?$/i)?.[0] || '.html') : '';
         if (context.mode === 'new-folder' || context.operation === 'rename') {
           if (!name || name.startsWith('.') || /[/\\\p{Cc}]/u.test(name) || /\.src\.html?$/i.test(name)) {
-            throw new Error('请输入名称，不要包含 /、\\\\ 或以 . 开头。');
+            throw new Error('Enter a valid name without /, \\, or a leading dot.');
           }
-          if (context.mode === 'page' && !/\.html?$/i.test(name)) throw new Error('图解文件名应以 .html 或 .htm 结束。');
+          const finalName = context.mode === 'page' && !/\.html?$/i.test(name) ? name + pageExt : name;
           if (context.operation === 'rename' && (context.path || context.page)) {
             const original = context.path || pagePath(context.page);
-            path = [...original.split('/').slice(0, -1), name].join('/');
+            path = [...original.split('/').slice(0, -1), finalName].join('/');
           }
+        } else if (context.mode === 'page' && path && !/\.html?$/i.test(path)) {
+          path += pageExt;
         }
         if (context.mode === 'new-folder') {
-          let entityId = context.entityId;
-          let folderPath = '';
+          let entityId = context.entityId, folderPath = '';
           if (!entityId) {
             const data = await apiRequest('/api/entities', { method: 'POST', body: { name } });
             entityId = data.entity.id;
@@ -1661,10 +2148,10 @@
             chooseFolder(move.entityId, move.path);
           } else {
             const destinationPath = context.path ? path.split('/').slice(0, -1).join('/') : path;
-            const name = context.path ? path.split('/').at(-1) : $('edit-name').value.trim();
+            const moveName = context.path ? path.split('/').at(-1) : $('edit-name').value.trim();
             const { move } = await apiRequest('/api/moves', { method: 'POST', body: {
               source: { kind: 'folder', entityId: context.entityId, path: context.path },
-              destination: { entityId, path: destinationPath }, name,
+              destination: { entityId, path: destinationPath }, name: moveName,
             } });
             if (entityId) expandPath(entityId, destinationPath);
             chooseFolder(move.entityId, move.path);
@@ -1700,7 +2187,8 @@
         folderExpansion.set(entityId + ':' + prefix, true);
       }
     }
-    function askConfirmation(title, detail, action, label = '确认') {
+
+    function askConfirmation(title, detail, action, label = 'Confirm') {
       confirmation = action;
       $('confirm-title').textContent = title;
       $('confirm-detail').textContent = detail;
@@ -1714,18 +2202,14 @@
       if (!confirmation || role !== 'admin') return;
       $('confirm-error').textContent = '';
       setBusy($('confirm-dialog'), true);
-      try {
-        await confirmation();
-        $('confirm-dialog').close();
-      } catch (error) {
-        $('confirm-error').textContent = errorMessage(error);
-      } finally {
-        setBusy($('confirm-dialog'), false);
-      }
+      try { await confirmation(); $('confirm-dialog').close(); }
+      catch (error) { $('confirm-error').textContent = errorMessage(error); }
+      finally { setBusy($('confirm-dialog'), false); }
     });
     $('confirm-dialog').addEventListener('close', () => { confirmation = null; });
+
     function deleteDiagram(page) {
-      askConfirmation('删除图解？', `「${pageTitle(page)}」 · ${fullPagePath(page)}。删除当前图解及其源文件，已有当前链接将失效；Git 历史保留（无撤销入口）。`, async () => {
+      askConfirmation('Delete diagram?', `"${pageTitle(page)}" · ${displayPagePath(page)}. Removes the current diagram and source file. Current link returns 404; Git history is retained.`, async () => {
         deletePending = true;
         pageRequest?.abort();
         pageRequest = null;
@@ -1737,86 +2221,146 @@
           if (pendingFilename === page.filename) pendingFilename = '';
           if (selected?.filename === page.filename) {
             clearPreview();
-            showPlaceholder('图解已删除', '从列表中选择另一份图解。');
+            showPlaceholder('Diagram deleted', 'Select another diagram from the sidebar.');
           }
           if (hashFilename() === page.filename) history.replaceState(null, '', location.pathname + location.search);
           renderList();
-          notify('已删除图解');
+          notify('Diagram deleted');
         } finally {
           deletePending = false;
-          // Also reconcile local-first history failures: deletion may already
-          // have happened even when synchronization returned an explicit error.
           await reloadPages();
         }
-      }, '删除图解');
+      }, 'Delete diagram');
     }
     function deleteFolder(context) {
-      askConfirmation('删除空文件夹？', folderLabel(context.entityId, context.path), async () => {
+      askConfirmation('Delete empty folder?', folderLabel(context.entityId, context.path), async () => {
         const route = entityRoute(context.entityId) + (context.path ? '/folders?path=' + encodeURIComponent(context.path) : '');
         await apiRequest(route, { method: 'DELETE' });
         if (currentFolder.entityId === context.entityId && currentFolder.path === context.path) {
           chooseFolder(context.path ? context.entityId : null, context.path.split('/').slice(0, -1).join('/'));
         }
         await reloadPages();
-      }, '删除');
+      }, 'Delete');
     }
 
+    /* Folder & File API Dialog */
     function shellQuote(value) { return "'" + value.replaceAll("'", "'\\''") + "'"; }
     function usableApiKey(key) {
       return key?.secret && (!key.token.expiresAt || Date.now() < Date.parse(key.token.expiresAt));
     }
+    function openFileApi(page) {
+      if (!page) return;
+      const p = pagePath(page);
+      const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
+      openApi({ kind: 'file', entityId: page.entityId || null, path: dir, filePath: p, page });
+    }
     function updateApiExample(context) {
+      const isFile = context.kind === 'file' && Boolean(context.page);
+      if (!context.entityId) {
+        $('api-base').textContent = isFile ? location.origin + '/api/pages/' + encodeURIComponent(context.page.filename) : '';
+        $('api-scope').textContent = 'Root diagrams do not have a scoped folder key. Move this diagram into a folder to issue a scoped API key.';
+        $('api-secret').value = '';
+        $('api-payload').value = '';
+        $('api-expiry').textContent = '';
+        $('api-validity').disabled = true;
+        $('copy-api').disabled = true;
+        return;
+      }
       const base = location.origin + entityRoute(context.entityId);
       const key = role === 'admin' ? apiKeys.get(context.entityId) : null;
       const usable = usableApiKey(key);
-      const examplePath = [context.path, 'guides/example.html'].filter(Boolean).join('/');
-      $('api-base').textContent = base;
-      $('api-scope').textContent = 'Key 可访问「' + folderLabel(context.entityId) + '」及其所有子文件夹（不限当前子文件夹）。移动此文件夹后 API 地址与 Key 不变。关闭面板不影响已复制的 Key。';
+      const targetPath = isFile ? context.filePath : [context.path, 'guides/example.html'].filter(Boolean).join('/');
+      const targetUrl = location.origin + fileRoute(context.entityId, targetPath);
+      $('api-base').textContent = isFile ? targetUrl : base;
+      $('api-scope').textContent = isFile
+        ? 'Targets "' + displayPagePath(context.page) + '". Uses the scoped key for "' + folderLabel(context.entityId) + '" and all its subfolders.'
+        : 'Key covers "' + folderLabel(context.entityId) + '" and all its subfolders (not limited to the selected subfolder). Moving this folder keeps its endpoint and key unchanged.';
       $('api-secret').value = usable ? key.secret : '';
       $('api-validity').value = key?.expiresIn === null ? 'none' : String(key?.expiresIn ?? 604800);
       $('api-validity').disabled = !usable || !!key.pending;
       $('copy-api').disabled = !usable || !!key.pending;
-      $('api-expiry').textContent = usable ? (key.token.expiresAt ? '到期：' + new Date(key.token.expiresAt).toLocaleString('zh-CN') : '不过期')
-        + ' · 修改有效期沿用当前 Key，从现在起计时。' : '正在获取 Key…';
+      $('api-expiry').textContent = usable ? (key.token.expiresAt ? 'Expires: ' + new Date(key.token.expiresAt).toLocaleString('en-US') : 'Never expires') : 'Generating key…';
       const original = location.origin + '/api/visual-explainer';
-      const instructions = `先读取并遵守原版 visual-explainer，再生成图解；不是仅上传任意 HTML。只用 HTTP 和当前 Key，无需 MCP、仓库克隆、本机 skill 安装或全局管理密钥。
-先只执行下方三个 GET，读取原版索引、SKILL.md 和 references/style-guide.md；读完后再写源文件和执行最后的 PUT。
-原版索引：${original}（与本服务渲染器相同的已安装固定版本，含 revision、资源 URL、原版工具及提示词参数）。
-原版 SKILL：${original}/SKILL.md
-原版风格指南：${original}/references/style-guide.md
-按任务继续 GET 索引中相关 references/<名称>.md、commands/<名称>.md；文档相对链接以此原版 API 层级解析，不换用自拟风格说明。
-需要原版准备时，POST ${original}/prepare，JSON 参数按索引的 visual_explainer_prepare.inputSchema，例如 {"topic":"用户的实际主题"}。
-使用任务对应的原版提示词时，POST ${original}/prompts/<原版提示词名>，例如 generate-web-diagram，JSON 为 {"request":"用户的实际请求"}；服务调用原版 getPrompt 插值，读取返回 messages 后执行。
-所有请求使用下方相同的 Authorization: Bearer Key；POST JSON 用 Content-Type: application/json。prepare/提示词不会替你读项目、调用模型或生成 HTML，事实由你在本机核对。
-遵守已读原版文档，先在本机写 ./diagram.src.html。这里只映射远程 I/O：原版 render 的 html+filename 对应下方文件夹 PUT 的原始源文和发布路径，不传本机路径给服务端。
-PUT 将调用原版渲染器；读取 ./diagram.render.json 的 render.structuredContent.report 和 render.content 全部诊断。将 type=image 的 data 按 base64 解码为 mimeType 所示图片，实际查看原版检查图（checksheet）。
-修正原版诊断的每个 ✗；按原版 Before delivery 检查图与页面。只对 .src.html 做小改动并重新 PUT 同一路径，再读诊断、看检查图；不要重新生成整页，不用自写截图脚本代替原版检查。
-最终用响应 page.url 交付；原版 Comment/Ask/Reply 在浏览器里由读者复制粘贴回工作 agent，远程 API 不提供自动回传。
-文件夹 API：${base}
-Key 范围：文件夹「${folderLabel(context.entityId)}」及其所有子文件夹，不限当前子文件夹；移动后 API 地址与 Key 不变。另可读公共原版资源/调用只读 prepare 和提示词，不授予其他文件夹或管理权限。
-当前发布目标：${examplePath}；路径相对于此 API 文件夹，逐段 URL 编码。选中子文件夹只改变发布目标，不缩小 Key 权限。
-GET ${base}/tree 查看目录；GET ${base}/files/<路径> 读取可编辑源文。PUT 同一路径发布或更新，Content-Type: text/html; charset=utf-8，原始 HTML 最多 12 MiB。
-发布路径以 .html 或 .htm 结束，不使用 .src.html；本机保留 .src.html。父目录自动创建，同路径更新保留 Git 版本。
-POST ${base}/folders {"path":"主题/目录"} 创建空文件夹；PATCH 同端点 {"path":"旧目录","newPath":"新目录"} 移动；DELETE 加 ?path=<编码路径> 只删除空文件夹。
-PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，保留页面标识和分享链接。
-页面 filename 是稳定标识；GET ${location.origin}/api/pages/<filename>/versions 获取真实 Git 版本；POST ${location.origin}/api/pages/<filename>/restore {"revision":"完整提交 SHA"} 恢复为新版本。
-仅可访问 Key 范围内的页面及所属历史。不要另存 v1/v2，不要泄露 Key。`;
-      const readCommand = path => `curl --fail-with-body ${shellQuote(original + path)} \\\n  --header ${shellQuote('Authorization: Bearer ' + key.secret)}`;
-      $('api-payload').value = usable ? instructions.split('\n').map(line => '# ' + line).join('\n') + '\n'
-        + ['', '/SKILL.md', '/references/style-guide.md'].map(readCommand).join('\n')
-        + '\n# 读完原版及任务相关资源/提示词，按其规则写好 ./diagram.src.html 后才执行发布；响应保存为 ./diagram.render.json。\n'
-        + `curl --fail-with-body --request PUT \\\n  ${shellQuote(location.origin + fileRoute(context.entityId, examplePath))} \\\n  --header ${shellQuote('Authorization: Bearer ' + key.secret)} \\\n  --header 'Content-Type: text/html; charset=utf-8' \\\n  --data-binary @./diagram.src.html \\\n  --output ./diagram.render.json` : '';
+      const encFilename = isFile ? encodeURIComponent(context.page.filename) : '<filename>';
+      const encodedTargetPath = encodeURIComponent(targetPath);
+      const commentListUrl = isFile ? `${base}/comments?path=${encodedTargetPath}&status=open` : `${base}/comments?status=open`;
+      const commentListSuffix = isFile ? '' : ' (add `&path=<url-encoded-path>` for one diagram)';
+      const readSourceUrl = isFile ? targetUrl : `${base}/files/<path>`;
+      const replyPathArg = isFile ? JSON.stringify(targetPath) : '"<path>"';
+      const versionBase = `${location.origin}/api/pages/${encFilename}`;
+      $('api-payload').value = usable ? [
+        isFile
+          ? `You have scoped HTTP access to the Visual Explainer diagram "${displayPagePath(context.page)}" (folder "${folderLabel(context.entityId)}"). Use this key directly over HTTP — no MCP, repo clone, local skill install, or admin key is needed. Keep the key private.`
+          : `You have scoped HTTP access to a Visual Explainer folder ("${folderLabel(context.entityId)}" and its subfolders). Use this folder key directly over HTTP — no MCP, repo clone, local skill install, or admin key is needed. Keep the key private.`,
+        '',
+        ...(isFile ? [
+          `- Diagram endpoint: ${targetUrl}`,
+          `- Folder API: ${base}`,
+          `- Logical path: ${targetPath}`,
+          `- Filename: ${context.page.filename}`,
+        ] : [
+          `- Folder API: ${base}`,
+          `- Example target path: ${targetPath} (relative to this folder; URL-encode each segment)`,
+        ]),
+        `- Official skill & docs: ${original}`,
+        '',
+        '## 1. Read the official skill before writing HTML',
+        '',
+        'Do not upload arbitrary HTML. First fetch the official index, `SKILL.md`, and `references/style-guide.md` (plus any task-specific `references/*.md` or `commands/*.md` linked from the index):',
+        '',
+        '```bash',
+        `VE_KEY=${shellQuote(key.secret)}`,
+        '',
+        `curl --fail-with-body ${shellQuote(original)} -H "Authorization: Bearer $VE_KEY"`,
+        `curl --fail-with-body ${shellQuote(original + '/SKILL.md')} -H "Authorization: Bearer $VE_KEY"`,
+        `curl --fail-with-body ${shellQuote(original + '/references/style-guide.md')} -H "Authorization: Bearer $VE_KEY"`,
+        '```',
+        '',
+        'Optional official helpers (`POST` JSON with `Authorization: Bearer $VE_KEY` and `Content-Type: application/json`):',
+        `- Prepare: \`POST ${original}/prepare\` (matches \`visual_explainer_prepare.inputSchema\`, e.g. \`{"topic":"..."}\`)`,
+        `- Prompt: \`POST ${original}/prompts/<name>\` (e.g. \`generate-web-diagram\` with \`{"request":"..."}\`)`,
+        '',
+        '## 2. Write, publish, and verify',
+        '',
+        "Verify project facts locally, write `./diagram.src.html` (never send local filesystem paths), then publish it (`Content-Type: text/html; charset=utf-8`, max 12 MiB, `.html`/`.htm`, not `.src.html`; optional `?note=...` or `-H 'X-VE-Note: ...'` for a version note):",
+        '',
+        '```bash',
+        'curl --fail-with-body -X PUT \\',
+        `  ${shellQuote(targetUrl)} \\`,
+        '  -H "Authorization: Bearer $VE_KEY" \\',
+        "  -H 'Content-Type: text/html; charset=utf-8' \\",
+        '  --data-binary @./diagram.src.html \\',
+        '  --output ./diagram.render.json',
+        '```',
+        '',
+        'Inspect `./diagram.render.json`:',
+        '- Check `render.structuredContent.report` and every diagnostic in `render.content`; decode any `type: "image"` base64 blocks to inspect the official checksheet screenshots.',
+        '- Fix every `✗` diagnostic with small targeted edits to `./diagram.src.html` and re-PUT the same path until clean.',
+        '- Share `page.url` from the response (also returns `page.filename`, `version`, `commentsUrl`, and `openComments`).',
+        '',
+        '## 3. Comments & versions',
+        '',
+        `- List open comments: \`GET ${commentListUrl}\`${commentListSuffix}. Returns structured \`threads\` (anchor quote/selector/headings, \`version\`, \`replies\`) and a readable \`summary\`.`,
+        `- Read current source: \`GET ${readSourceUrl}\` — edit locally and re-\`PUT\` the same path for a new version (\`v2\`, \`v3\`, …).`,
+        `- Reply: \`POST ${base}/comments\` with \`{"path":${replyPathArg},"replyTo":"c_1","body":"..."}\` (replying to a resolved thread reopens it automatically).`,
+        `- Resolve: \`POST ${base}/comments/<threadId>/resolve\` with \`{"note":"Done in v2: ..."}\` (optional \`note\` is posted as a reply first).`,
+        `- Reopen: \`POST ${base}/comments/<threadId>/reopen\`.`,
+        `- Folder tree & moves: \`GET ${base}/tree\`; \`POST/PATCH/DELETE ${base}/folders\`; \`PATCH ${base}/files/<path>\` \`{"path":"new/name.html"}\`.`,
+        `- Version history${isFile ? '' : ' (use `page.filename` from `PUT` or `/tree`)'}: \`GET ${versionBase}/versions\`, \`GET ${versionBase}/versions/v2\`, \`POST ${versionBase}/restore\` \`{"version":"v2"}\`.`,
+      ].join('\n') : '';
     }
     function openApi(context) {
-      if (!context.entityId) return;
+      if (!context || (context.kind !== 'file' && !context.entityId)) return;
       apiContext = { ...context };
-      $('api-title').textContent = folderLabel(context.entityId, context.path) + ' · API';
+      $('api-title').textContent = (context.kind === 'file' && context.page
+        ? displayPagePath(context.page)
+        : folderLabel(context.entityId, context.path)) + ' · API';
       $('api-status').textContent = '';
       $('api-payload').hidden = true;
       updateControls();
       updateApiExample(apiContext);
       $('api-dialog').showModal();
-      prepareApiKey(apiContext);
+      if (apiContext.entityId) prepareApiKey(apiContext);
     }
     $('api-dialog').addEventListener('close', () => {
       apiContext = null;
@@ -1827,13 +2371,9 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
     });
     $('api-unlock').addEventListener('click', () => requireAdmin(() => {}));
     async function prepareApiKey(context) {
-      if (role !== 'admin' || apiContext !== context || !$('api-dialog').open) return;
+      if (role !== 'admin' || !context?.entityId || apiContext !== context || !$('api-dialog').open) return;
       let key = apiKeys.get(context.entityId);
-      if (!key) {
-        key = { secret: '', token: null, expiresIn: 604800, pending: null };
-        apiKeys.set(context.entityId, key);
-      }
-      // Share the pending operation too: closing/reopening during issuance cannot mint duplicates.
+      if (!key) { key = { secret: '', token: null, expiresIn: 604800, pending: null }; apiKeys.set(context.entityId, key); }
       if (!key.pending) key.pending = (async () => {
         if (key.secret) {
           const data = await apiRequest(entityRoute(context.entityId) + '/tokens');
@@ -1849,13 +2389,9 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
         }
       })().finally(() => { key.pending = null; });
       updateApiExample(context);
-      try {
-        await key.pending;
-      } catch (error) {
-        if (apiContext === context) $('api-status').textContent = errorMessage(error) + ' 关闭后重新打开可重试。';
-      } finally {
-        if (apiContext === context && $('api-dialog').open) updateApiExample(context);
-      }
+      try { await key.pending; }
+      catch (error) { if (apiContext === context) $('api-status').textContent = errorMessage(error); }
+      finally { if (apiContext === context && $('api-dialog').open) updateApiExample(context); }
     }
     $('api-validity').addEventListener('change', async () => {
       const context = apiContext;
@@ -1867,13 +2403,9 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
         method: 'PATCH', body: { expiresIn },
       }).then(data => { key.token = data.token; key.expiresIn = expiresIn; }).finally(() => { key.pending = null; });
       updateApiExample(context);
-      try {
-        await key.pending;
-      } catch (error) {
-        if (apiContext === context) $('api-status').textContent = errorMessage(error);
-      } finally {
-        if (apiContext === context && $('api-dialog').open) updateApiExample(context);
-      }
+      try { await key.pending; }
+      catch (error) { if (apiContext === context) $('api-status').textContent = errorMessage(error); }
+      finally { if (apiContext === context && $('api-dialog').open) updateApiExample(context); }
     });
     async function copyApi(field) {
       const context = apiContext;
@@ -1887,10 +2419,7 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
       field.select();
       let copied = false;
       if (navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(field.value);
-          copied = true;
-        } catch {}
+        try { await navigator.clipboard.writeText(field.value); copied = true; } catch {}
       }
       if (apiContext !== context || !$('api-dialog').open) return;
       if (!copied) {
@@ -1899,22 +2428,23 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
         try { copied = document.execCommand('copy'); } catch {}
       }
       if (copied) {
-        $('api-status').textContent = '已复制';
+        $('api-status').textContent = 'Copied';
         if (wasHidden) field.hidden = true;
       } else {
-        $('api-status').textContent = '未能自动复制，内容已选中。请按 Ctrl+C（Mac：⌘C）。';
+        $('api-status').textContent = 'Press Ctrl+C / ⌘C to copy.';
       }
     }
     $('copy-api').addEventListener('click', () => copyApi($('api-payload')));
 
+    /* Versions */
     async function openVersions(page = versionsPage) {
       if (!page) return;
       versionsPage = page;
       versionsRequest?.abort();
       const request = new AbortController();
       versionsRequest = request;
-      $('versions-path').textContent = fullPagePath(page);
-      $('versions-list').textContent = '正在读取…';
+      $('versions-path').textContent = displayPagePath(page);
+      $('versions-list').textContent = 'Loading…';
       $('versions-error').textContent = '';
       $('versions-retry').hidden = true;
       if (!$('versions-dialog').open) $('versions-dialog').showModal();
@@ -1924,34 +2454,62 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
         });
         if (versionsRequest !== request || !$('versions-dialog').open) return;
         const fragment = document.createDocumentFragment();
-        for (const version of data.versions) {
+        for (const [idx, version] of data.versions.entries()) {
           const row = document.createElement('div');
           row.className = 'version-row';
           row.dataset.revision = version.revision;
           const copy = document.createElement('div');
           copy.className = 'row-copy';
-          copy.textContent = formatDate(version.createdAt) + ' · ' + version.revision.slice(0, 8);
+          const line = document.createElement('div');
+          line.className = 'version-title-line';
+          if (version.label) {
+            const vPill = document.createElement('span');
+            vPill.className = 'ver-pill';
+            vPill.textContent = version.label;
+            line.append(vPill);
+          }
+          if (idx === 0) {
+            const cur = document.createElement('span');
+            cur.className = 'version-current-tag';
+            cur.textContent = 'Current';
+            line.append(cur);
+          }
+          const metaText = document.createElement('span');
+          metaText.textContent = formatDate(version.createdAt);
+          line.append(metaText);
+          copy.append(line);
           const detail = document.createElement('small');
-          detail.textContent = version.path + (version.message ? ' · ' + version.message : '');
+          const cSummary = version.commentCounts?.total
+            ? `${version.commentCounts.open} open / ${version.commentCounts.total} comments` : '';
+          detail.textContent = [version.note, cSummary].filter(Boolean).join(' · ') || version.revision.slice(0, 8);
           copy.append(detail);
-          const preview = makeButton('预览', () => {
-            historical = { filename: page.filename, version };
-            selected = pages.find(item => item.filename === page.filename) || page;
-            selectPage(selected);
-            $('history-label').textContent = '历史 · ' + formatDate(version.createdAt) + ' · ' + version.revision.slice(0, 8);
-            $('history-banner').hidden = false;
-            loadPreview({ title: pageTitle(page) + ' · 历史版本', url: version.url });
+          const actions = document.createElement('div');
+          actions.className = 'version-actions';
+          actions.append(makeButton('Preview', () => {
+            openHistoricalVersion(page, version);
             $('versions-dialog').close();
-            if (compact.matches) setNavigation(false);
-            $('history-current').focus();
-          });
-          row.append(copy, preview);
+          }));
+          if (idx > 0 && role === 'admin') {
+            actions.append(makeButton('Restore', () => {
+              $('versions-dialog').close();
+              askConfirmation('Restore version?',
+                `${version.label || version.revision.slice(0, 8)} · ${formatDate(version.createdAt)}. Creates a new version at the current path.`,
+                async () => {
+                  const restored = await apiRequest('/api/pages/' + encodeURIComponent(page.filename) + '/restore', {
+                    method: 'POST', body: { revision: version.revision },
+                  });
+                  selectPage(restored.page, true);
+                  await reloadPages();
+                }, 'Restore');
+            }));
+          }
+          row.append(copy, actions);
           fragment.append(row);
         }
         if (!data.versions.length) {
           const empty = document.createElement('p');
           empty.className = 'subtle';
-          empty.textContent = '暂无版本';
+          empty.textContent = 'No versions yet.';
           fragment.append(empty);
         }
         $('versions-list').replaceChildren(fragment);
@@ -1962,33 +2520,460 @@ PATCH ${base}/files/<路径> {"path":"新的/图解.html"} 重命名或移动，
         $('versions-retry').hidden = false;
       }
     }
+    function openHistoricalVersion(page, version) {
+      historical = { filename: page.filename, version };
+      selected = pages.find(item => item.filename === page.filename) || page;
+      selectPage(selected);
+      const label = version.label || version.revision.slice(0, 8);
+      $('history-label').textContent = `Viewing ${label} · ${formatDate(version.createdAt)}${version.note ? ' · ' + version.note : ''}`;
+      $('history-banner').hidden = false;
+      $('viewer-version-label').textContent = label;
+      loadPreview({ title: pageTitle(page) + ' · ' + label, url: version.url });
+      if (compact.matches) setNavigation(false);
+      $('history-current').focus();
+    }
+    async function jumpToVersionNumber(versionNumber) {
+      if (!selected || !versionNumber) return;
+      try {
+        const data = await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/versions');
+        const found = data.versions.find(v => v.version === versionNumber);
+        if (!found) { notify(`Version v${versionNumber} not found`); return; }
+        if (currentPageVersion && found.version === currentPageVersion.number) {
+          if (historical) selectPage(selected, true);
+          return;
+        }
+        openHistoricalVersion(selected, found);
+      } catch (error) { notify('Failed to switch version: ' + errorMessage(error)); }
+    }
     $('versions-retry').addEventListener('click', () => openVersions());
-    $('versions-dialog').addEventListener('close', () => {
-      versionsRequest?.abort();
-      versionsRequest = null;
-      versionsPage = null;
-    });
-    $('history-current').addEventListener('click', () => {
-      if (selected) selectPage(selected, true);
-      $('page-title').focus({ preventScroll: true });
-    });
+    $('versions-dialog').addEventListener('close', () => { versionsRequest?.abort(); versionsRequest = null; versionsPage = null; });
+    $('history-current').addEventListener('click', () => { if (selected) selectPage(selected, true); $('page-title').focus({ preventScroll: true }); });
     $('history-restore').addEventListener('click', () => {
       const snapshot = historical;
       if (!snapshot) return;
-      requireAdmin(() => askConfirmation('恢复此版本？',
-        formatDate(snapshot.version.createdAt) + ' · ' + snapshot.version.path + '。将在当前路径创建新版本。',
+      requireAdmin(() => askConfirmation('Restore version?',
+        `${snapshot.version.label || snapshot.version.revision.slice(0, 8)} · ${formatDate(snapshot.version.createdAt)}. Creates a new version at the current path.`,
         async () => {
           const data = await apiRequest('/api/pages/' + encodeURIComponent(snapshot.filename) + '/restore', {
             method: 'POST', body: { revision: snapshot.version.revision },
           });
           selectPage(data.page, true);
           await reloadPages();
-        }, '恢复'));
+        }, 'Restore'));
     });
 
+    /* Raft Comments */
+    function sendToIframe(message) {
+      try { $('preview')?.contentWindow?.postMessage(message, '*'); } catch {}
+    }
+    function setPickMode(active) {
+      pickMode = Boolean(active) && role === 'admin' && Boolean(selected);
+      $('pick-element').setAttribute('aria-pressed', String(pickMode));
+      $('pick-element-label').textContent = pickMode ? 'Cancel' : 'Pick';
+      sendToIframe({ type: 've-comment:pick', active: pickMode });
+    }
+    function clearCommentAnchor() {
+      commentAnchor = null;
+      renderComposerAnchor();
+      sendToIframe({ type: 've-comment:draft-box', selector: '' });
+    }
+    function setCommentsPanel(open) {
+      commentsPanelOpen = Boolean(open) && Boolean(selected);
+      $('comments-panel').hidden = !commentsPanelOpen;
+      $('comments-toggle').setAttribute('aria-expanded', String(commentsPanelOpen));
+      $('comments-toggle').classList.toggle('active', commentsPanelOpen);
+      if (!commentsPanelOpen) {
+        if (pickMode) setPickMode(false);
+        sendToIframe({ type: 've-comment:draft-box', selector: '' });
+        sendToIframe({ type: 've-comment:hover', id: '' });
+      }
+      if (commentsPanelOpen && selected) {
+        renderComposerAnchor();
+        void loadComments(selected.filename, true);
+      }
+    }
+    function updateCommentToolbar(page = selected) {
+      const openCount = page?.filename === selected?.filename && commentCounts ? commentCounts.open : (page?.openComments ?? 0);
+      $('comments-badge').textContent = String(openCount);
+      $('comments-badge').hidden = openCount <= 0;
+      const verLabel = historical?.version?.label || currentPageVersion?.label || 'Versions';
+      $('viewer-version-label').textContent = verLabel;
+      $('comments-version-tag').textContent = historical?.version?.label || currentPageVersion?.label || '';
+      $('comments-version-tag').hidden = !$('comments-version-tag').textContent;
+    }
+    function syncIframeComments() {
+      const mode = currentThemeMode();
+      sendToIframe({ type: 've-theme', mode: mode === 'auto' ? 'auto' : 'manual', theme: currentTheme() });
+      const openThreads = commentThreads.filter(t => t.status === 'open');
+      const boxes = openThreads.map(t => ({
+        id: t.id, selector: t.where?.selector || '', quote: t.where?.quote || '',
+      })).filter(m => m.selector);
+      sendToIframe({ type: 've-comment:sync', threads: boxes });
+      sendToIframe({ type: 've-comment:draft-box', selector: commentAnchor?.selector || '' });
+      if (pickMode) sendToIframe({ type: 've-comment:pick', active: true });
+    }
+    function renderComposerAnchor() {
+      if (!commentAnchor || commentAnchor.kind === 'page') {
+        $('comment-anchor').hidden = true;
+        $('comment-anchor-box').hidden = true;
+        $('comment-anchor-quote').hidden = true;
+        $('comment-anchor-quote').textContent = '';
+        return;
+      }
+      $('comment-anchor').hidden = false;
+      if (commentAnchor.kind === 'text' && commentAnchor.quote) {
+        $('comment-anchor-box').hidden = true;
+        $('comment-anchor-quote').hidden = false;
+        $('comment-anchor-quote').textContent = `“${commentAnchor.quote}”`;
+      } else {
+        $('comment-anchor-quote').hidden = true;
+        $('comment-anchor-quote').textContent = '';
+        $('comment-anchor-box').hidden = false;
+      }
+    }
+    function updatePageOpenCount(filename, counts) {
+      const item = pages.find(p => p.filename === filename);
+      if (item && (item.openComments !== counts.open || item.totalComments !== counts.total)) {
+        item.openComments = counts.open;
+        item.totalComments = counts.total;
+        renderList();
+      }
+    }
+    async function loadComments(filename, quiet = false) {
+      if (!filename || !authenticated) return;
+      commentsRequest?.abort();
+      const request = new AbortController();
+      commentsRequest = request;
+      try {
+        const data = await apiRequest('/api/pages/' + encodeURIComponent(filename) + '/comments', {
+          signal: AbortSignal.any([request.signal, AbortSignal.timeout(REQUEST_TIMEOUT)]),
+        });
+        if (commentsRequest !== request || selected?.filename !== filename) return;
+        commentThreads = data.threads;
+        commentCounts = data.counts;
+        currentPageVersion = data.currentVersion;
+        updatePageOpenCount(filename, data.counts);
+        updateCommentToolbar(selected);
+        renderComposerAnchor();
+        renderComments();
+        syncIframeComments();
+      } catch (error) {
+        if (commentsRequest !== request || request.signal.aborted) return;
+        if (!quiet) notify('Failed to load comments: ' + errorMessage(error));
+      }
+    }
+    function makeCommentCard(thread) {
+      const card = document.createElement('article');
+      card.className = 'comment-card' + (thread.status === 'resolved' ? ' resolved' : '');
+      card.dataset.threadId = thread.id;
+      if (thread.status === 'open' && thread.where?.selector) {
+        card.addEventListener('pointerenter', () => sendToIframe({ type: 've-comment:hover', id: thread.id }));
+        card.addEventListener('pointerleave', () => sendToIframe({ type: 've-comment:hover', id: '' }));
+      }
+      const meta = document.createElement('div');
+      meta.className = 'comment-meta';
+      const avatar = document.createElement('span');
+      avatar.className = 'avatar-dot' + (thread.author.role === 'agent' ? ' agent' : '');
+      avatar.textContent = thread.author.role === 'agent' ? 'AI' : (thread.author.name[0]?.toUpperCase() || 'O');
+      const authorEl = document.createElement('span');
+      authorEl.className = 'comment-author';
+      authorEl.textContent = thread.author.name;
+      authorEl.title = thread.id;
+      meta.append(avatar, authorEl);
+      if (thread.version) {
+        const verBtn = document.createElement('button');
+        verBtn.type = 'button';
+        verBtn.className = 'comment-ver';
+        verBtn.textContent = 'v' + thread.version;
+        verBtn.title = `View v${thread.version}`;
+        verBtn.addEventListener('click', () => void jumpToVersionNumber(thread.version));
+        meta.append(verBtn);
+      }
+      if (thread.where?.kind === 'element' && thread.where.selector) {
+        const locBtn = document.createElement('button');
+        locBtn.type = 'button';
+        locBtn.className = 'comment-locate';
+        locBtn.title = 'Highlight on diagram';
+        locBtn.setAttribute('aria-label', 'Highlight on diagram');
+        locBtn.append(boxIcon());
+        locBtn.addEventListener('click', () => sendToIframe({ type: 've-comment:focus', id: thread.id, selector: thread.where.selector }));
+        meta.append(locBtn);
+      }
+      const timeEl = document.createElement('span');
+      timeEl.className = 'comment-time';
+      timeEl.textContent = formatDate(thread.createdAt);
+      meta.append(timeEl);
+      card.append(meta);
+
+      if (thread.where?.kind === 'text' && thread.where.quote) {
+        const quoteBtn = document.createElement('button');
+        quoteBtn.type = 'button';
+        quoteBtn.className = 'comment-quote-btn';
+        quoteBtn.title = 'Highlight on diagram';
+        const excerpt = thread.where.quote;
+        quoteBtn.textContent = `“${excerpt.slice(0, 100)}${excerpt.length > 100 ? '…' : ''}”`;
+        quoteBtn.addEventListener('click', () => {
+          if (thread.where.selector) sendToIframe({ type: 've-comment:focus', id: thread.id, selector: thread.where.selector });
+        });
+        card.append(quoteBtn);
+      }
+
+      if (openEditBoxId === thread.id) {
+        card.append(makeEditBox(thread.id, thread.body));
+      } else {
+        const body = document.createElement('div');
+        body.className = 'comment-body';
+        body.textContent = thread.body;
+        card.append(body);
+      }
+
+      if (thread.replies.length) {
+        const repliesEl = document.createElement('div');
+        repliesEl.className = 'comment-replies';
+        for (const reply of thread.replies) {
+          const item = document.createElement('div');
+          item.className = 'comment-reply';
+          const head = document.createElement('div');
+          head.className = 'comment-reply-head';
+          const who = document.createElement('strong');
+          who.textContent = reply.author.name;
+          const when = document.createElement('span');
+          when.textContent = formatDate(reply.createdAt);
+          head.append(who, when);
+          if (role === 'admin') {
+            head.append(makeButton('Edit', () => { openEditBoxId = reply.id; openReplyBoxId = null; renderComments(); }, 'link-btn quiet push-right'));
+            head.append(makeButton('Delete', () => void deleteCommentItem(reply.id), 'link-btn quiet danger'));
+          }
+          item.append(head);
+          if (openEditBoxId === reply.id) item.append(makeEditBox(reply.id, reply.body));
+          else {
+            const text = document.createElement('div');
+            text.className = 'comment-body';
+            text.textContent = reply.body;
+            item.append(text);
+          }
+          repliesEl.append(item);
+        }
+        card.append(repliesEl);
+      }
+
+      if (thread.status === 'resolved') {
+        const info = document.createElement('div');
+        info.className = 'resolved-note';
+        info.textContent = `Resolved by ${thread.resolvedBy?.name || 'Owner'} · ${formatDate(thread.resolvedAt)}`;
+        card.append(info);
+      }
+
+      if (role === 'admin') {
+        const actions = document.createElement('div');
+        actions.className = 'comment-actions';
+        actions.append(makeButton('Reply', () => {
+          openReplyBoxId = openReplyBoxId === thread.id ? null : thread.id;
+          openEditBoxId = null;
+          renderComments();
+        }, 'link-btn'));
+        if (thread.status === 'open') {
+          actions.append(makeButton('Resolve', () => void resolveThread(thread.id), 'link-btn accent'));
+        } else {
+          actions.append(makeButton('Reopen', () => void reopenThread(thread.id), 'link-btn accent'));
+        }
+        actions.append(makeButton('Edit', () => { openEditBoxId = thread.id; openReplyBoxId = null; renderComments(); }, 'link-btn quiet push-right'));
+        actions.append(makeButton('Delete', () => void deleteCommentItem(thread.id), 'link-btn quiet danger'));
+        card.append(actions);
+      }
+
+      if (openReplyBoxId === thread.id && role === 'admin') {
+        const form = document.createElement('form');
+        form.className = 'reply-box';
+        const ta = document.createElement('textarea');
+        ta.placeholder = thread.status === 'resolved' ? 'Reply to reopen… (⌘↵)' : 'Write a reply… (⌘↵)';
+        ta.required = true;
+        ta.maxLength = 8000;
+        const row = document.createElement('div');
+        row.className = 'reply-box-actions';
+        const cancel = makeButton('Cancel', () => { openReplyBoxId = null; renderComments(); }, 'btn bordered');
+        const send = document.createElement('button');
+        send.type = 'submit';
+        send.className = 'btn primary';
+        send.textContent = thread.status === 'resolved' ? 'Reply & reopen' : 'Reply';
+        row.append(cancel, send);
+        form.append(ta, row);
+        ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) form.requestSubmit(); });
+        form.addEventListener('submit', async e => {
+          e.preventDefault();
+          const text = ta.value.trim();
+          if (!text || !selected) return;
+          send.disabled = true;
+          try {
+            const data = await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments', {
+              method: 'POST', body: { replyTo: thread.id, body: text },
+            });
+            openReplyBoxId = null;
+            if (data.reopened) notify('Comment reopened');
+            await loadComments(selected.filename);
+          } catch (error) { notify('Reply failed: ' + errorMessage(error)); }
+          finally { send.disabled = false; }
+        });
+        card.append(form);
+        queueMicrotask(() => ta.focus());
+      }
+      return card;
+    }
+    function makeEditBox(commentId, initialBody) {
+      const form = document.createElement('form');
+      form.className = 'edit-box';
+      const ta = document.createElement('textarea');
+      ta.value = initialBody;
+      ta.required = true;
+      ta.maxLength = 8000;
+      const row = document.createElement('div');
+      row.className = 'edit-box-actions';
+      const cancel = makeButton('Cancel', () => { openEditBoxId = null; renderComments(); }, 'btn bordered');
+      const save = document.createElement('button');
+      save.type = 'submit';
+      save.className = 'btn primary';
+      save.textContent = 'Save';
+      row.append(cancel, save);
+      form.append(ta, row);
+      ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) form.requestSubmit(); });
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const text = ta.value.trim();
+        if (!text || !selected) return;
+        save.disabled = true;
+        try {
+          await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(commentId), {
+            method: 'PATCH', body: { body: text },
+          });
+          openEditBoxId = null;
+          await loadComments(selected.filename);
+        } catch (error) { notify('Save failed: ' + errorMessage(error)); }
+        finally { save.disabled = false; }
+      });
+      queueMicrotask(() => ta.focus());
+      return form;
+    }
+    async function resolveThread(threadId) {
+      if (!selected || role !== 'admin') return;
+      try {
+        await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(threadId) + '/resolve', { method: 'POST', body: {} });
+        openReplyBoxId = null;
+        await loadComments(selected.filename);
+      } catch (error) { notify('Resolve failed: ' + errorMessage(error)); }
+    }
+    async function reopenThread(threadId) {
+      if (!selected || role !== 'admin') return;
+      try {
+        await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(threadId) + '/reopen', { method: 'POST', body: {} });
+        await loadComments(selected.filename);
+      } catch (error) { notify('Reopen failed: ' + errorMessage(error)); }
+    }
+    async function deleteCommentItem(commentId) {
+      if (!selected || role !== 'admin') return;
+      try {
+        await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(commentId), { method: 'DELETE' });
+        if (openEditBoxId === commentId) openEditBoxId = null;
+        if (openReplyBoxId === commentId) openReplyBoxId = null;
+        await loadComments(selected.filename);
+      } catch (error) { notify('Delete failed: ' + errorMessage(error)); }
+    }
+    function renderComments() {
+      const container = $('comments-list');
+      const fragment = document.createDocumentFragment();
+      const openList = commentThreads.filter(t => t.status === 'open');
+      const resolvedList = commentThreads.filter(t => t.status === 'resolved');
+      if (!openList.length && !resolvedList.length) {
+        const empty = document.createElement('p');
+        empty.className = 'comments-empty';
+        empty.textContent = role === 'admin' ? 'No comments yet. Select text or click Pick to highlight an area.' : 'No comments yet.';
+        fragment.append(empty);
+      } else {
+        if (!openList.length) {
+          const done = document.createElement('p');
+          done.className = 'comments-empty';
+          done.textContent = 'All comments resolved.';
+          fragment.append(done);
+        } else {
+          for (const thread of openList) fragment.append(makeCommentCard(thread));
+        }
+        if (resolvedList.length) {
+          const details = document.createElement('details');
+          details.className = 'resolved-section';
+          details.open = resolvedExpanded;
+          details.addEventListener('toggle', () => { resolvedExpanded = details.open; });
+          const summary = document.createElement('summary');
+          summary.textContent = `Resolved (${resolvedList.length})`;
+          const list = document.createElement('div');
+          list.className = 'resolved-list';
+          for (const thread of resolvedList) list.append(makeCommentCard(thread));
+          details.append(summary, list);
+          fragment.append(details);
+        }
+      }
+      container.replaceChildren(fragment);
+    }
+
+    $('viewer-version').addEventListener('click', () => { if (selected) openVersions(selected); });
+    $('viewer-api').addEventListener('click', () => { if (selected) openFileApi(selected); });
+    $('pick-element').addEventListener('click', () => { if (selected) requireAdmin(() => setPickMode(!pickMode)); });
+    $('comments-toggle').addEventListener('click', () => setCommentsPanel(!commentsPanelOpen));
+    $('comments-close').addEventListener('click', () => setCommentsPanel(false));
+    $('comment-anchor-clear').addEventListener('click', () => clearCommentAnchor());
+    $('comment-input').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('comment-composer').requestSubmit(); });
+    $('comment-composer').addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!selected || role !== 'admin') return;
+      const body = $('comment-input').value.trim();
+      if (!body) return;
+      $('comment-submit').disabled = true;
+      try {
+        const payload = { body, where: commentAnchor || { kind: 'page' } };
+        if (historical?.version?.version) {
+          payload.version = historical.version.version;
+          payload.revision = historical.version.revision;
+        }
+        await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments', { method: 'POST', body: payload });
+        $('comment-input').value = '';
+        clearCommentAnchor();
+        await loadComments(selected.filename);
+      } catch (error) { notify('Post failed: ' + errorMessage(error)); }
+      finally { $('comment-submit').disabled = false; }
+    });
+    window.addEventListener('message', event => {
+      const frame = $('preview');
+      if (!frame || event.source !== frame.contentWindow || !event.data || typeof event.data !== 'object') return;
+      if (event.data.type === 've-comment:ready') {
+        syncIframeComments();
+      } else if (event.data.type === 've-comment:pick-state') {
+        pickMode = Boolean(event.data.active);
+        $('pick-element').setAttribute('aria-pressed', String(pickMode));
+        $('pick-element-label').textContent = pickMode ? 'Cancel' : 'Pick';
+      } else if (event.data.type === 've-comment:focus-miss') {
+        notify('Region not found in current version. Click the version tag to view original.');
+      } else if (event.data.type === 've-comment:draft' && selected) {
+        const openDraft = () => {
+          commentAnchor = event.data.where || { kind: 'page' };
+          setCommentsPanel(true);
+          renderComposerAnchor();
+          sendToIframe({ type: 've-comment:draft-box', selector: commentAnchor.selector || '' });
+          $('comment-input').focus();
+        };
+        if (role === 'admin') openDraft();
+        else requireAdmin(openDraft);
+      } else if (event.data.type === 've-comment:select' && selected) {
+        setCommentsPanel(true);
+        const card = $('comments-list').querySelector(`[data-thread-id="${CSS.escape(event.data.id)}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.classList.add('flash');
+          setTimeout(() => card.classList.remove('flash'), 1600);
+        }
+      }
+    });
+
+    applyTheme(currentThemeMode(), false);
     applyNavigation();
     renderList();
-    checkConnection();
     loadPages();
   </script>
 </body>

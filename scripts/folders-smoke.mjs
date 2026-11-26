@@ -58,7 +58,7 @@ try {
   await page.locator('#key').fill(token);
   await page.locator('#login-submit').click();
   await page.locator('#login').waitFor({ state: 'hidden' });
-  await page.waitForFunction(() => document.querySelector('#sync').textContent.startsWith('已同步'));
+  await page.waitForFunction(() => document.documentElement.dataset.sync === 'ready');
   assert.equal(await page.locator('#space-create, #entity-filter').count(), 0, 'There must be no separate space flow');
   assert.equal(await page.locator('#folder-create, #folder-api, #page-edit, #page-versions, .folder-action').count(), 0);
   assert.ok(!(await page.locator('body').innerText()).includes('空间'), 'The library must present folders, not spaces');
@@ -78,8 +78,8 @@ try {
     await p.getByRole('menuitem', { name, exact: true }).click();
   }
   async function newFolder(name, route, body) {
-    await contextAction(await currentRow(), '新建文件夹');
-    assert.equal(await page.locator('#edit-title').innerText(), '新建文件夹');
+    await contextAction(await currentRow(), 'New folder');
+    assert.equal(await page.locator('#edit-title').innerText(), 'New folder');
     assert.equal(await page.locator('#edit-dialog input:visible').count(), 1, 'Creation asks only for a name, never an ID or path');
     assert.equal(await page.locator('#edit-name').isVisible(), true);
     assert.equal(await page.locator('#edit-entity').isVisible(), false);
@@ -91,7 +91,7 @@ try {
     assert.deepEqual(response.request().postDataJSON(), body);
     const data = await response.json();
     await page.locator('#edit-dialog').waitFor({ state: 'hidden' });
-    await page.waitForFunction(() => document.querySelector('#refresh').getAttribute('aria-busy') === 'false');
+    await page.waitForFunction(() => !pageRequest && document.documentElement.dataset.sync === 'ready');
     return data;
   }
   await page.locator('#folder-root').click();
@@ -106,24 +106,24 @@ try {
   const root = page.locator(`.folder[data-entity-id="${created.id}"][data-path=""]`);
   assert.equal(await root.locator('.folder').count(), 2, 'Children are nested under the same top-level folder');
 
-  await contextAction(await currentRow(), '新建文件夹');
+  await contextAction(await currentRow(), 'New folder');
   await page.locator('#edit-name').fill('not/a/name');
   await page.locator('#edit-submit').click();
-  await page.locator('#edit-error').filter({ hasText: '请输入名称' }).waitFor();
+  await page.locator('#edit-error').filter({ hasText: 'Enter a valid name' }).waitFor();
   assert.equal(await page.locator('#edit-dialog').isVisible(), true);
   await page.locator('[data-close="edit-dialog"]').click();
 
   await page.locator('#folder-root').click();
   const sibling = (await newFolder('另一个文件夹', '/api/entities', { name: '另一个文件夹' })).entity;
   assert.notEqual(sibling.id, created.id);
-  await contextAction(page.locator(`.folder[data-entity-id="${sibling.id}"][data-path=""] > summary`), '删除空文件夹');
+  await contextAction(page.locator(`.folder[data-entity-id="${sibling.id}"][data-path=""] > summary`), 'Delete empty folder');
   await page.locator('#confirm-submit').click();
   await page.locator('#confirm-dialog').waitFor({ state: 'hidden' });
   await page.locator(`.folder[data-entity-id="${sibling.id}"]`).waitFor({ state: 'detached' });
   assert.equal(await page.locator('#folder-root').getAttribute('aria-current'), 'location');
 
   // Root folders have the same management entry, without requiring an identifier.
-  await contextAction(root.locator(':scope > summary'), '重命名');
+  await contextAction(root.locator(':scope > summary'), 'Rename');
   await page.locator('#edit-name').fill('改名后的文件夹');
   await page.locator('#edit-submit').click();
   await page.locator('#edit-dialog').waitFor({ state: 'hidden' });
@@ -161,11 +161,11 @@ try {
     await route.continue();
   });
   const generated = creation();
-  await contextAction(await currentRow(), '文件夹 API');
+  await contextAction(await currentRow(), 'Folder API');
   await intercepted;
   assert.equal(await page.locator('#copy-api').isDisabled(), true);
   await closeApi();
-  await contextAction(await currentRow(), '文件夹 API');
+  await contextAction(await currentRow(), 'Folder API');
   release();
   const response = await generated;
   assert.equal(response.status(), 201);
@@ -175,7 +175,7 @@ try {
   await page.unroute('**/tokens');
   assert.equal(issued.length, 1, 'Reopening during issuance must not create a second key');
   assert.ok((await page.locator('#api-scope').innerText()).includes('改名后的文件夹'));
-  assert.ok((await page.locator('#api-scope').innerText()).includes('不限当前子文件夹'), 'Nested-folder API must accurately disclose its top-level scope');
+  assert.ok((await page.locator('#api-scope').innerText()).includes('not limited to the selected subfolder'), 'Nested-folder API must accurately disclose its top-level scope');
   assert.equal(await page.locator('#token-name, #token-form, #token-create, #api-tokens, #copy-secret, #copy-command, #copy-agent').count(), 0);
   assert.equal(await page.locator('#api-dialog button:visible').count(), 2, 'Only close and the combined copy action remain');
   assert.equal(await page.locator('#api-dialog input:visible').count(), 1, 'Only the read-only Key, no naming or generation inputs');
@@ -184,7 +184,7 @@ try {
   assert.equal(agent, credential.secret);
   assert.match(agent, /^ve_[A-Za-z0-9_-]{43}$/);
   assert.ok(Math.abs(Date.parse(credential.token.expiresAt) - Date.parse(credential.token.createdAt) - 604800000) < 1000);
-  assert.ok((await page.locator('#api-expiry').innerText()).includes('到期：'));
+  assert.ok((await page.locator('#api-expiry').innerText()).includes('Expires:'));
   let currentToken = credential.token;
   for (const value of ['86400', '2592000', 'none', '604800']) {
     const updated = page.waitForResponse(response => new URL(response.url()).pathname === `/api/entities/${created.id}/tokens/${credential.token.id}` && response.request().method() === 'PATCH');
@@ -204,17 +204,17 @@ try {
   }
   assert.equal(issued.length, 1, 'Validity edits must not accumulate credentials');
   await closeApi();
-  await page.locator('#refresh').click();
-  await page.waitForFunction(() => document.querySelector('#refresh').getAttribute('aria-busy') === 'false');
+  await page.evaluate(() => loadPages(true));
+  await page.waitForFunction(() => !pageRequest && document.documentElement.dataset.sync === 'ready');
   await root.locator(':scope > summary > .folder-name').click();
-  await contextAction(await currentRow(), '文件夹 API');
+  await contextAction(await currentRow(), 'Folder API');
   await readyKey();
   assert.equal(await page.locator('#api-secret').inputValue(), agent, 'Root and descendants reuse the same scoped credential');
   assert.ok(!(await page.locator('#api-payload').inputValue()).includes(encodeURIComponent('更深层')));
   await closeApi();
   if (!(await root.evaluate(element => element.open))) await root.locator(':scope > summary').click();
   await child.locator(':scope > summary > .folder-name').click();
-  await contextAction(await currentRow(), '文件夹 API');
+  await contextAction(await currentRow(), 'Folder API');
   await readyKey();
   assert.equal(await page.locator('#api-secret').inputValue(), agent, 'Panel and library refresh reuse only the in-memory secret');
   const listed = (await api(`/api/entities/${created.id}/tokens`)).tokens;
@@ -235,16 +235,16 @@ try {
   assert.equal(second.page.filename, first.page.filename);
   assert.equal(second.page.url, first.page.url);
   assert.equal(await api(fileRoute, { auth: agent }), source('FOLDER_UI_V2'));
-  await page.locator('#refresh').click();
-  await page.waitForFunction(() => document.querySelector('#refresh').getAttribute('aria-busy') === 'false');
+  await page.evaluate(() => loadPages(true));
+  await page.waitForFunction(() => !pageRequest && document.documentElement.dataset.sync === 'ready');
   // Search reveals a diagram even when its parent folder was collapsed.
   await page.locator('#search').fill('FOLDER_UI_V2');
   await page.locator(`.report[data-filename="${first.page.filename}"]`).click();
   await page.locator('#search').fill('');
   assert.equal(await page.locator('#folder-location').innerText(), '改名后的文件夹 / 子文件夹/更深层');
-  await contextAction(page.locator(`.report[data-filename="${first.page.filename}"]`), '版本历史');
+  await contextAction(page.locator(`.report[data-filename="${first.page.filename}"]`), 'Version history');
   const oldVersion = page.locator(`.version-row[data-revision="${first.revision}"]`);
-  await oldVersion.getByRole('button', { name: '预览', exact: true }).click();
+  await oldVersion.getByRole('button', { name: 'Preview', exact: true }).click();
   await page.locator('#history-banner').waitFor({ state: 'visible' });
   await page.frameLocator('#preview').getByRole('heading', { name: 'FOLDER_UI_V1', exact: true }).waitFor();
   await page.locator('#history-restore').click();
@@ -264,23 +264,22 @@ try {
   await api(`/api/entities/${created.id}/tokens/${credential.token.id}`, { method: 'DELETE', status: 204 });
   await api(`/api/entities/${created.id}/tree`, { auth: agent, status: 401 });
   const replacement = creation();
-  await contextAction(await currentRow(), '文件夹 API');
+  await contextAction(await currentRow(), 'Folder API');
   const fresh = await (await replacement).json();
   await readyKey();
   assert.equal(issued.length, 2, 'Only explicit revocation requires a replacement key');
   assert.notEqual(fresh.token.id, credential.token.id);
-  await page.getByRole('button', { name: '复制提示词与命令', exact: true }).click();
-  await page.locator('#api-status').filter({ hasText: '已复制' }).waitFor();
+  await page.getByRole('button', { name: 'Copy prompt & commands', exact: true }).click();
+  await page.locator('#api-status').filter({ hasText: 'Copied' }).waitFor();
   const copyPayload = await page.evaluate(() => navigator.clipboard.readText());
   assert.equal(copyPayload, await page.locator('#api-payload').inputValue(), 'Read the real browser clipboard, not a stub');
   assert.ok(copyPayload.includes(fresh.secret) && copyPayload.includes(encodeURIComponent('更深层')));
-  const lines = copyPayload.split('\n');
-  const commandLine = lines.findIndex(line => line.startsWith('curl '));
-  assert.ok(commandLine > 5 && lines.slice(0, commandLine).every(line => line.startsWith('# ')), 'Every prose line must be a shell comment');
-  assert.ok(!copyPayload.includes('```') && !copyPayload.includes('YOUR_FOLDER_TOKEN'));
+  assert.equal(copyPayload.split(fresh.secret).length - 1, 1, 'Key should be declared once, not repeated across every curl');
+  assert.ok(!copyPayload.includes('YOUR_FOLDER_TOKEN'));
+  assert.ok(copyPayload.includes('## 1.') && copyPayload.includes('## 2.') && copyPayload.includes('## 3.'));
   assert.ok(copyPayload.includes('/api/visual-explainer/SKILL.md') && copyPayload.includes('/api/visual-explainer/references/style-guide.md'));
-  assert.ok(copyPayload.indexOf('/api/visual-explainer/SKILL.md') < copyPayload.indexOf('--request PUT'), 'Original resources must come before publishing');
-  for (const marker of ['/prepare', '/prompts/', 'diagram.src.html', 'diagram.render.json', 'render.content', 'checksheet']) assert.ok(copyPayload.includes(marker));
+  assert.ok(copyPayload.indexOf('/api/visual-explainer/SKILL.md') < copyPayload.indexOf('-X PUT'), 'Original resources must come before publishing');
+  for (const marker of ['/prepare', '/prompts/', 'diagram.src.html', 'diagram.render.json', 'render.content', 'checksheet', '/comments?status=open', '/resolve', '/reopen', '/api/pages/<filename>/versions/v2', '/api/pages/<filename>/restore']) assert.ok(copyPayload.includes(marker));
   assert.equal(await page.locator('#api-dialog button:visible').count(), 2, 'No extra bootstrap, copy or generation buttons');
   assert.equal(await page.locator('#api-payload').isVisible(), false);
   // Show the actual copied instructions for evidence, but never screenshot a credential.
@@ -307,7 +306,7 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#nav-toggle').click();
-  await contextAction(await currentRow(), '文件夹 API');
+  await contextAction(await currentRow(), 'Folder API');
   await readyKey();
   assert.equal(await page.locator('#api-secret').inputValue(), fresh.secret);
   assert.ok(await page.locator('#api-dialog').evaluate(element => element.getBoundingClientRect().width <= innerWidth), 'Compact API panel fits the mobile viewport');
@@ -316,7 +315,7 @@ try {
   await page.locator('#folder-root').click();
   assert.equal(await page.locator('#folder-create').count(), 0);
   assert.ok(await page.locator('#library').evaluate(element => element.scrollWidth <= element.clientWidth), 'Folder controls fit the mobile drawer');
-  await contextAction(await currentRow(), '新建文件夹');
+  await contextAction(await currentRow(), 'New folder');
   assert.equal(await page.locator('#edit-dialog input:visible').count(), 1);
   await page.locator('[data-close="edit-dialog"]').click();
   await page.reload();
@@ -327,12 +326,12 @@ try {
   const readOnly = await viewer.newPage();
   const viewerKey = createHmac('sha256', token).update('viewer-access').digest('hex');
   await readOnly.goto(new URL('/?access=' + viewerKey, base).href);
-  await readOnly.waitForFunction(() => document.querySelector('#sync').textContent.startsWith('已同步'));
+  await readOnly.waitForFunction(() => document.documentElement.dataset.sync === 'ready');
   const viewerTokenRequests = [];
   readOnly.on('request', request => { if (new URL(request.url()).pathname.includes('/tokens')) viewerTokenRequests.push(request); });
   await readOnly.locator(`.folder[data-entity-id="${created.id}"][data-path=""] > summary > .folder-name`).click();
   const beforeViewer = await readFile(registryPath, 'utf8');
-  await contextAction(await currentRow(readOnly), '文件夹 API', readOnly);
+  await contextAction(await currentRow(readOnly), 'Folder API', readOnly);
   assert.equal(await readOnly.locator('#api-admin').isVisible(), false);
   assert.equal(await readOnly.locator('#api-secret').inputValue(), '');
   assert.equal(await readOnly.locator('#api-payload').inputValue(), '');
@@ -347,7 +346,7 @@ try {
   assert.deepEqual(Object.keys(forbidden.body), ['error']);
   await readOnly.locator('[data-close="api-dialog"]').click();
   await readOnly.locator('#folder-root').click({ button: 'right' });
-  assert.deepEqual(await readOnly.getByRole('menuitem').allTextContents(), ['只读查看']);
+  assert.deepEqual(await readOnly.getByRole('menuitem').allTextContents(), ['Read-only']);
   assert.equal(await readOnly.getByRole('menuitem').isDisabled(), true);
   assert.equal(await readOnly.locator('#edit-dialog[open], #login[open]').count(), 0, 'Read-only menus have no mutation or credential-prompt action');
   await readOnly.keyboard.press('Escape');

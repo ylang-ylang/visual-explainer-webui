@@ -73,7 +73,7 @@ try {
     const page = await context.newPage();
     const access = createHmac('sha256', token).update('viewer-access').digest('hex');
     await page.goto(new URL('/?access=' + access, base).href);
-    await page.waitForFunction(() => document.querySelector('#sync').textContent.startsWith('已同步'));
+    await page.waitForFunction(() => document.documentElement.dataset.sync === 'ready');
     assert.equal(await page.locator('#list [draggable="true"]').count(), 0, 'Viewer rows must not advertise or fire drag gestures');
     assert.equal(await page.locator('#login[open]').count(), 0);
     const result = await page.evaluate(async body => {
@@ -122,7 +122,7 @@ try {
     await page.locator('#key').fill(token);
     await page.locator('#login-submit').click();
     await page.locator('#login').waitFor({ state: 'hidden' });
-    await page.waitForFunction(() => document.querySelector('#sync').textContent.startsWith('已同步'));
+    await page.waitForFunction(() => document.documentElement.dataset.sync === 'ready');
     await page.evaluate(() => {
       window.gestures = { starts: 0, drops: 0, ends: 0 };
       for (const [event, key] of [['dragstart', 'starts'], ['drop', 'drops'], ['dragend', 'ends']]) {
@@ -136,8 +136,8 @@ try {
       await page.getByRole('menuitem', { name, exact: true }).click();
     }
     async function refresh() {
-      await page.locator('#refresh').click();
-      await page.waitForFunction(() => document.querySelector('#refresh').getAttribute('aria-busy') === 'false');
+      await page.evaluate(() => loadPages(true));
+      await page.waitForFunction(() => !pageRequest && document.documentElement.dataset.sync === 'ready');
     }
     async function pointerStart(source, target) {
       await source.scrollIntoViewIfNeeded();
@@ -160,7 +160,7 @@ try {
       await page.mouse.up();
       const result = await response;
       assert.equal(result.status(), status, await result.text());
-      await page.waitForFunction(() => !movePending && document.querySelector('#refresh').getAttribute('aria-busy') === 'false');
+      await page.waitForFunction(() => !movePending && !pageRequest && document.documentElement.dataset.sync === 'ready');
       assert.equal(moves.length, count + 1, 'Exactly one mutation must originate from the pointer gesture');
       assert.equal(await page.evaluate(() => window.gestures.starts), before + 1, 'Native browser dragstart must actually fire');
       return result.json();
@@ -178,20 +178,20 @@ try {
     const collision = await put(b, 'dest/diagram.html', '名称冲突图解');
     await refresh();
     await unchanged(() => pointerMove(report(diagram), folder(b, 'dest'), 409));
-    assert.ok((await page.locator('#notice').innerText()).startsWith('未移动：'));
+    assert.ok((await page.locator('#notice').innerText()).startsWith('Not moved: '));
     assert.equal(await api(collision.url, { auth: null }).then(text => text.includes('名称冲突图解')), true);
     await unchanged(() => pointerMove(folder(a, 'same'), folder(b, 'dest'), 409));
     await unchanged(() => pointerMove(report(diagram), page.locator('#folder-root')));
     // Context-menu move reuses the existing destination dialog, including Root.
     await report(diagram).click();
-    await contextAction(report(diagram), '移动到…');
+    await contextAction(report(diagram), 'Move to…');
     await page.locator('#edit-entity').selectOption(a);
     await page.locator('#edit-path').fill('src/nested/fallback.html');
     await page.locator('#edit-submit').click();
     await page.locator('#edit-dialog').waitFor({ state: 'hidden' });
     await page.waitForFunction(() => !pageRequest);
     assert.equal((await api(pageRoute(diagram))).page.path, 'src/nested/fallback.html');
-    await contextAction(report(diagram), '移动到…');
+    await contextAction(report(diagram), 'Move to…');
     await page.locator('#edit-entity').selectOption('');
     await page.locator('#edit-path').fill('diagram.html');
     await page.locator('#edit-submit').click();
@@ -231,7 +231,7 @@ try {
     const intercepted = new Promise(resolve => { entered = resolve; });
     const gate = new Promise(resolve => { release = resolve; });
     await page.route('**/api/tree', async route => { trees++; entered(); await gate; await route.continue(); });
-    await page.locator('#refresh').click();
+    await page.evaluate(() => { void loadPages(true); });
     await intercepted;
     const sourceNode = await report(diagram).elementHandle();
     await pointerStart(report(diagram), folder(a, 'src/nested'));
@@ -239,7 +239,7 @@ try {
     await page.waitForFunction(() => pageRequest === null);
     assert.equal(await sourceNode.evaluate(element => element.isConnected), true, 'In-flight refresh must not replace an active native drag source');
     assert.equal(await page.evaluate(() => dragging?.filename), diagram.filename);
-    await page.waitForRequest(request => new URL(request.url()).pathname === '/health'); // The real 15-second timer runs while held.
+    await page.waitForTimeout(15500); // The real 15-second timer runs while held.
     assert.equal(trees, 1, 'The periodic library refresh must defer while a native drag is active');
     assert.equal(await sourceNode.evaluate(element => element.isConnected), true);
     assert.equal(await page.evaluate(() => dragging?.filename), diagram.filename);
@@ -251,13 +251,13 @@ try {
     await pointerMove(folder(c), folder(a, 'src/nested'));
     assert.equal(await api(file(c, 'anchored.html'), { auth: keys[c] }), html('锚定子树图解'));
     assert.equal(await api(file(a, 'src/nested/锚定 C/anchored.html'), { auth: keys[a] }), html('锚定子树图解'));
-    await contextAction(folder(a, 'same'), '移动到…');
+    await contextAction(folder(a, 'same'), 'Move to…');
     await page.locator('#edit-path').fill('src/nested/锚定 C/fallback');
     await page.locator('#edit-submit').click();
     await page.locator('#edit-dialog').waitFor({ state: 'hidden' });
     await page.waitForFunction(() => !pageRequest);
     assert.deepEqual(await page.evaluate(() => currentFolder), { entityId: c, path: 'fallback' }, 'Dialog follows canonical identity across an anchored API path');
-    await contextAction(folder(c, 'fallback'), '移动到…');
+    await contextAction(folder(c, 'fallback'), 'Move to…');
     await page.locator('#edit-entity').selectOption(a);
     await page.locator('#edit-path').fill('same');
     await page.locator('#edit-submit').click();
@@ -306,10 +306,10 @@ try {
     assert.equal(await api(file(b, 'dest/src/nested/锚定 C/anchored.html'), { auth: keys[b] }), html('锚定子树图解'));
     await refresh();
     await page.reload();
-    await page.waitForFunction(() => document.querySelector('#sync').textContent.startsWith('已同步'));
+    await page.waitForFunction(() => document.documentElement.dataset.sync === 'ready');
     await report(plain).click();
     await page.waitForFunction(() => !document.querySelector('#preview').hidden);
-    assert.ok((await page.locator('#page-meta').innerText()).includes('拖动 B / dest / src / nested/plain.html'), 'Breadcrumb composes anchored parent edges');
+    assert.ok((await page.locator('#page-meta').innerText()).includes('拖动 B / dest / src / nested/plain'), 'Breadcrumb composes anchored parent edges');
     assert.equal(await page.locator('#desktop, #mobile, .sizes').count(), 0);
     assert.equal(await page.locator('#stage').getAttribute('data-size'), null);
     async function fits() {
@@ -342,9 +342,9 @@ try {
     await page.locator('#nav-toggle').click();
     assert.equal(await page.locator('#library').getAttribute('aria-modal'), 'true');
     await folder(c).locator('.folder-name').click();
-    await contextAction(folder(c), '文件夹 API');
+    await contextAction(folder(c), 'Folder API');
     await page.waitForFunction(() => !document.querySelector('#copy-api').disabled);
-    assert.ok(!(await page.locator('#api-scope').innerText()).includes('顶层'), 'Nested anchor scope must not be described as top-level');
+    assert.ok(!(await page.locator('#api-scope').innerText()).includes('top-level'), 'Nested anchor scope must not be described as top-level');
     assert.ok((await page.locator('#api-base').innerText()).endsWith(entity(c)));
     await page.locator('[data-close="api-dialog"]').click();
     await page.locator('#close-library').click();

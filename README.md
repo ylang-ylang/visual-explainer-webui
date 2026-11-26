@@ -5,12 +5,9 @@ Independent Web UI and remote MCP wrapper for [nicobailon/visual-explainer](http
 ## Ownership
 
 - **Official upstream:** skill/resources/prompts, HTML compilation and rendering.
-- **This wrapper:** light visual library, sandboxed previews, authentication, one folder hierarchy, scoped HTTP publishing, Git version previews/restores and remote MCP transport. The read-only `/api/visual-explainer` seam exposes the same installed upstream MCP resources, prompts and prepare tool; it does not copy skill files, interpolate its own prompts or reimplement preparation.
-- **Working agent:** inspects its own project, writes HTML and sends it to the renderer. The server does not run a model or read the agent's local project.
-- **Feedback boundary:** original kit/Comment/Ask/Reply behavior belongs upstream; this wrapper must not add its own comment queue, feedback protocol or agent orchestration, or claim automatic cross-host return.
-- **Browser feedback:** select text → Comment/Ask → Reply → Copy/paste into the working agent's chat.
-- **Original automatic send-back:** native Pi + Glimpse only, not the browser or remote MCP wrapper.
-- **Current sandbox limit:** the opaque preview blocks original localStorage draft persistence; unsent notes are lost on reload.
+- **This wrapper:** light visual library, sandboxed previews, authentication, one folder hierarchy, scoped HTTP publishing, Raft-style comment threads (unified Comment with text/element/page anchors, replies, Resolve/Reopen, and version-bound API feedback), Git version numbering (`v1`, `v2`, …) with previews/restores, and remote MCP transport. The read-only `/api/visual-explainer` seam exposes the same installed upstream MCP resources, prompts and prepare tool; it does not copy skill files, interpolate its own prompts or reimplement preparation.
+- **Working agent:** inspects its own project, writes HTML, sends it to the renderer, reads open comments over HTTP, publishes revised versions with notes, replies to threads, and resolves addressed threads. The server does not run a model or read the agent's local project.
+- **Comments & versions:** embedded previews use a unified Raft-style Comment flow (no Ask/Comment split, no manual Copy-reply paste) over `postMessage` while keeping `sandbox="allow-scripts"`. Threads persist server-side in `.comments.json` (excluded from Git), bind to `vN` / Git revision, support text-selection, element-picking, whole-diagram comments, replies, Resolve (collapsing to a folded Resolved list and removing page markers), and Reopen (explicit or automatic on new reply). Saved HTML files on disk/Git remain unmodified.
 
 The source of truth for the upstream revision is the `visual-explainer` dependency in `remote-app/package.json`: an official GitHub archive at an immutable commit. `remote-app/package-lock.json` locks the archive integrity and transitive dependencies. There is no copied renderer tree, fork patch set or startup download. The image installs the original package's dependencies rather than linking a fork checkout to wrapper dependencies.
 
@@ -146,9 +143,15 @@ Reads accept a viewer session or service Bearer token; Entity-scoped routes also
 | GET / POST | `/api/entities/:id/tokens` | Administrator only; list metadata / create `{name?, expiresIn?}`; name defaults to an automatic label. `expiresIn`: integer 1–2592000 seconds or `null`; omitted/null retains legacy no-expiry behavior. Expiring metadata includes `expiresAt` (UTC ISO timestamp); secret returned only on creation |
 | PATCH | `/api/entities/:id/tokens/:tokenId` | Administrator only; `{expiresIn}` updates the same active key's expiry from now (or `null` removes expiry); no secret returned; expired keys cannot be reactivated |
 | DELETE | `/api/entities/:id/tokens/:tokenId` | Administrator only; revoke |
-| GET | `/api/pages/:filename/versions` | `{versions}`; newest 50 meaningful Git revisions with signed preview URLs |
-| GET | `/api/pages/:filename/versions/:revision` | `{version, html}`; saved source when available |
-| POST | `/api/pages/:filename/restore` | `{revision}`; restore content at its current path as a new commit |
+| GET / POST | `/api/pages/:filename/comments` | Read threads (`?status=open\|resolved\|all`, `?version=vN`) with structured anchors & Raft-style `summary` / create thread or reply (`replyTo`, auto-reopens resolved threads); Admin or in-scope folder Key |
+| POST | `/api/pages/:filename/comments/:threadId/resolve` | Mark thread resolved with optional `{note}` reply; idempotent; Admin or in-scope folder Key |
+| POST | `/api/pages/:filename/comments/:threadId/reopen` | Reopen a resolved thread; Admin or in-scope folder Key |
+| PATCH / DELETE | `/api/pages/:filename/comments/:commentId` | Administrator only; edit or delete a comment/thread |
+| GET / POST | `/api/entities/:id/comments` | Scoped convenience endpoints by `?path=` (or folder-wide when omitted); also supports `POST /api/entities/:id/comments/:threadId/(resolve\|reopen)` |
+| GET | `/api/entities/:id/versions?path=...` | List numbered versions (`v1`, `v2`, …) with publish notes and per-version comment counts |
+| GET | `/api/pages/:filename/versions` | `{versions}`; newest 50 meaningful Git revisions with sequential `v1`/`v2`/… numbers, publish `note`, `commentCounts`, and signed preview URLs |
+| GET | `/api/pages/:filename/versions/:revision` | `{version, html}`; accepts full SHA or `vN` / `N`; saved source when available |
+| POST | `/api/pages/:filename/restore` | `{revision}` or `{version}` (optional `note`); restore content at its current path as a new version commit |
 
 Entity IDs are lowercase slugs of 1–64 letters/digits, `_` or `-`, starting with a letter/digit. Names contain 1–120 characters. Logical file paths end in `.html`/`.htm`, not `.src.html`, and are unique within an Entity. Page responses include both logical `path` and stable internal `filename`. Existing basename-based HTTP/MCP uploads remain supported; updating an existing page preserves its logical path. Moving an assignment rejects destination-path collisions rather than overwriting another diagram. Nonempty folders and Entities cannot be deleted. Errors return `{error}` with the relevant HTTP status, including 415 for unsupported upload content types and 503 for Git synchronization failures.
 
