@@ -27,29 +27,34 @@
 
     :root, :root[data-theme="light"] {
       color-scheme: light;
-      --bg: #f7f7f8;
+      --bg: #f3f5f8;
       --surface: #ffffff;
-      --surface-2: #f1f2f4;
-      --hover: #ededf0;
-      --active: #e6e8ec;
-      --border: #e5e7eb;
-      --border-strong: #d1d5db;
-      --ink: #111318;
-      --ink-2: #4b5563;
-      --ink-3: #8b93a1;
-      --primary: #111318;
-      --primary-hover: #262a33;
+      --surface-2: #f1f4f8;
+      --hover: #e9eef5;
+      --active: #e4ebf7;
+      --border: rgba(21, 25, 34, 0.10);
+      --border-strong: rgba(21, 25, 34, 0.18);
+      --ink: #151922;
+      --ink-2: #475162;
+      --ink-3: #647084;
+      --primary: #151922;
+      --primary-hover: #272e3d;
       --primary-fg: #ffffff;
-      --accent: #2563eb;
-      --accent-soft: rgba(37, 99, 235, 0.09);
-      --accent-border: rgba(37, 99, 235, 0.28);
-      --danger: #dc2626;
-      --danger-soft: rgba(220, 38, 38, 0.10);
-      --shadow: 0 10px 28px rgba(0, 0, 0, 0.10);
-      --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.16);
+      --accent: #2458d6;
+      --accent-hover: #1b45b0;
+      --accent-soft: rgba(36, 88, 214, 0.09);
+      --accent-soft-strong: rgba(36, 88, 214, 0.15);
+      --accent-border: rgba(36, 88, 214, 0.34);
+      --danger: #c22e3c;
+      --danger-soft: rgba(194, 46, 60, 0.10);
+      --popover-bg: #ffffff;
+      --popover-border: rgba(21, 25, 34, 0.14);
+      --popover-shadow: 0 16px 38px -8px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.07);
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.10);
+      --shadow-lg: 0 24px 64px rgba(15, 23, 42, 0.16);
       --bar-h: 52px;
-      --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", VisualCJK, sans-serif;
-      --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", VisualCJK, sans-serif;
+      --font-mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
       font-family: var(--font-sans);
       font-synthesis: none;
       color: var(--ink);
@@ -58,24 +63,29 @@
 
     :root[data-theme="dark"] {
       color-scheme: dark;
-      --bg: #0e1014;
-      --surface: #14171d;
-      --surface-2: #1c2028;
-      --hover: #212630;
-      --active: #272d39;
-      --border: #242934;
-      --border-strong: #363d4d;
-      --ink: #f0f2f6;
-      --ink-2: #9ba3b4;
-      --ink-3: #687182;
-      --primary: #f0f2f6;
-      --primary-hover: #d8dce5;
-      --primary-fg: #0e1014;
-      --accent: #5b9bff;
-      --accent-soft: rgba(91, 155, 255, 0.14);
-      --accent-border: rgba(91, 155, 255, 0.34);
-      --danger: #f87171;
-      --danger-soft: rgba(248, 113, 113, 0.14);
+      --bg: #12161f;
+      --surface: #151922;
+      --surface-2: #1c222e;
+      --hover: #232a38;
+      --active: #273044;
+      --border: rgba(226, 234, 248, 0.10);
+      --border-strong: rgba(226, 234, 248, 0.18);
+      --ink: #e8edf5;
+      --ink-2: #a8b3c7;
+      --ink-3: #8390a6;
+      --primary: #e8edf5;
+      --primary-hover: #d1d9e8;
+      --primary-fg: #0f1218;
+      --accent: #6ea0ff;
+      --accent-hover: #8fb6ff;
+      --accent-soft: rgba(110, 160, 255, 0.13);
+      --accent-soft-strong: rgba(110, 160, 255, 0.22);
+      --accent-border: rgba(110, 160, 255, 0.38);
+      --danger: #f5737f;
+      --danger-soft: rgba(245, 115, 127, 0.14);
+      --popover-bg: #1a202c;
+      --popover-border: rgba(226, 234, 248, 0.16);
+      --popover-shadow: 0 20px 44px -8px rgba(0, 0, 0, 0.65), 0 4px 14px rgba(0, 0, 0, 0.40);
       --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
       --shadow-lg: 0 24px 72px rgba(0, 0, 0, 0.65);
     }
@@ -84,7 +94,8 @@
     html.theme-switching, html.theme-switching * { transition: none !important; }
     [hidden] { display: none !important; }
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--surface); color: var(--ink); }
-    body { display: flex; height: 100dvh; font-size: 13px; -webkit-font-smoothing: antialiased; }
+    body { display: flex; height: 100dvh; font-size: 13.5px; line-height: 1.5; text-rendering: optimizeLegibility; }
+    :root[data-theme="dark"] body { -webkit-font-smoothing: antialiased; }
     button, input, select, textarea, a { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
     button, a { touch-action: manipulation; }
     button { cursor: pointer; }
@@ -160,17 +171,18 @@
       height: var(--bar-h);
       padding: 0 10px 0 16px;
     }
-    .brand { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 13.5px; font-weight: 600; letter-spacing: -.015em; color: var(--ink); }
+    .brand { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 13.5px; font-weight: 650; letter-spacing: -.015em; color: var(--ink); }
     .brand-mark {
       display: grid;
       place-items: center;
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       border-radius: 6px;
-      background: var(--primary);
-      color: var(--primary-fg);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-border);
+      color: var(--accent);
     }
-    .brand-mark .icon { width: 13px; height: 13px; }
+    .brand-mark .icon { width: 14px; height: 14px; }
 
     .library-search-wrap { padding: 4px 12px 10px; }
     .search {
@@ -185,13 +197,13 @@
       color: var(--ink-3);
       transition: border-color 120ms ease;
     }
-    .search:focus-within { border-color: var(--border-strong); color: var(--ink-2); }
+    .search:focus-within { border-color: var(--accent-border); color: var(--ink-2); }
     .search .icon { width: 14px; height: 14px; }
-    .search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; color: var(--ink); font-size: 12.5px; }
+    .search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; color: var(--ink); font-size: 13px; }
     .search input::placeholder { color: var(--ink-3); }
 
     .folder-location { padding: 0 10px 4px; }
-    #folder-root { justify-content: flex-start; width: 100%; height: 30px; padding: 0 8px; font-size: 12.5px; color: var(--ink-2); }
+    #folder-root { justify-content: flex-start; width: 100%; height: 30px; padding: 0 8px; font-size: 13px; color: var(--ink-2); }
     #folder-root .icon { width: 15px; height: 15px; color: var(--ink-3); }
     #folder-root[aria-current="location"] { background: var(--active); color: var(--ink); font-weight: 600; }
 
@@ -211,10 +223,11 @@
       gap: 7px;
       height: 32px;
       padding: 0 8px;
-      border-radius: 7px;
+      border-radius: 6px;
       cursor: pointer;
       list-style: none;
       color: var(--ink-2);
+      transition: background 120ms ease, color 120ms ease;
     }
     .folder > summary::-webkit-details-marker { display: none; }
     .folder > summary:hover { background: var(--hover); color: var(--ink); }
@@ -222,10 +235,73 @@
     .folder > summary > .chevron { width: 12px; height: 12px; color: var(--ink-3); transition: transform 120ms ease; }
     .folder[open] > summary > .chevron { transform: rotate(90deg); }
     .folder > summary > .folder-icon { width: 15px; height: 15px; color: var(--ink-3); }
-    .folder-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
-    .folder-children { margin-left: 16px; }
+    .folder-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 500; }
+    .folder-children, .wiki-children {
+      position: relative;
+      margin-left: 11px;
+      padding-left: 10px;
+    }
+    .folder-children::before, .wiki-children::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 2px;
+      bottom: 8px;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .wiki-branch { margin: 1px 0; min-width: 0; }
+    .wiki-parent-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+    .wiki-chevron {
+      position: absolute;
+      left: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--ink-3);
+      transition: background 120ms ease, color 120ms ease;
+    }
+    .wiki-chevron:hover { background: var(--border); color: var(--ink); }
+    .wiki-chevron .chevron { width: 12px; height: 12px; transition: transform 120ms ease; }
+    .wiki-branch[data-open="true"] > .wiki-parent-row > .wiki-chevron .chevron { transform: rotate(90deg); }
+    .wiki-children[hidden] { display: none !important; }
+    .report.wiki-parent-report { padding-left: 26px; }
+    .report.wiki-parent-report::before { display: none; }
+    .wiki-count {
+      flex: none;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-2);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0 5px;
+      line-height: 18px;
+    }
+    .report[aria-current="page"] .wiki-count {
+      background: var(--accent-soft-strong);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
 
     .report {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 7px;
@@ -235,17 +311,22 @@
       margin: 1px 0;
       padding: 0 8px;
       border: 0;
-      border-radius: 7px;
+      border-radius: 6px;
       background: transparent;
       color: var(--ink-2);
       text-align: left;
+      transition: background 120ms ease, color 120ms ease;
     }
     .report::before { content: ""; width: 12px; flex: none; }
     .report > .icon { width: 15px; height: 15px; color: var(--ink-3); }
     .report:hover { background: var(--hover); color: var(--ink); }
-    .report[aria-current="page"] { background: var(--active); color: var(--ink); }
-    .report[aria-current="page"] > .icon { color: var(--ink); }
-    .report-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .report[aria-current="page"] {
+      background: var(--accent-soft);
+      color: var(--accent);
+      box-shadow: inset 2.5px 0 0 var(--accent);
+    }
+    .report[aria-current="page"] > .icon { color: var(--accent); }
+    .report-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
     .report[aria-current="page"] .report-title { font-weight: 600; }
     .report-badge {
       flex: none;
@@ -253,9 +334,9 @@
       height: 18px;
       padding: 0 5px;
       border-radius: 9px;
-      background: var(--accent-soft);
+      background: var(--accent-soft-strong);
       color: var(--accent);
-      font: 600 10.5px/18px var(--font-mono);
+      font: 600 11.5px/18px var(--font-mono);
       text-align: center;
     }
 
@@ -309,35 +390,90 @@
       background: var(--surface);
     }
     .viewer-head-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-    .viewer-title { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; }
+    .viewer-title { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
     .viewer-title h1 {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-size: 14.5px;
-      font-weight: 600;
+      font-weight: 650;
       letter-spacing: -.015em;
       color: var(--ink);
+      flex: 0 1 auto;
     }
     .viewer-title p {
+      display: flex;
+      align-items: center;
+      gap: 2px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       color: var(--ink-3);
-      font-size: 12px;
+      font-size: 12.5px;
+      min-width: 0;
     }
+    .crumb-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--ink-2);
+      font-size: 12.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: background 120ms ease, color 120ms ease;
+    }
+    .crumb-link:hover { background: var(--hover); color: var(--accent); }
+    .crumb-sep { color: var(--ink-3); opacity: 0.7; user-select: none; }
+    .crumb-text { color: var(--ink-3); white-space: nowrap; }
+    .crumb-current { color: var(--ink-2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #wiki-up { max-width: 150px; }
+    #wiki-up-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .viewer-actions { display: flex; align-items: center; flex-shrink: 0; gap: 6px; }
+    .split-btn {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      overflow: hidden;
+      background: var(--surface);
+      transition: border-color 110ms ease;
+    }
+    .split-btn:hover { border-color: var(--border-strong); }
+    .split-btn > .btn {
+      height: 28px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--ink);
+    }
+    .split-btn > .btn:hover:not(:disabled) { background: var(--surface-2); }
+    .split-btn > .btn[aria-pressed="true"],
+    .split-btn > .btn.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .split-btn > .split-left {
+      width: 30px;
+      padding: 0;
+      border-right: 1px solid var(--border);
+    }
+    .split-btn > .split-right {
+      padding: 0 10px;
+    }
     .pill {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 17px;
-      height: 17px;
+      min-width: 18px;
+      height: 18px;
       padding: 0 5px;
       border-radius: 9px;
       background: var(--accent);
       color: #fff;
-      font: 600 10.5px/1 var(--font-mono);
+      font: 600 11.5px/1 var(--font-mono);
     }
     .ver-pill {
       display: inline-flex;
@@ -347,13 +483,19 @@
       border-radius: 5px;
       background: var(--surface-2);
       color: var(--ink-2);
-      font: 600 11px/1.3 var(--font-mono);
+      font: 600 11.5px/1.3 var(--font-mono);
     }
     #viewer-version { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
     #theme-toggle .icon { display: none; }
     :root[data-theme-mode="auto"] #theme-toggle .icon-auto { display: block; }
     :root[data-theme-mode="light"] #theme-toggle .icon-light { display: block; }
     :root[data-theme-mode="dark"] #theme-toggle .icon-dark { display: block; }
+    #fullscreen .icon-exit { display: none; }
+    #fullscreen[aria-pressed="true"] .icon-enter { display: none; }
+    #fullscreen[aria-pressed="true"] .icon-exit { display: block; }
+    html:fullscreen { width: 100vw; height: 100vh; background: var(--bg); }
+    html:fullscreen::backdrop { background: var(--bg); }
+    html:fullscreen body { width: 100vw; height: 100vh; }
 
     .history-banner {
       display: flex;
@@ -369,10 +511,166 @@
     #history-label { flex: 1; min-width: 120px; overflow-wrap: anywhere; font-weight: 500; }
 
     .viewer-body { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
-    .stage { position: relative; display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--surface); }
-    #preview { display: block; width: 100%; height: 100%; border: 0; background: transparent; }
-    .stage:fullscreen { width: 100%; height: 100%; background: var(--surface); }
-    #exit-fullscreen { position: absolute; right: 16px; top: 14px; z-index: 5; box-shadow: var(--shadow); }
+    .stage { position: relative; display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--surface); }
+    #preview { display: block; flex: 1; min-height: 0; width: 100%; height: 100%; border: 0; background: transparent; }
+
+    /* Compact Wiki Child Diagrams Strip */
+    .wiki-children-bar {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      min-width: 0;
+    }
+    .wiki-children-label {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-2);
+      white-space: nowrap;
+    }
+    .wiki-children-label .icon { width: 14px; height: 14px; color: var(--accent); }
+    .wiki-children-chips {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      min-width: 0;
+      flex: 1;
+      scrollbar-width: none;
+    }
+    .wiki-children-chips::-webkit-scrollbar { display: none; }
+    .wiki-child-chip {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 12.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+    }
+    .wiki-child-chip:hover {
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .wiki-child-chip-count {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-radius: 4px;
+      padding: 0 5px;
+      line-height: 17px;
+    }
+
+    /* Floating Sub-Diagram Hover Preview Popover */
+    .wiki-popover {
+      position: fixed;
+      z-index: 65;
+      width: 304px;
+      max-width: calc(100vw - 24px);
+      background: var(--popover-bg);
+      border: 1px solid var(--popover-border);
+      border-radius: 10px;
+      box-shadow: var(--popover-shadow);
+      padding: 12px 13px 11px;
+      pointer-events: none;
+    }
+    .wiki-popover-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .wiki-popover-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-border);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+    .wiki-popover-meta {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+    .wiki-popover-title {
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--ink);
+      margin: 0 0 4px;
+      line-height: 1.3;
+    }
+    .wiki-popover-summary {
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--ink-2);
+      margin: 0 0 9px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .wiki-popover-thumb {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 6px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .wiki-popover-thumb img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+    }
+    .wiki-popover-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+    .wiki-popover-path {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .wiki-popover-cta {
+      flex: none;
+      color: var(--accent);
+      font-weight: 600;
+    }
 
     .placeholder {
       position: absolute;
@@ -429,7 +727,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: 11.5px;
+      font-size: 12px;
       color: var(--ink-3);
     }
     .hosts-pill.online { color: var(--ink-2); }
@@ -546,18 +844,18 @@
       border-radius: 50%;
       background: var(--surface-2);
       color: var(--ink);
-      font: 700 10.5px/1 var(--font-sans);
+      font: 700 11.5px/1 var(--font-sans);
       flex: none;
     }
     .avatar-dot.agent { background: var(--accent-soft); color: var(--accent); }
-    .comment-author { font-weight: 600; color: var(--ink); font-size: 12.5px; }
+    .comment-author { font-weight: 600; color: var(--ink); font-size: 13px; }
     .comment-ver {
       padding: 1px 6px;
       border: 1px solid var(--border);
       border-radius: 5px;
       background: var(--bg);
       color: var(--ink-2);
-      font: 600 10.5px/1.35 var(--font-mono);
+      font: 600 11.5px/1.35 var(--font-mono);
     }
     .comment-ver:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
     .comment-locate {
@@ -574,7 +872,7 @@
     }
     .comment-locate:hover { border-color: var(--accent); }
     .comment-locate .icon { width: 13px; height: 13px; }
-    .comment-time { margin-left: auto; font-size: 11px; color: var(--ink-3); }
+    .comment-time { margin-left: auto; font-size: 12px; color: var(--ink-3); }
 
     .comment-quote-btn {
       display: block;
@@ -585,7 +883,7 @@
       border-radius: 6px;
       background: var(--bg);
       text-align: left;
-      font-size: 12px;
+      font-size: 12.5px;
       line-height: 1.5;
       color: var(--ink-2);
     }
@@ -594,8 +892,8 @@
     .comment-body { font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
     .comment-replies { display: grid; gap: 10px; padding: 2px 0 2px 12px; border-left: 2px solid var(--border); }
     .comment-reply { display: grid; gap: 3px; }
-    .comment-reply-head { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); }
-    .comment-reply-head strong { color: var(--ink); font-size: 12px; font-weight: 600; }
+    .comment-reply-head { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+    .comment-reply-head strong { color: var(--ink); font-size: 12.5px; font-weight: 600; }
     .comment-reply .comment-body { font-size: 13px; }
 
     .comment-actions { display: flex; align-items: center; gap: 4px; padding-top: 6px; border-top: 1px solid var(--border); }
@@ -614,12 +912,12 @@
     .link-btn:hover:not(:disabled) { background: var(--hover); color: var(--ink); }
     .link-btn.accent { color: var(--accent); font-weight: 600; }
     .link-btn.accent:hover:not(:disabled) { background: var(--accent-soft); }
-    .link-btn.quiet { color: var(--ink-3); font-weight: 400; opacity: .7; }
+    .link-btn.quiet { color: var(--ink-3); font-weight: 400; opacity: .78; }
     .comment-card:hover .link-btn.quiet { opacity: 1; }
     .link-btn.push-right { margin-left: auto; }
     .link-btn.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
 
-    .resolved-note { font-size: 11.5px; color: var(--ink-3); }
+    .resolved-note { font-size: 12px; color: var(--ink-3); }
     .reply-box, .edit-box { display: grid; gap: 8px; }
     .reply-box-actions, .edit-box-actions { display: flex; justify-content: flex-end; gap: 6px; }
 
@@ -658,7 +956,7 @@
       background: var(--surface);
       box-shadow: var(--shadow);
     }
-    .context-label { padding: 5px 8px 6px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+    .context-label { padding: 5px 8px 6px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; }
     .context-menu [role="menuitem"] {
       display: flex;
       align-items: center;
@@ -728,13 +1026,13 @@
       border-radius: 8px;
       background: var(--bg);
       color: var(--ink);
-      font: 11.5px/1.6 var(--font-mono);
+      font: 12px/1.6 var(--font-mono);
       overflow-wrap: anywhere;
     }
     textarea.code-field { resize: vertical; min-height: 110px; white-space: pre-wrap; }
     .field-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 6px; }
     .field-row label { margin: 0; }
-    .field-row .btn { height: 26px; padding: 0 9px; font-size: 11.5px; }
+    .field-row .btn { height: 28px; padding: 0 9px; font-size: 12px; }
     #new-page-html { margin-top: 0; }
     #api-secret { font-family: var(--font-mono); font-size: 12px; }
     #api-unlock { margin-top: 10px; }
@@ -742,10 +1040,10 @@
     #versions-list { margin-top: 12px; }
     .version-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
     .version-row:last-child { border-bottom: 0; }
-    .row-copy { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 12.5px; line-height: 1.55; }
-    .row-copy small { display: block; margin-top: 2px; color: var(--ink-3); font-size: 11.5px; }
+    .row-copy { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: 13px; line-height: 1.55; }
+    .row-copy small { display: block; margin-top: 2px; color: var(--ink-3); font-size: 12px; }
     .version-title-line { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
-    .version-current-tag { padding: 1px 6px; border-radius: 4px; background: var(--primary); color: var(--primary-fg); font-size: 10.5px; font-weight: 600; }
+    .version-current-tag { padding: 1px 6px; border-radius: 4px; background: var(--primary); color: var(--primary-fg); font-size: 11.5px; font-weight: 600; }
     .version-actions { display: flex; align-items: center; gap: 6px; flex: none; }
     .inline-form-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
     .inline-form-row input { flex: 1; min-width: 0; }
@@ -760,14 +1058,14 @@
       display: grid;
       gap: 6px;
     }
-    .secret-reveal-label { font-size: 11.5px; font-weight: 600; color: var(--accent); }
+    .secret-reveal-label { font-size: 12px; font-weight: 600; color: var(--accent); }
     .secret-reveal-row { display: flex; align-items: center; gap: 6px; }
     .secret-reveal-row input {
       flex: 1;
       min-width: 0;
       height: 32px;
       font-family: var(--font-mono);
-      font-size: 11.5px;
+      font-size: 12px;
       background: var(--surface);
     }
     .secret-reveal-row .btn { height: 32px; flex: none; }
@@ -785,8 +1083,8 @@
       border-radius: 5px;
       background: var(--surface-2);
       color: var(--ink-2);
-      font-size: 11px;
-      font-weight: 500;
+      font-size: 11.5px;
+      font-weight: 600;
     }
     .role-badge.admin { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }
     .share-form-grid { display: grid; grid-template-columns: 120px 1fr auto; gap: 8px; margin-top: 12px; align-items: center; }
@@ -893,14 +1191,23 @@
           </div>
         </div>
         <div class="viewer-actions">
+          <button id="wiki-up" class="btn bordered" type="button" title="Up to parent diagram (Esc)" hidden>
+            <span aria-hidden="true">↑</span>
+            <span id="wiki-up-label">Parent</span>
+          </button>
           <button id="viewer-version" class="btn bordered" type="button" title="Version history" hidden>
             <span id="viewer-version-label">v1</span>
           </button>
-          <button id="comments-toggle" class="btn bordered" type="button" aria-expanded="false" aria-controls="comments-panel" title="Comments" hidden>
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2.5v-10A7.5 7.5 0 0 1 10.5 4h3A7.5 7.5 0 0 1 21 11.5z"/></svg>
-            <span>Comments</span>
-            <span id="comments-badge" class="pill" hidden>0</span>
-          </button>
+          <div id="comments-split" class="split-btn" hidden>
+            <button id="pick-element" class="btn split-left" type="button" aria-pressed="false" aria-label="Pick element to comment" title="Pick element to comment" hidden>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2"/></svg>
+            </button>
+            <button id="comments-toggle" class="btn split-right" type="button" aria-expanded="false" aria-controls="comments-panel" title="Comments" hidden>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2.5v-10A7.5 7.5 0 0 1 10.5 4h3A7.5 7.5 0 0 1 21 11.5z"/></svg>
+              <span>Comments</span>
+              <span id="comments-badge" class="pill" hidden>0</span>
+            </button>
+          </div>
           <button id="viewer-api" class="btn icon-only" type="button" aria-label="File API" title="File API" hidden>
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9m-4 4 2 2m1-5 2 2"/></svg>
           </button>
@@ -912,12 +1219,10 @@
             <svg class="icon icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/></svg>
             <svg class="icon icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/></svg>
           </button>
-          <button id="fullscreen" class="btn icon-only" type="button" aria-label="Fullscreen" aria-pressed="false" title="Fullscreen" disabled>
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>
+          <button id="fullscreen" class="btn icon-only" type="button" aria-label="Fullscreen" aria-pressed="false" title="Fullscreen">
+            <svg class="icon icon-enter" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>
+            <svg class="icon icon-exit" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v5H3m13-5v5h5M3 16h5v5m13-5h-5v5"/></svg>
           </button>
-          <a id="open" class="btn icon-only" target="_blank" rel="noopener noreferrer" aria-label="Open in new tab" title="Open in new tab" hidden>
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7m0-7L10 14M10 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>
-          </a>
         </div>
       </header>
 
@@ -936,16 +1241,12 @@
             <button id="placeholder-action" class="btn bordered" type="button" hidden></button>
           </div>
           <iframe id="preview" title="Diagram preview" sandbox="allow-scripts" hidden></iframe>
-          <button id="exit-fullscreen" class="btn bordered" type="button" hidden>Exit fullscreen</button>
+          <div id="wiki-children-bar" class="wiki-children-bar" aria-label="Child diagrams" hidden></div>
         </div>
 
         <aside id="comments-panel" class="comments-panel" aria-label="Comments" hidden>
           <div class="comments-head">
             <h2><span>Comments</span><span id="comments-version-tag" class="ver-pill" hidden></span></h2>
-            <button id="pick-element" class="btn bordered" type="button" aria-pressed="false" title="Pick an element on the diagram" hidden>
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2"/></svg>
-              <span id="pick-element-label">Pick</span>
-            </button>
             <button id="comments-close" class="btn icon-only" type="button" aria-label="Close comments" title="Close">×</button>
           </div>
           <div id="comments-dispatch-bar" class="comments-dispatch-bar" hidden>
@@ -1164,6 +1465,28 @@
     <p id="share-error" class="dialog-error" role="alert"></p>
   </dialog>
 
+  <div id="wiki-popover" class="wiki-popover" role="tooltip" aria-hidden="true" hidden>
+    <div class="wiki-popover-head">
+      <span class="wiki-popover-badge">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <rect x="1.2" y="1.2" width="6.6" height="6.6" rx="1.4" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M4.5 10.6h4.8a1.3 1.3 0 0 0 1.3-1.3V4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        SUB-DIAGRAM
+      </span>
+      <span id="wiki-popover-meta" class="wiki-popover-meta"></span>
+    </div>
+    <h4 id="wiki-popover-title" class="wiki-popover-title"></h4>
+    <p id="wiki-popover-summary" class="wiki-popover-summary" hidden></p>
+    <div id="wiki-popover-thumb-wrap" class="wiki-popover-thumb" hidden>
+      <img id="wiki-popover-thumb" alt="">
+    </div>
+    <div class="wiki-popover-foot">
+      <span id="wiki-popover-path" class="wiki-popover-path"></span>
+      <span class="wiki-popover-cta">Click to open ↵</span>
+    </div>
+  </div>
+
   <div id="context-menu" class="context-menu" role="menu" aria-label="Actions" hidden></div>
   <div id="notice" role="status" hidden></div>
 
@@ -1328,12 +1651,14 @@
       $('page-title').removeAttribute('title');
       $('page-meta').textContent = '';
       $('page-meta').removeAttribute('title');
-      $('open').hidden = true;
-      $('open').removeAttribute('href');
-      $('fullscreen').disabled = true;
       $('viewer-version').hidden = true;
       $('viewer-api').hidden = true;
       $('viewer-share').hidden = true;
+      $('wiki-up').hidden = true;
+      $('wiki-children-bar').hidden = true;
+      $('wiki-children-bar').replaceChildren();
+      hideWikiPopover();
+      $('comments-split').hidden = true;
       $('pick-element').hidden = true;
       $('comments-toggle').hidden = true;
       setPickMode(false);
@@ -1401,6 +1726,230 @@
       return [folderLabel(page.entityId), stripHtmlExt(pagePath(page))].filter(Boolean).join(' / ');
     }
 
+    function wikiParentOf(page) {
+      if (!page?.entityId) return null;
+      const p = pagePath(page);
+      if (!p.includes('/')) return null;
+      const parentStem = p.slice(0, p.lastIndexOf('/'));
+      return pages.find(item => item.entityId === page.entityId && stripHtmlExt(pagePath(item)) === parentStem) || null;
+    }
+
+    function wikiChildrenOf(page) {
+      if (!page?.entityId) return [];
+      const prefix = stripHtmlExt(pagePath(page)) + '/';
+      return pages.filter(item => {
+        if (item.entityId !== page.entityId || item.filename === page.filename) return false;
+        const p = pagePath(item);
+        return p.startsWith(prefix) && !p.slice(prefix.length).includes('/');
+      }).sort((a, b) => pageRowName(a).localeCompare(pageRowName(b), 'en'));
+    }
+
+    function wikiDirectChildCount(page) {
+      return wikiChildrenOf(page).length;
+    }
+
+    function countFolderPages(node) {
+      let total = node.pages.length;
+      for (const child of node.folders.values()) total += countFolderPages(child);
+      return total;
+    }
+
+    function hideWikiPopover() {
+      const pop = $('wiki-popover');
+      if (!pop) return;
+      pop.hidden = true;
+      pop.setAttribute('aria-hidden', 'true');
+    }
+
+    function showWikiPopover(target, screenRect) {
+      const pop = $('wiki-popover');
+      if (!pop || !target || !screenRect || document.querySelector('dialog[open]') || contextMenuState) {
+        hideWikiPopover();
+        return;
+      }
+      const childCount = wikiDirectChildCount(target);
+      $('wiki-popover-meta').textContent = childCount > 0 ? `${childCount} sub` : 'Detail';
+      $('wiki-popover-title').textContent = pageTitle(target);
+      const summary = (target.summary || '').trim();
+      $('wiki-popover-summary').textContent = summary;
+      $('wiki-popover-summary').hidden = !summary;
+      const thumbWrap = $('wiki-popover-thumb-wrap');
+      const thumbImg = $('wiki-popover-thumb');
+      if (target.thumbUrl) {
+        const themedThumbUrl = `${target.thumbUrl}&theme=${encodeURIComponent(currentTheme())}`;
+        thumbImg.onerror = () => { thumbWrap.hidden = true; };
+        if (thumbImg.getAttribute('src') !== themedThumbUrl) thumbImg.src = themedThumbUrl;
+        thumbImg.alt = pageTitle(target);
+        thumbWrap.hidden = false;
+      } else {
+        thumbWrap.hidden = true;
+        thumbImg.removeAttribute('src');
+      }
+      $('wiki-popover-path').textContent = displayPagePath(target);
+      pop.hidden = false;
+      pop.setAttribute('aria-hidden', 'false');
+      const pw = pop.offsetWidth || 304;
+      const ph = pop.offsetHeight || 160;
+      const gap = 12;
+      let left = screenRect.right + gap;
+      let top = screenRect.top;
+      if (left + pw > innerWidth - 12) left = screenRect.left - pw - gap;
+      if (left < 12) {
+        left = Math.max(12, Math.min(screenRect.left, innerWidth - pw - 12));
+        top = screenRect.bottom + gap;
+        if (top + ph > innerHeight - 12) top = screenRect.top - ph - gap;
+      }
+      left = Math.max(12, Math.min(left, innerWidth - pw - 12));
+      top = Math.max(12, Math.min(top, innerHeight - ph - 12));
+      pop.style.left = Math.round(left) + 'px';
+      pop.style.top = Math.round(top) + 'px';
+    }
+
+    function renderBreadcrumb(page) {
+      const meta = $('page-meta');
+      const fullText = displayPagePath(page);
+      meta.title = fullText;
+      const upBtn = $('wiki-up');
+      const parentPage = wikiParentOf(page);
+      if (parentPage) {
+        $('wiki-up-label').textContent = pageRowName(parentPage);
+        upBtn.title = `Up to ${pageTitle(parentPage)} (Esc)`;
+        upBtn.hidden = false;
+      } else {
+        upBtn.hidden = true;
+      }
+      if (!page?.entityId) {
+        meta.textContent = fullText;
+        return;
+      }
+      const stripped = stripHtmlExt(pagePath(page));
+      const segments = stripped.split('/');
+      if (segments.length <= 1) {
+        meta.textContent = fullText;
+        return;
+      }
+      const ancestors = [];
+      let hasWikiAncestor = false;
+      for (let i = 0; i < segments.length - 1; i++) {
+        const prefix = segments.slice(0, i + 1).join('/');
+        const match = pages.find(item => item.entityId === page.entityId && stripHtmlExt(pagePath(item)) === prefix) || null;
+        if (match) hasWikiAncestor = true;
+        ancestors.push({ segment: segments[i], page: match });
+      }
+      if (!hasWikiAncestor) {
+        meta.textContent = fullText;
+        return;
+      }
+      const frag = document.createDocumentFragment();
+      const folderText = folderLabel(page.entityId);
+      const addSep = () => {
+        const sep = document.createElement('span');
+        sep.className = 'crumb-sep';
+        sep.textContent = ' / ';
+        frag.append(sep);
+      };
+      if (folderText) {
+        const rootSpan = document.createElement('span');
+        rootSpan.className = 'crumb-text';
+        rootSpan.textContent = folderText;
+        frag.append(rootSpan);
+      }
+      for (const anc of ancestors) {
+        if (frag.childNodes.length) addSep();
+        if (anc.page) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'crumb-link';
+          btn.textContent = anc.segment;
+          btn.title = `Open ${pageTitle(anc.page)}`;
+          btn.addEventListener('click', () => {
+            revealPage(anc.page);
+            renderList();
+          });
+          frag.append(btn);
+        } else {
+          const span = document.createElement('span');
+          span.className = 'crumb-text';
+          span.textContent = anc.segment;
+          frag.append(span);
+        }
+      }
+      if (frag.childNodes.length) addSep();
+      const cur = document.createElement('span');
+      cur.className = 'crumb-current';
+      cur.textContent = segments[segments.length - 1];
+      frag.append(cur);
+      meta.replaceChildren(frag);
+    }
+
+    function renderWikiChildrenBar(page) {
+      const bar = $('wiki-children-bar');
+      const children = page ? wikiChildrenOf(page) : [];
+      if (!children.length) {
+        bar.hidden = true;
+        bar.replaceChildren();
+        return;
+      }
+      const label = document.createElement('span');
+      label.className = 'wiki-children-label';
+      label.append(treeIcon('wiki'));
+      const labelText = document.createElement('span');
+      labelText.textContent = `Sub-diagrams (${children.length})`;
+      label.append(labelText);
+      const chips = document.createElement('div');
+      chips.className = 'wiki-children-chips';
+      for (const child of children) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'wiki-child-chip';
+        btn.dataset.filename = child.filename;
+        btn.title = pageTitle(child) + (child.summary ? '\n' + child.summary : '');
+        const text = document.createElement('span');
+        text.textContent = pageTitle(child);
+        btn.append(text);
+        const subCount = wikiDirectChildCount(child);
+        if (subCount > 0) {
+          const count = document.createElement('span');
+          count.className = 'wiki-child-chip-count';
+          count.textContent = String(subCount);
+          btn.append(count);
+        }
+        btn.addEventListener('pointerenter', () => showWikiPopover(child, btn.getBoundingClientRect()));
+        btn.addEventListener('pointerleave', () => hideWikiPopover());
+        btn.addEventListener('click', () => {
+          hideWikiPopover();
+          revealPage(child);
+          renderList();
+        });
+        chips.append(btn);
+      }
+      bar.replaceChildren(label, chips);
+      bar.hidden = false;
+    }
+
+    function syncIframeWiki() {
+      if (!selected) return;
+      const curPath = pagePath(selected);
+      const curStem = stripHtmlExt(curPath);
+      const curDir = curPath.includes('/') ? curPath.slice(0, curPath.lastIndexOf('/')) : '';
+      const scopePages = pages
+        .filter(p => p.entityId === selected.entityId)
+        .map(p => ({
+          filename: p.filename,
+          path: pagePath(p),
+          stem: stripHtmlExt(pagePath(p).split('/').pop()),
+          title: pageTitle(p),
+          summary: p.summary || '',
+          childCount: wikiDirectChildCount(p),
+          thumbUrl: p.thumbUrl || null,
+        }));
+      sendToIframe({
+        type: 've-wiki:pages',
+        current: { filename: selected.filename, path: curPath, stem: curStem, dir: curDir },
+        pages: scopePages,
+      });
+    }
+
     function chooseFolder(entityId = null, path = '') {
       closeContextMenu();
       currentFolder = { entityId, path };
@@ -1436,19 +1985,23 @@
       const fragment = document.createDocumentFragment();
       updateControls();
 
-      function pageButton(page) {
+      function pageButton(page, wikiFolder = null) {
         const button = makeButton('', () => {
           selectPage(page, true);
           if (compact.matches) {
             setNavigation(false);
             $('page-title').focus({ preventScroll: true });
           }
-        }, 'report');
+        }, wikiFolder ? 'report wiki-parent-report' : 'report');
         button.dataset.filename = page.filename;
         button.draggable = authenticated && canEdit();
         button.dataset.dragKind = 'page';
         button.dataset.focusKey = 'page:' + page.filename;
         button.dataset.contextKind = 'page';
+        if (wikiFolder) {
+          button.dataset.dropEntityId = wikiFolder.entityId;
+          button.dataset.dropPath = wikiFolder.path;
+        }
         button.setAttribute('aria-keyshortcuts', 'Shift+F10');
         button.title = pageTitle(page) + '\n' + displayPagePath(page);
         button.setAttribute('aria-label', pageRowName(page) + ' · ' + pageTitle(page));
@@ -1456,7 +2009,17 @@
         const label = document.createElement('span');
         label.className = 'report-title';
         label.textContent = pageRowName(page);
-        button.append(treeIcon('file'), label);
+        button.append(treeIcon(wikiFolder ? 'wiki' : 'file'), label);
+        if (wikiFolder) {
+          const total = countFolderPages(wikiFolder);
+          if (total > 0) {
+            const count = document.createElement('span');
+            count.className = 'wiki-count';
+            count.textContent = String(total);
+            count.title = `${total} sub-diagram${total === 1 ? '' : 's'}`;
+            button.append(count);
+          }
+        }
         if (page.openComments > 0) {
           const badge = document.createElement('span');
           badge.className = 'report-badge';
@@ -1498,7 +2061,20 @@
         directory(page.entityId, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '').pages.push(page);
       }
       function appendNode(node, container) {
-        for (const child of [...node.folders.values()].sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
+        // Pair plain subfolders with a sibling page of matching stem (Feishu-Wiki page-as-parent).
+        const pairedFolders = new Map();
+        const pairedKeys = new Set();
+        for (const page of node.pages) {
+          if (!page.entityId) continue;
+          const stem = stripHtmlExt(pagePath(page).split('/').pop());
+          const match = node.folders.get(stem);
+          if (match && match.path && match.entityId === page.entityId && !pairedKeys.has(stem)) {
+            pairedFolders.set(page.filename, match);
+            pairedKeys.add(stem);
+          }
+        }
+        for (const [folderKey, child] of [...node.folders.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name, 'en'))) {
+          if (pairedKeys.has(folderKey)) continue;
           const details = document.createElement('details');
           details.className = 'folder';
           details.dataset.entityId = child.entityId;
@@ -1532,7 +2108,43 @@
           });
           container.append(details);
         }
-        for (const page of node.pages) container.append(pageButton(page));
+        for (const page of node.pages) {
+          const childFolder = pairedFolders.get(page.filename);
+          if (!childFolder) {
+            container.append(pageButton(page));
+            continue;
+          }
+          const key = childFolder.entityId + ':' + childFolder.path;
+          const isOpen = query ? true : folderExpansion.get(key) ?? true;
+          const branch = document.createElement('div');
+          branch.className = 'wiki-branch';
+          branch.dataset.entityId = childFolder.entityId;
+          branch.dataset.path = childFolder.path;
+          branch.dataset.open = String(isOpen);
+          const row = document.createElement('div');
+          row.className = 'wiki-parent-row';
+          const chevron = document.createElement('button');
+          chevron.type = 'button';
+          chevron.className = 'wiki-chevron';
+          chevron.setAttribute('aria-expanded', String(isOpen));
+          chevron.setAttribute('aria-label', `Toggle child pages of ${pageRowName(page)}`);
+          chevron.append(treeIcon('chevron'));
+          const children = document.createElement('div');
+          children.className = 'wiki-children';
+          children.hidden = !isOpen;
+          chevron.addEventListener('click', event => {
+            event.stopPropagation();
+            const next = branch.dataset.open !== 'true';
+            branch.dataset.open = String(next);
+            chevron.setAttribute('aria-expanded', String(next));
+            children.hidden = !next;
+            if (!query) folderExpansion.set(key, next);
+          });
+          row.append(chevron, pageButton(page, childFolder));
+          appendNode(childFolder, children);
+          branch.append(row, children);
+          container.append(branch);
+        }
       }
       appendNode(root, fragment);
       if (!fragment.childNodes.length) {
@@ -1632,14 +2244,13 @@
       }
       $('page-title').textContent = pageTitle(page);
       $('page-title').title = pageTitle(page);
-      $('page-meta').textContent = displayPagePath(page);
-      $('page-meta').title = displayPagePath(page);
-      $('open').href = historical?.version.url || page.url;
-      $('open').hidden = false;
-      $('fullscreen').disabled = false;
+      hideWikiPopover();
+      renderBreadcrumb(page);
+      renderWikiChildrenBar(page);
       $('viewer-version').hidden = false;
       $('viewer-api').hidden = false;
       $('viewer-share').hidden = !canEdit();
+      $('comments-split').hidden = false;
       $('comments-toggle').hidden = false;
       $('pick-element').hidden = !canEdit();
       if (prevFilename !== page.filename) {
@@ -1714,6 +2325,11 @@
             || pages.find(page => page.filename === selected?.filename) || pages[0];
           if (current) selectPage(current);
           else showEmptyLibrary();
+        }
+        if (selected) {
+          renderBreadcrumb(selected);
+          renderWikiChildrenBar(selected);
+          syncIframeWiki();
         }
         renderList();
         return true;
@@ -1817,6 +2433,13 @@
       if (compact.matches && mobileNavOpen) $('search').focus();
       else if ($('library').hidden && focusWasInLibrary) $('nav-toggle').focus();
     });
+    $('wiki-up').addEventListener('click', () => {
+      const parentPage = selected && wikiParentOf(selected);
+      if (parentPage) {
+        revealPage(parentPage);
+        renderList();
+      }
+    });
     document.addEventListener('keydown', event => {
       if (document.querySelector('dialog[open]')) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -1829,11 +2452,21 @@
         setPickMode(false);
         return;
       }
-      if (!compact.matches || !mobileNavOpen) return;
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && compact.matches && mobileNavOpen) {
         event.preventDefault();
         setNavigation(false, true);
+        return;
       }
+      if (event.key === 'Escape' && !document.fullscreenElement && !contextMenuState && !event.target?.closest?.('input, textarea, select, [contenteditable]')) {
+        const parentPage = selected && wikiParentOf(selected);
+        if (parentPage) {
+          event.preventDefault();
+          revealPage(parentPage);
+          renderList();
+          return;
+        }
+      }
+      if (!compact.matches || !mobileNavOpen) return;
       if (event.key === 'Tab') {
         const controls = Array.from($('library').querySelectorAll('button:not(:disabled), input, select:not(:disabled)'))
           .filter(control => control.offsetParent !== null);
@@ -1843,18 +2476,24 @@
       }
     });
 
+    function syncFullscreenButton() {
+      const active = Boolean(document.fullscreenElement);
+      const label = active ? 'Exit fullscreen' : 'Fullscreen';
+      const button = $('fullscreen');
+      button.setAttribute('aria-pressed', String(active));
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    }
     $('fullscreen').addEventListener('click', async () => {
-      try { await $('stage').requestFullscreen(); }
-      catch { notify('Fullscreen is not available in this browser.'); }
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+      } catch {
+        notify('Fullscreen is not available in this browser.');
+      }
     });
-    $('exit-fullscreen').addEventListener('click', async () => {
-      try { await document.exitFullscreen(); } catch {}
-    });
-    document.addEventListener('fullscreenchange', () => {
-      const active = document.fullscreenElement === $('stage');
-      $('exit-fullscreen').hidden = !active;
-      $('fullscreen').setAttribute('aria-pressed', String(active));
-    });
+    document.addEventListener('fullscreenchange', syncFullscreenButton);
+    syncFullscreenButton();
     window.addEventListener('hashchange', () => {
       pendingFilename = hashFilename();
       if (!authenticated) return;
@@ -1885,7 +2524,31 @@
     function dropDestination(element) {
       return { entityId: element.dataset.dropEntityId || null, path: element.dataset.dropPath };
     }
+    function pageHasWikiChildren(page) {
+      if (!page?.entityId) return false;
+      const stem = stripHtmlExt(pagePath(page));
+      return pages.some(item => item.entityId === page.entityId && item.filename !== page.filename && pagePath(item).startsWith(stem + '/'))
+        || treeFolders.some(folder => folder.entityId === page.entityId && (folder.path === stem || folder.path.startsWith(stem + '/')))
+        || entityCatalog.entities.some(entry => entry.parent?.entityId === page.entityId && (entry.parent.path === stem || entry.parent.path.startsWith(stem + '/')));
+    }
     function invalidDestination(source, target) {
+      if (source.kind === 'page') {
+        const page = pages.find(item => item.filename === source.filename);
+        if (!pageHasWikiChildren(page)) return '';
+        if (!target.entityId) return 'Move a page with child diagrams into a folder, not Root';
+        const stem = stripHtmlExt(pagePath(page));
+        let id = target.entityId, path = target.path;
+        while (id) {
+          if (id === page.entityId && (path === stem || path.startsWith(stem + '/'))) {
+            return 'Cannot move a page into its own child diagram';
+          }
+          const parent = entityCatalog.entities.find(entry => entry.id === id);
+          if (!parent?.parent) break;
+          path = [parent.parent.path, parent.name, path].filter(Boolean).join('/');
+          id = parent.parent.entityId;
+        }
+        return '';
+      }
       if (source.kind !== 'folder' || !target.entityId) return '';
       let id = target.entityId, path = target.path;
       while (id) {
@@ -2004,9 +2667,10 @@
         chevron: 'm9 5 7 7-7 7',
         folder: 'M3 7V5a1 1 0 0 1 1-1h6l2 3h8a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7z',
         file: 'M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h5',
+        wiki: 'M4 4h11v11H4zM8 19h9a2 2 0 0 0 2-2V8',
       };
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'icon ' + (kind === 'folder' ? 'folder-icon' : kind));
+      svg.setAttribute('class', 'icon ' + (kind === 'folder' ? 'folder-icon' : kind === 'wiki' ? 'file wiki-stack' : kind));
       svg.setAttribute('viewBox', '0 0 24 24');
       svg.setAttribute('aria-hidden', 'true');
       const path = document.createElementNS(svg.namespaceURI, 'path');
@@ -2053,6 +2717,7 @@
     }
     function showContextMenu(target, x, y) {
       closeContextMenu();
+      hideWikiPopover();
       if (!authenticated || dragging || movePending || document.querySelector('dialog[open]')) return;
       contextMenuState = { ...target, listScrollTop: $('list').scrollTop };
       target.row.classList.add('context-target');
@@ -2091,7 +2756,9 @@
           if (compact.matches) setNavigation(false);
           $('page-title').focus({ preventScroll: true });
         });
-        item('Open in new tab', null, { href: page.url });
+        if (canEdit() && page.entityId) {
+          item('New child page', () => requireAdmin(() => openNewChildPage(page)));
+        }
         item('Version history', () => openVersions(page));
         item('File API', () => openFileApi(page));
         if (canEdit()) {
@@ -2426,8 +3093,13 @@
 </html>
 `;
     }
+    function openNewChildPage(page) {
+      if (!page?.entityId) return;
+      openNewPage({ entityId: page.entityId, path: stripHtmlExt(pagePath(page)), title: 'New child page' });
+    }
     function openNewPage(context = {}) {
       newPageContext = { entityId: context.entityId || null, path: context.path || '' };
+      $('new-page-title').textContent = context.title || 'New page';
       $('new-page-location').textContent = 'Location: ' + (folderLabel(newPageContext.entityId, newPageContext.path) || 'Root');
       $('new-page-name').value = '';
       $('new-page-html').value = '';
@@ -2643,34 +3315,35 @@
       const eventsOnceUrl = isFile
         ? `${base}/events?path=${encodedTargetPath}&events=comment.dispatch&once=1&timeout=300&client=agent`
         : `${base}/events?events=comment.dispatch&once=1&timeout=300&client=agent`;
+      const childPathExample = isFile ? `${stripHtmlExt(targetPath)}/<child>.html` : '<parent-stem>/<child>.html';
       $('api-payload').value = usable ? [
         isFile
-          ? `You have scoped HTTP access to the Visual Explainer diagram "${displayPagePath(context.page)}" (folder "${folderLabel(context.entityId)}"). Use this key directly over HTTP — no MCP, repo clone, local skill install, or admin key is needed. Keep the key private.`
-          : `You have scoped HTTP access to a Visual Explainer folder ("${folderLabel(context.entityId)}" and its subfolders). Use this folder key directly over HTTP — no MCP, repo clone, local skill install, or admin key is needed. Keep the key private.`,
+          ? `You have scoped HTTP access to the Visual Explainer diagram "${displayPagePath(context.page)}" and its parent folder "${folderLabel(context.entityId)}" (the scoped key covers the whole folder subtree, including creating and updating child pages). Use this key directly over HTTP — no MCP, repo clone, local skill install, or admin key is needed. Keep the key private.`
+          : `You have scoped HTTP access to a Visual Explainer folder ("${folderLabel(context.entityId)}" and its entire subfolder subtree, including creating child pages). Use this folder key directly over HTTP — no MCP, repo clone, local skill install, or admin key is needed. Keep the key private.`,
         '',
         ...(isFile ? [
-          `- Diagram endpoint: ${targetUrl}`,
-          `- Folder API: ${base}`,
+          `- Diagram endpoint (\`GET\` current source / \`PUT\` update): ${targetUrl}`,
+          `- Folder API: ${base} (\`GET ${base}/tree\` lists all pages and child diagrams in this folder)`,
           `- Logical path: ${targetPath}`,
           `- Filename: ${context.page.filename}`,
         ] : [
-          `- Folder API: ${base}`,
+          `- Folder API: ${base} (\`GET ${base}/tree\` lists all pages and child diagrams in this folder)`,
+          `- Read current source of any page: \`GET ${readSourceUrl}\``,
           `- Example target path: ${targetPath} (relative to this folder; URL-encode each segment)`,
         ]),
-        `- Official skill & docs: ${original}`,
+        `- Official skill & docs bundle: ${original}/bundle`,
         '',
         '## 1. Read the official skill before writing HTML',
         '',
-        'Do not upload arbitrary HTML. First fetch the official index, `SKILL.md`, and `references/style-guide.md` (plus any task-specific `references/*.md` or `commands/*.md` linked from the index):',
+        'Do not upload arbitrary HTML. First fetch the official bootstrap bundle (index, `SKILL.md`, `references/style-guide.md`, `references/kit.md`, and `references/diagrams.md`) in one command:',
         '',
         '```bash',
         `VE_KEY=${shellQuote(key.secret)}`,
         '',
-        `curl --fail-with-body ${shellQuote(original)} -H "Authorization: Bearer $VE_KEY"`,
-        `curl --fail-with-body ${shellQuote(original + '/SKILL.md')} -H "Authorization: Bearer $VE_KEY"`,
-        `curl --fail-with-body ${shellQuote(original + '/references/style-guide.md')} -H "Authorization: Bearer $VE_KEY"`,
+        `curl --fail-with-body ${shellQuote(original + '/bundle?refs=kit,diagrams')} -H "Authorization: Bearer $VE_KEY"`,
         '```',
         '',
+        `Individual docs (\`${original}/SKILL.md\`, \`${original}/references/style-guide.md\`, \`${original}/references/<name>.md\`) also remain available separately, and \`?refs=...\` can include extra references like \`motion\` in one call.`,
         'Optional official helpers (`POST` JSON with `Authorization: Bearer $VE_KEY` and `Content-Type: application/json`):',
         `- Prepare: \`POST ${original}/prepare\` (matches \`visual_explainer_prepare.inputSchema\`, e.g. \`{"topic":"..."}\`)`,
         `- Prompt: \`POST ${original}/prompts/<name>\` (e.g. \`generate-web-diagram\` with \`{"request":"..."}\`)`,
@@ -2691,18 +3364,30 @@
         'Inspect `./diagram.render.json`:',
         '- Check `render.structuredContent.report` and every diagnostic in `render.content`; decode any `type: "image"` base64 blocks to inspect the official checksheet screenshots.',
         '- Fix every `✗` diagnostic with small targeted edits to `./diagram.src.html` and re-PUT the same path until clean.',
-        '- Share `page.url` from the response (also returns `page.filename`, `version`, `commentsUrl`, and `openComments`).',
+        '- Include `<meta name="description" content="...">` for a concise 1-line hover preview summary (Light and Dark thumbnails are captured automatically on publish).',
+        `- Wiki drill-down: publish child diagrams under \`${childPathExample}\` (same scoped folder key) and add \`data-ve-child="<child>"\` (omit \`.html\`) on any SVG node (\`<g class="ve-n" data-ve-child="...">\`) or inline \`<span>\`. The WebUI viewer injects portal styling, stacked badges, hover previews, and click navigation at view time — plain appearance in standalone checksheets is expected, so do NOT add custom fake-portal CSS.`,
+        '- **Before replying with `page.url`**, start the non-blocking background comment listener in §3 by default (if your harness supports background/async execution), then share `page.url` from the response (also returns `page.filename`, `version`, `commentsUrl`, and `openComments`).',
         '',
-        '## 3. Comments & versions',
+        '## 3. Live comment listener (default) & closed-loop updates',
+        '',
+        'By default, after publishing and passing visual checks, start a **non-blocking background listener** (using whatever background task / async command / watcher mechanism your harness provides — never block your reply) **before** replying with `page.url`, so the WebUI immediately shows an active listener and clicking **Send** in Comments wakes you automatically:',
+        `- Background one-shot listener: \`curl -sS -w '\\nHTTP %{http_code}\\n' -H "Authorization: Bearer $VE_KEY" ${shellQuote(eventsOnceUrl)}\` (waits up to 300s and exits with a JSON \`comment.dispatch\` event on \`200\`, or \`204\` on timeout${isFile ? '; omit `path=` to listen across the whole folder, including child diagrams' : '; add `&path=<url-encoded-path>` to narrow to one diagram'}). If your harness has no non-blocking background task capability, skip this step rather than blocking your reply.`,
+        '- **When a `comment.dispatch` event arrives (`200` JSON):**',
+        `  1. Fetch open comments (\`GET ${commentListUrl}\`${commentListSuffix}) and current source (\`GET ${readSourceUrl}\`) to confirm the latest threads and HTML.`,
+        "  2. Edit `./diagram.src.html` locally, re-`PUT` the same path (with optional `?note=...` or `-H 'X-VE-Note: ...'`), and verify `./diagram.render.json` has no `✗` diagnostics.",
+        `  3. Resolve each addressed thread via \`POST ${base}/comments/<threadId>/resolve\` with \`{"note":"Done in v2: ..."}\` (or reply via \`POST ${base}/comments\` if clarification is needed).`,
+        '  4. **Re-arm** the non-blocking background listener (append `&after=<eventId>` from the received event so nothing dispatched while editing is missed) before finishing your reply.',
+        '- **On `204` timeout:** exit quietly, or re-arm if a review is still actively in progress.',
+        '',
+        '## 4. Comments, SSE & versions reference',
         '',
         `- List open comments: \`GET ${commentListUrl}\`${commentListSuffix}. Returns structured \`threads\` (anchor quote/selector/headings, \`version\`, \`replies\`) and a readable \`summary\`.`,
         `- Read current source: \`GET ${readSourceUrl}\` — edit locally and re-\`PUT\` the same path for a new version (\`v2\`, \`v3\`, …).`,
         `- Reply: \`POST ${base}/comments\` with \`{"path":${replyPathArg},"replyTo":"c_1","body":"..."}\` (replying to a resolved thread reopens it automatically).`,
         `- Resolve: \`POST ${base}/comments/<threadId>/resolve\` with \`{"note":"Done in v2: ..."}\` (optional \`note\` is posted as a reply first).`,
         `- Reopen: \`POST ${base}/comments/<threadId>/reopen\`.`,
-        `- Live comment stream (SSE): \`GET ${eventsStreamUrl}\` (supports \`Last-Event-ID\` / \`after=<id>\`, optional \`path=\`, \`events=\`, \`client=\`).`,
-        `- One-shot wait: \`curl -sS -H "Authorization: Bearer $VE_KEY" ${shellQuote(eventsOnceUrl)}\` (blocks until an event arrives as JSON, or \`204\` on timeout).`,
-        `- Folder tree & moves: \`GET ${base}/tree\`; \`POST/PATCH/DELETE ${base}/folders\`; \`PATCH ${base}/files/<path>\` \`{"path":"new/name.html"}\`.`,
+        `- Persistent SSE stream (alternative for daemon runners): \`GET ${eventsStreamUrl}\` (supports \`Last-Event-ID\` / \`after=<id>\`, optional \`path=\`, \`events=\`, \`client=\`).`,
+        `- Folder tree & moves: \`GET ${base}/tree\` (list folder & child pages); \`POST/PATCH/DELETE ${base}/folders\`; \`PATCH ${base}/files/<path>\` \`{"path":"new/name.html"}\`.`,
         `- Version history${isFile ? '' : ' (use `page.filename` from `PUT` or `/tree`)'}: \`GET ${versionBase}/versions\`, \`GET ${versionBase}/versions/v2\`, \`POST ${versionBase}/restore\` \`{"version":"v2"}\`.`,
       ].join('\n') : '';
     }
@@ -2926,7 +3611,9 @@
     function setPickMode(active) {
       pickMode = Boolean(active) && canEdit() && Boolean(selected);
       $('pick-element').setAttribute('aria-pressed', String(pickMode));
-      $('pick-element-label').textContent = pickMode ? 'Cancel' : 'Pick';
+      const label = pickMode ? 'Cancel picking (Esc)' : 'Pick element to comment';
+      $('pick-element').setAttribute('aria-label', label);
+      $('pick-element').title = label;
       sendToIframe({ type: 've-comment:pick', active: pickMode });
     }
     function clearCommentAnchor() {
@@ -3007,6 +3694,7 @@
       sendToIframe({ type: 've-comment:sync', threads: boxes });
       sendToIframe({ type: 've-comment:draft-box', selector: commentAnchor?.selector || '' });
       if (pickMode) sendToIframe({ type: 've-comment:pick', active: true });
+      syncIframeWiki();
     }
     function renderComposerAnchor() {
       if (!commentAnchor || commentAnchor.kind === 'page') {
@@ -3654,7 +4342,9 @@
       } else if (event.data.type === 've-comment:pick-state') {
         pickMode = Boolean(event.data.active);
         $('pick-element').setAttribute('aria-pressed', String(pickMode));
-        $('pick-element-label').textContent = pickMode ? 'Cancel' : 'Pick';
+        const label = pickMode ? 'Cancel picking (Esc)' : 'Pick element to comment';
+        $('pick-element').setAttribute('aria-label', label);
+        $('pick-element').title = label;
       } else if (event.data.type === 've-comment:focus-miss') {
         notify('Region not found in current version. Click the version tag to view original.');
       } else if (event.data.type === 've-comment:draft' && selected) {
@@ -3674,6 +4364,41 @@
           card.scrollIntoView({ behavior: 'smooth', block: 'center' });
           card.classList.add('flash');
           setTimeout(() => card.classList.remove('flash'), 1600);
+        }
+      } else if (event.data.type === 've-wiki:hover') {
+        const filename = typeof event.data.filename === 'string' ? event.data.filename : '';
+        if (!filename || !event.data.rect) {
+          hideWikiPopover();
+          return;
+        }
+        const target = pages.find(item => item.filename === filename);
+        if (!target) {
+          hideWikiPopover();
+          return;
+        }
+        const fr = frame.getBoundingClientRect();
+        const r = event.data.rect;
+        showWikiPopover(target, {
+          left: fr.left + r.left,
+          top: fr.top + r.top,
+          right: fr.left + r.right,
+          bottom: fr.top + r.bottom,
+        });
+      } else if (event.data.type === 've-wiki:navigate') {
+        hideWikiPopover();
+        const target = pages.find(item => item.filename === event.data.filename);
+        if (target) {
+          revealPage(target);
+          renderList();
+        }
+      } else if (event.data.type === 've-wiki:escape') {
+        hideWikiPopover();
+        if (!document.querySelector('dialog[open]') && !contextMenuState && !pickMode) {
+          const parentPage = selected && wikiParentOf(selected);
+          if (parentPage) {
+            revealPage(parentPage);
+            renderList();
+          }
         }
       }
     });

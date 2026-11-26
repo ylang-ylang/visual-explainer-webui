@@ -143,6 +143,13 @@ wait_ready
 docker exec --interactive --env VE_EVENTS_ACCOUNTS_SMOKE=1 --env VE_EVENTS_ACCOUNTS_PHASE=persistence --workdir /opt/bridge \
   "$name" node --input-type=module < scripts/events-accounts-smoke.mjs
 
+docker exec --interactive --env VE_WIKI_SMOKE=1 --workdir /opt/bridge \
+  "$name" node --input-type=module < scripts/wiki-drilldown-smoke.mjs
+docker restart "$name" >/dev/null
+wait_ready
+docker exec --interactive --env VE_WIKI_SMOKE=1 --env VE_WIKI_PHASE=persistence --workdir /opt/bridge \
+  "$name" node --input-type=module < scripts/wiki-drilldown-smoke.mjs
+
 # Existing bare, already-projected v1 history is a distinct migration path.
 docker rm --force "$name" >/dev/null
 mkdir -p "$fixture/projected/data" "$fixture/projected/remote"

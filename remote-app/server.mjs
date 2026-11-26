@@ -213,7 +213,7 @@ function labelOf(el){
   const direct=clean(el.getAttribute?.('aria-label')||el.getAttribute?.('data-label')||el.getAttribute?.('data-ref')||el.querySelector?.('h1,h2,h3,h4,figcaption,title')?.textContent);
   return (direct||clean(el.textContent)).slice(0,120);
 }
-let picking=false,threads=[],api=null,activeTheme=null,activeThemeMode='auto',draftSelector='',hoveredId='';
+let picking=false,threads=[],api=null,activeTheme=null,activeThemeMode='auto',draftSelector='',hoveredId='',wikiPages=[],wikiCurrent={filename:'',path:'',stem:'',dir:''};
 function applyThemeToDoc(theme,mode='auto'){
   if(theme!=='dark'&&theme!=='light')return;
   activeTheme=theme;
@@ -250,6 +250,11 @@ window.addEventListener('message',e=>{
   else if(e.data.type==='ve-comment:hover'){hoveredId=typeof e.data.id==='string'?e.data.id:'';api?.updateHover();}
   else if(e.data.type==='ve-comment:focus'){api?.focusThread(e.data.id,e.data.selector);}
   else if(e.data.type==='ve-theme'){applyThemeToDoc(e.data.theme,e.data.mode);}
+  else if(e.data.type==='ve-wiki:pages'){
+    wikiPages=Array.isArray(e.data.pages)?e.data.pages:[];
+    wikiCurrent=e.data.current&&typeof e.data.current==='object'?e.data.current:{filename:'',path:'',stem:'',dir:''};
+    api?.syncWikiLinks();
+  }
 });
 function init(){
   if(document.getElementById('ve-raft-bridge-style'))return;
@@ -268,18 +273,71 @@ function init(){
     '.ve-raft-box-handle{position:absolute;top:-7px;right:-7px;pointer-events:auto;width:16px;height:16px;padding:0 !important;margin:0 !important;border:2px solid #fff;border-radius:50%;background:#2563eb;box-shadow:0 2px 6px rgba(0,0,0,.24);cursor:pointer;transition:transform 90ms ease;}',
     '.ve-raft-box-handle:hover{transform:scale(1.18);}',
     'body.ve-raft-picking,body.ve-raft-picking *{cursor:crosshair !important;}',
+    '.ve-drill-node{cursor:pointer;outline:none;}',
+    '.ve-drill-node > rect:first-of-type,.ve-drill-node > polygon:first-of-type{stroke:rgba(36,88,214,.52);stroke-width:1.6px;filter:drop-shadow(4px 4px 0 rgba(36,88,214,.16)) drop-shadow(0 1px 2px rgba(15,23,42,.08));transition:stroke 140ms ease,filter 140ms ease;}',
+    '.ve-drill-node:hover > rect:first-of-type,.ve-drill-node:focus-visible > rect:first-of-type,.ve-drill-node.is-drill-hover > rect:first-of-type,.ve-drill-node:hover > polygon:first-of-type,.ve-drill-node:focus-visible > polygon:first-of-type,.ve-drill-node.is-drill-hover > polygon:first-of-type{stroke:#2458d6;stroke-width:1.9px;filter:drop-shadow(5px 5px 0 rgba(36,88,214,.26)) drop-shadow(0 6px 14px rgba(36,88,214,.20));}',
+    '.ve-drill-card{cursor:pointer;outline:none;border-color:rgba(36,88,214,.44) !important;box-shadow:4px 4px 0 0 rgba(36,88,214,.10),4px 4px 0 1px rgba(36,88,214,.26) !important;transition:transform 140ms ease,border-color 140ms ease,box-shadow 140ms ease;}',
+    '.ve-drill-card:hover,.ve-drill-card:focus-visible,.ve-drill-card.is-drill-hover{border-color:#2458d6 !important;transform:translate(-1px,-1.5px);box-shadow:5px 5px 0 0 rgba(36,88,214,.16),0 8px 20px -6px rgba(36,88,214,.22) !important;}',
+    '.ve-drill-chip{display:inline-flex;align-items:center;gap:4px;padding:1px 7px 1px 6px;margin:0 1px;border-radius:5px;background:rgba(36,88,214,.08);border:1px solid rgba(36,88,214,.26);color:#1c47b5 !important;font-weight:560;line-height:1.45;text-decoration:none !important;vertical-align:baseline;cursor:pointer;transition:background 140ms ease,border-color 140ms ease,color 140ms ease;}',
+    '.ve-drill-chip::before{content:"⧉";font-size:.88em;line-height:1;opacity:.88;}',
+    '.ve-drill-chip::after{content:"›";font-size:1.05em;line-height:1;opacity:.72;transition:transform 140ms ease,opacity 140ms ease;}',
+    '.ve-drill-chip:hover,.ve-drill-chip:focus-visible{background:rgba(36,88,214,.15);border-color:#2458d6;color:#2458d6 !important;outline:none;}',
+    '.ve-drill-chip:hover::after{transform:translateX(2px);opacity:1;}',
+    '.ve-drill-badge{position:fixed !important;margin:0 !important;pointer-events:auto;display:inline-flex;align-items:center;gap:4px;height:19px;padding:0 6px;border-radius:5px;border:1px solid rgba(36,88,214,.38);background:rgba(244,247,255,.94);color:#1f4ec2;font:600 10.5px/1 ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;box-shadow:0 1px 3px rgba(15,23,42,.10);cursor:pointer;white-space:nowrap;transition:background 140ms ease,color 140ms ease,border-color 140ms ease;}',
+    '.ve-drill-badge:hover,.ve-drill-badge.is-hovered{background:#2458d6;border-color:#2458d6;color:#fff;}',
+    '.ve-drill-badge svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1.4;flex:none;}',
+    ':root[data-theme="dark"] .ve-drill-node > rect:first-of-type,:root[data-theme="dark"] .ve-drill-node > polygon:first-of-type{stroke:rgba(110,160,255,.54);filter:drop-shadow(4px 4px 0 rgba(110,160,255,.22)) drop-shadow(0 2px 5px rgba(0,0,0,.45));}',
+    ':root[data-theme="dark"] .ve-drill-node:hover > rect:first-of-type,:root[data-theme="dark"] .ve-drill-node:focus-visible > rect:first-of-type,:root[data-theme="dark"] .ve-drill-node.is-drill-hover > rect:first-of-type{stroke:#6ea0ff;filter:drop-shadow(5px 5px 0 rgba(110,160,255,.32)) drop-shadow(0 8px 18px rgba(0,0,0,.55));}',
+    ':root[data-theme="dark"] .ve-drill-card{border-color:rgba(110,160,255,.50) !important;box-shadow:4px 4px 0 0 rgba(110,160,255,.14),4px 4px 0 1px rgba(110,160,255,.30) !important;}',
+    ':root[data-theme="dark"] .ve-drill-card:hover,:root[data-theme="dark"] .ve-drill-card:focus-visible,:root[data-theme="dark"] .ve-drill-card.is-drill-hover{border-color:#6ea0ff !important;box-shadow:5px 5px 0 0 rgba(110,160,255,.22),0 10px 24px -6px rgba(0,0,0,.55) !important;}',
+    ':root[data-theme="dark"] .ve-drill-chip{background:rgba(110,160,255,.12);border-color:rgba(110,160,255,.32);color:#8eb7ff !important;}',
+    ':root[data-theme="dark"] .ve-drill-chip:hover,:root[data-theme="dark"] .ve-drill-chip:focus-visible{background:rgba(110,160,255,.22);border-color:#6ea0ff;color:#b4d0ff !important;}',
+    ':root[data-theme="dark"] .ve-drill-badge{background:rgba(24,32,48,.94);border-color:rgba(110,160,255,.46);color:#8bb4ff;}',
+    ':root[data-theme="dark"] .ve-drill-badge:hover,:root[data-theme="dark"] .ve-drill-badge.is-hovered{background:#6ea0ff;border-color:#6ea0ff;color:#0f1218;}',
+    '@media(prefers-color-scheme:dark){',
+    ':root:not([data-theme="light"]) .ve-drill-node > rect:first-of-type,:root:not([data-theme="light"]) .ve-drill-node > polygon:first-of-type{stroke:rgba(110,160,255,.54);filter:drop-shadow(4px 4px 0 rgba(110,160,255,.22)) drop-shadow(0 2px 5px rgba(0,0,0,.45));}',
+    ':root:not([data-theme="light"]) .ve-drill-card{border-color:rgba(110,160,255,.50) !important;box-shadow:4px 4px 0 0 rgba(110,160,255,.14),4px 4px 0 1px rgba(110,160,255,.30) !important;}',
+    ':root:not([data-theme="light"]) .ve-drill-chip{background:rgba(110,160,255,.12);border-color:rgba(110,160,255,.32);color:#8eb7ff !important;}',
+    ':root:not([data-theme="light"]) .ve-drill-badge{background:rgba(24,32,48,.94);border-color:rgba(110,160,255,.46);color:#8bb4ff;}',
+    '}',
     '@media print{[data-ve-bridge-ui]{display:none !important;}}'
   ].join('')));
   let selBtn=null,selRange=null,selTimer=null,hovered=null,draftEl=null,lastPtr=null;
-  let tracked=[],rafId=0,animUntil=0,animRaf=0;
+  let tracked=[],wikiTracked=[],rafId=0,animUntil=0,animRaf=0,activeDrill=null;
+  const drillBound=new WeakSet();
+  const drillMeta=new WeakMap();
   const pickBanner=h('div',{class:'ve-raft-pick-banner','data-ve-bridge-ui':'',hidden:true},h('span',{class:'ve-raft-pick-dot'}),'Click any element to comment · Esc to cancel');
   const overlay=h('div',{class:'ve-raft-layer','data-ve-bridge-ui':''});
   const boxesHost=h('div',{'data-ve-bridge-ui':''});
+  const wikiHost=h('div',{'data-ve-bridge-ui':''});
   const draftBox=h('div',{class:'ve-raft-draft-box','data-ve-bridge-ui':'',hidden:true});
   const pickBox=h('div',{class:'ve-raft-pick-box','data-ve-bridge-ui':'',hidden:true});
-  overlay.append(boxesHost,draftBox,pickBox);
+  overlay.append(boxesHost,wikiHost,draftBox,pickBox);
   (document.documentElement||document.body).append(overlay,pickBanner);
   const clearSelBtn=()=>{selBtn?.remove();selBtn=null;selRange=null;};
+  const normWiki=s=>String(s||'').trim().replace(/^\\.?\\//,'').replace(/\\.html?$/i,'');
+  function resolveWikiTarget(raw){
+    const t=normWiki(raw);
+    if(!t||!wikiPages.length)return null;
+    const match=pred=>wikiPages.find(pred)||null;
+    const lower=t.toLowerCase();
+    const curStem=normWiki(wikiCurrent.stem||wikiCurrent.path);
+    const curDir=normWiki(wikiCurrent.dir);
+    if(curStem){
+      const direct=curStem+'/'+t;
+      const found=match(p=>normWiki(p.path)===direct)||match(p=>normWiki(p.path).toLowerCase()===direct.toLowerCase());
+      if(found)return found;
+    }
+    if(curDir){
+      const sib=curDir+'/'+t;
+      const found=match(p=>normWiki(p.path)===sib)||match(p=>normWiki(p.path).toLowerCase()===sib.toLowerCase());
+      if(found)return found;
+    }
+    return match(p=>normWiki(p.path)===t)
+      ||match(p=>normWiki(p.path).toLowerCase()===lower)
+      ||match(p=>normWiki(p.filename)===t||p.stem===t||normWiki(p.path).split('/').pop()===t)
+      ||match(p=>normWiki(p.filename).toLowerCase()===lower||(p.stem||'').toLowerCase()===lower||normWiki(p.path).split('/').pop().toLowerCase()===lower);
+  }
   function clipRect(el){
     let l=0,t=0,r=innerWidth,b=innerHeight;
     let p=el.parentElement;
@@ -316,6 +374,23 @@ function init(){
     box.style.height=ht+'px';
     return true;
   }
+  function placeWikiBadge(badge,el){
+    if(!el||!el.isConnected)return false;
+    const r=el.getBoundingClientRect();
+    if(r.width<24||r.height<18)return false;
+    const c=clipRect(el);
+    const bw=badge.offsetWidth||58,bh=badge.offsetHeight||19;
+    const left=Math.round(r.right-bw-6);
+    const top=Math.round(r.top+6);
+    if(top+bh<=c.t||top>=c.b||left+bw<=c.l||left>=c.r||top+bh<=0||top>=innerHeight||left+bw<=0||left>=innerWidth){
+      badge.style.visibility='hidden';
+      return true;
+    }
+    badge.style.visibility='visible';
+    badge.style.left=Math.max(c.l+2,Math.min(left,c.r-bw-2))+'px';
+    badge.style.top=Math.max(c.t+2,Math.min(top,c.b-bh-2))+'px';
+    return true;
+  }
   function positionSelBtn(){
     if(!selBtn||!selRange)return;
     const r=selRange.getBoundingClientRect();
@@ -332,6 +407,12 @@ function init(){
       placeBox(item.box,item.el,3);
     }
     if(missing){renderBoxes();return;}
+    let wikiMissing=false;
+    for(const item of wikiTracked){
+      if(!item.el.isConnected){wikiMissing=true;continue;}
+      if(item.badge)placeWikiBadge(item.badge,item.el);
+    }
+    if(wikiMissing){syncWikiLinks();return;}
     if(draftSelector){
       if(!draftEl||!draftEl.isConnected){try{draftEl=document.querySelector(draftSelector);}catch{draftEl=null;}}
       if(draftEl&&!isBridge(draftEl)&&placeBox(draftBox,draftEl,3))draftBox.hidden=false;
@@ -372,12 +453,97 @@ function init(){
     if(document.body)ro.observe(document.body);
     if(draftEl&&draftEl.isConnected)ro.observe(draftEl);
     for(const item of tracked){if(item.el&&item.el.isConnected)ro.observe(item.el);}
+    for(const item of wikiTracked){if(item.el&&item.el.isConnected)ro.observe(item.el);}
+  }
+  function clearDrillHover(){
+    if(!activeDrill)return;
+    activeDrill.el.classList.remove('is-drill-hover');
+    activeDrill.badge?.classList.remove('is-hovered');
+    activeDrill=null;
+    post({type:'ve-wiki:hover',filename:''});
+  }
+  function enterDrill(el){
+    if(picking)return;
+    const meta=drillMeta.get(el);
+    if(!meta?.target)return;
+    if(activeDrill&&activeDrill.el!==el){
+      activeDrill.el.classList.remove('is-drill-hover');
+      activeDrill.badge?.classList.remove('is-hovered');
+    }
+    activeDrill=meta;
+    meta.el.classList.add('is-drill-hover');
+    meta.badge?.classList.add('is-hovered');
+    const r=meta.el.getBoundingClientRect();
+    post({type:'ve-wiki:hover',filename:meta.target.filename,rect:{left:r.left,top:r.top,right:r.right,bottom:r.bottom}});
+  }
+  function leaveDrill(el,related){
+    const meta=drillMeta.get(el);
+    if(!meta)return;
+    if(related&&(meta.el.contains(related)||(meta.badge&&meta.badge.contains(related))))return;
+    if(activeDrill&&activeDrill.el===el)clearDrillHover();
+  }
+  function navigateDrill(el,e){
+    if(picking)return;
+    const meta=drillMeta.get(el);
+    if(!meta?.target)return;
+    e.preventDefault();
+    e.stopPropagation();
+    clearDrillHover();
+    post({type:'ve-wiki:navigate',filename:meta.target.filename});
+  }
+  function bindDrillElement(el){
+    if(drillBound.has(el))return;
+    drillBound.add(el);
+    el.addEventListener('pointerenter',()=>enterDrill(el));
+    el.addEventListener('pointerleave',e=>leaveDrill(el,e.relatedTarget));
+    el.addEventListener('focusin',()=>enterDrill(el));
+    el.addEventListener('focusout',e=>leaveDrill(el,e.relatedTarget));
+    el.addEventListener('click',e=>navigateDrill(el,e));
+    el.addEventListener('keydown',e=>{
+      if((e.key==='Enter'||e.key===' ')&&!picking)navigateDrill(el,e);
+    });
+  }
+  function syncWikiLinks(){
+    clearDrillHover();
+    wikiHost.replaceChildren();
+    wikiTracked=[];
+    const nodes=$$('[data-ve-child]').filter(el=>!isBridge(el));
+    for(const el of nodes){
+      const raw=el.getAttribute('data-ve-child');
+      const target=resolveWikiTarget(raw);
+      el.classList.remove('ve-drill-node','ve-drill-card','ve-drill-chip','is-drill-hover');
+      if(!target){drillMeta.delete(el);continue;}
+      const isSvg=typeof SVGElement!=='undefined'&&el instanceof SVGElement;
+      const isInline=!isSvg&&el.matches('span,a,button,code,em,strong,small,b,i,mark');
+      if(isSvg)el.classList.add('ve-drill-node');
+      else if(isInline)el.classList.add('ve-drill-chip');
+      else el.classList.add('ve-drill-card');
+      if(!el.hasAttribute('tabindex')&&!el.matches('a[href],button'))el.setAttribute('tabindex','0');
+      if(!el.hasAttribute('role')&&!el.matches('a[href],button'))el.setAttribute('role','button');
+      let badge=null;
+      if(!isInline){
+        const label=target.childCount>0?('↳ '+target.childCount+' sub'):'↳ Detail';
+        badge=h('button',{type:'button',class:'ve-drill-badge','data-ve-bridge-ui':'',tabindex:'-1','aria-label':'Open '+target.title});
+        badge.innerHTML='<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.2" y="1.2" width="6.5" height="6.5" rx="1.3"/><path d="M4.5 10.6h4.8a1.3 1.3 0 0 0 1.3-1.3V4.5" stroke-linecap="round"/></svg><span></span>';
+        badge.lastElementChild.textContent=label;
+        badge.addEventListener('pointerenter',()=>enterDrill(el));
+        badge.addEventListener('pointerleave',e=>leaveDrill(el,e.relatedTarget));
+        badge.addEventListener('click',e=>navigateDrill(el,e));
+        wikiHost.append(badge);
+      }
+      const meta={el,target,badge};
+      drillMeta.set(el,meta);
+      bindDrillElement(el);
+      wikiTracked.push(meta);
+    }
+    for(const item of wikiTracked){if(item.badge)placeWikiBadge(item.badge,item.el);}
+    refreshObserved();
   }
   function applyPick(){
     document.body.classList.toggle('ve-raft-picking',picking);
     pickBanner.hidden=!picking;
     if(!picking){hovered=null;lastPtr=null;pickBox.hidden=true;}
-    else clearSelBtn();
+    else{clearSelBtn();clearDrillHover();}
   }
   function renderDraftBox(){
     if(!draftSelector){draftEl=null;draftBox.hidden=true;refreshObserved();return;}
@@ -432,14 +598,15 @@ function init(){
       post({type:'ve-comment:focus-miss',id});
     }
   }
-  api={applyPick,renderBoxes,renderDraftBox,updateHover,focusThread};
+  api={applyPick,renderBoxes,renderDraftBox,updateHover,focusThread,syncWikiLinks};
   if(activeTheme)applyThemeToDoc(activeTheme,activeThemeMode);
   applyPick();
   renderBoxes();
   renderDraftBox();
+  syncWikiLinks();
   window.addEventListener('scroll',scheduleSync,{passive:true,capture:true});
   window.addEventListener('resize',()=>{scheduleSync();startAnimSync(250);},{passive:true});
-  window.addEventListener('load',()=>{renderBoxes();renderDraftBox();startAnimSync(300);});
+  window.addEventListener('load',()=>{renderBoxes();renderDraftBox();syncWikiLinks();startAnimSync(300);});
   document.fonts?.ready?.then(()=>{scheduleSync();startAnimSync(200);});
   document.addEventListener('transitionrun',e=>{if(!isBridge(e.target))startAnimSync(700);},true);
   document.addEventListener('transitionend',e=>{if(!isBridge(e.target))scheduleSync();},true);
@@ -455,6 +622,7 @@ function init(){
       }
       if(!changed)return;
       if(treeChanged&&threads.length&&tracked.length<threads.length)renderBoxes();
+      if(treeChanged&&wikiPages.length)syncWikiLinks();
       else scheduleSync();
     }).observe(document.body,{attributes:true,childList:true,subtree:true});
   }
@@ -517,7 +685,8 @@ function init(){
     post({type:'ve-comment:draft',where});
   },true);
   document.addEventListener('keydown',e=>{
-    if(e.key==='Escape'&&picking){e.preventDefault();picking=false;applyPick();post({type:'ve-comment:pick-state',active:false});}
+    if(e.key==='Escape'&&picking){e.preventDefault();picking=false;applyPick();post({type:'ve-comment:pick-state',active:false});return;}
+    if(e.key==='Escape'&&!picking&&!e.target?.closest?.('input,textarea,select,[contenteditable]')){clearDrillHover();post({type:'ve-wiki:escape'});}
   },true);
   post({type:'ve-comment:ready'});
 }
@@ -561,6 +730,123 @@ async function readSource(filename, rendering = false) {
   }
   return await regularBytes(pairs.get(filename)?.[0] ?? sourceFilename(filename));
 }
+function thumbFilename(filename, theme = 'light') {
+  return filename.replace(/\.html?$/i, theme === 'dark' ? '.thumb-dark.png' : '.thumb.png');
+}
+function thumbFilenames(filename) {
+  return [thumbFilename(filename, 'light'), thumbFilename(filename, 'dark')];
+}
+function extractSummary(doc) {
+  const raw = doc.querySelector('meta[name="description"]')?.getAttribute('content')
+    || doc.querySelector('.lead')?.textContent
+    || doc.querySelector('main p, body p')?.textContent
+    || '';
+  const normalized = String(raw).replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  return [...normalized].length > 160 ? [...normalized].slice(0, 159).join('') + '…' : normalized;
+}
+async function saveThumb(filename, bytes, theme = 'light') {
+  const path = join(outputDir, thumbFilename(filename, theme)), temporary = `${path}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporary, bytes, { flag: 'wx', mode: 0o600 });
+    await rename(temporary, path);
+  } finally { await rm(temporary, { force: true }).catch(() => console.error('Thumb temporary cleanup failed')); }
+}
+async function removeThumbs(filename) {
+  for (const name of thumbFilenames(filename)) {
+    const path = join(outputDir, name);
+    const info = await lstat(path).catch(error => {
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    });
+    if (info && info.isFile() && !info.isSymbolicLink()) {
+      await rm(path, { force: true }).catch(() => console.error('Stale thumb cleanup failed'));
+    }
+  }
+}
+let thumbBrowserPromise = null;
+async function getThumbBrowser() {
+  if (thumbBrowserPromise) {
+    try {
+      const existing = await thumbBrowserPromise;
+      if (existing && existing.isConnected()) return existing;
+    } catch {}
+    thumbBrowserPromise = null;
+  }
+  thumbBrowserPromise = (async () => {
+    const { chromium } = await import('playwright-core');
+    const browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    });
+    browser.on('disconnected', () => { thumbBrowserPromise = null; });
+    return browser;
+  })();
+  try {
+    return await thumbBrowserPromise;
+  } catch (error) {
+    thumbBrowserPromise = null;
+    throw error;
+  }
+}
+async function closeThumbBrowser() {
+  const pending = thumbBrowserPromise;
+  thumbBrowserPromise = null;
+  if (!pending) return;
+  try {
+    const browser = await pending;
+    await browser.close();
+  } catch {}
+}
+async function captureThumbnails(renderedHtml, filename) {
+  let context = null;
+  try {
+    const browser = await getThumbBrowser();
+    context = await browser.newContext({
+      viewport: { width: 1024, height: 600 },
+      deviceScaleFactor: 1,
+      colorScheme: 'light',
+      reducedMotion: 'reduce',
+      offline: true,
+      serviceWorkers: 'block',
+    });
+    await context.route('**/*', route => {
+      const reqUrl = route.request().url();
+      if (reqUrl === 'about:blank' || reqUrl.startsWith('data:') || reqUrl.startsWith('blob:')) {
+        return route.continue();
+      }
+      return route.abort();
+    });
+    const page = await context.newPage();
+    await page.setContent(renderedHtml, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.addStyleTag({
+      content: '.js-motion main > *{opacity:1 !important;transform:none !important;transition:none !important;}',
+    });
+    await Promise.race([
+      page.evaluate(() => document.fonts?.ready).catch(() => {}),
+      new Promise(resolve => setTimeout(resolve, 250)),
+    ]);
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+    await Promise.race([
+      page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))).catch(() => {}),
+      new Promise(resolve => setTimeout(resolve, 250)),
+    ]);
+    const lightPng = await page.screenshot({ type: 'png', animations: 'disabled', timeout: 10000 });
+    await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+    await Promise.race([
+      page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))).catch(() => {}),
+      new Promise(resolve => setTimeout(resolve, 250)),
+    ]);
+    const darkPng = await page.screenshot({ type: 'png', animations: 'disabled', timeout: 10000 });
+    await saveThumb(filename, lightPng, 'light');
+    await saveThumb(filename, darkPng, 'dark');
+  } catch (error) {
+    console.error('Thumbnail capture failed', { filename, message: error?.message });
+    await removeThumbs(filename);
+  } finally {
+    await context?.close().catch(() => {});
+  }
+}
 async function saveSource(filename, bytes) {
   const path = join(outputDir, sourceFilename(filename)), temporary = `${path}.${randomUUID()}.tmp`;
   try {
@@ -574,13 +860,20 @@ async function readPage(filename) {
     handle = await open(join(outputDir, filename), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     const info = await handle.stat();
     if (!info.isFile()) return null;
-    const buffer = Buffer.alloc(Math.min(16384, info.size));
+    const buffer = Buffer.alloc(Math.min(32768, info.size));
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
-    const title = parse(buffer.subarray(0, bytesRead).toString('utf8')).querySelector('title')?.textContent.trim() || filename;
+    const doc = parse(buffer.subarray(0, bytesRead).toString('utf8'));
+    const title = doc.querySelector('title')?.textContent.trim() || filename;
+    const summary = extractSummary(doc);
+    const thumbInfo = await lstat(join(outputDir, thumbFilename(filename))).catch(() => null);
+    const hasThumb = Boolean(thumbInfo && thumbInfo.isFile() && !thumbInfo.isSymbolicLink());
+    const modified = info.mtime.toISOString();
     const commentCounts = comments.counts(filename);
     return {
-      filename, title, modified: info.mtime.toISOString(), bytes: info.size,
-      url: pageUrl(filename), openComments: commentCounts.open, totalComments: commentCounts.total,
+      filename, title, summary, modified, bytes: info.size,
+      url: pageUrl(filename),
+      thumbUrl: hasThumb ? `/api/pages/${encodeURIComponent(filename)}/thumb?v=${encodeURIComponent(modified)}` : null,
+      openComments: commentCounts.open, totalComments: commentCounts.total,
       ...catalog.location(filename),
     };
   } catch (error) {
@@ -605,10 +898,12 @@ async function deletePage(filename) {
   const stem = filename.replace(/\.html?$/i, '');
   const sheetPattern = new RegExp(`^${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.sheet(?:-\\d+)?\\.png$`);
   const sheets = names.filter(name => sheetPattern.test(name));
+  const thumbNames = thumbFilenames(filename);
+  const thumbs = thumbNames.filter(name => names.includes(name));
   const owners = entries => entries.filter(name => !/\.src\.html?$/i.test(name) &&
     /\.html?$/i.test(name) && name.replace(/\.html?$/i, '') === stem);
   const files = [];
-  for (const name of [filename, ...companions, ...sheets]) {
+  for (const name of [filename, ...companions, ...sheets, ...thumbs]) {
     const info = await lstat(join(outputDir, name)).catch(error => {
       if (error.code === 'ENOENT') throw new ApiError(name === filename ? 404 : 409, name === filename ? 'Page not found' : 'Page files changed; refresh and retry');
       throw error;
@@ -616,7 +911,7 @@ async function deletePage(filename) {
     if (!info.isFile() || info.isSymbolicLink()) throw new ApiError(409, 'Page files must be regular files, not symlinks');
     files.push({ name, info });
   }
-  if (sheets.length && owners(names).length > 1) {
+  if ((sheets.length || thumbs.length) && owners(names).length > 1) {
     throw new ApiError(409, 'Render sheets have multiple possible page owners');
   }
   // Direct filesystem edits may not yet be in Git. Preserve the exact old HTML
@@ -625,6 +920,7 @@ async function deletePage(filename) {
   const currentNames = await readdir(outputDir);
   if (JSON.stringify(companions) !== JSON.stringify(sourcePairs(currentNames).get(filename) ?? []) ||
       JSON.stringify(sheets) !== JSON.stringify(currentNames.filter(name => sheetPattern.test(name))) ||
+      JSON.stringify(thumbs) !== JSON.stringify(thumbNames.filter(name => currentNames.includes(name))) ||
       JSON.stringify(owners(names)) !== JSON.stringify(owners(currentNames))) {
     throw new ApiError(409, 'Page file ownership changed; refresh and retry');
   }
@@ -825,8 +1121,44 @@ async function originalRequest(call) {
   try { return await call(); }
   catch (error) { throw new ApiError(502, `Official visual-explainer request failed: ${error.message}`); }
 }
-async function serveOriginal(req, res, parts) {
+async function serveOriginal(req, res, parts, url) {
   if (parts.length === 1 && req.method === 'GET') return json(res, 200, originalIndex);
+  if (parts.length === 2 && parts[1] === 'bundle' && req.method === 'GET') {
+    const skillRes = originalDocuments.get('/SKILL.md');
+    const styleRes = originalDocuments.get('/references/style-guide.md');
+    if (!skillRes || !styleRes) throw new ApiError(502, 'Official bootstrap resources unavailable');
+    const requested = [
+      ['/SKILL.md', skillRes],
+      ['/references/style-guide.md', styleRes],
+    ];
+    const rawRefs = url?.searchParams.get('refs');
+    if (rawRefs !== null && rawRefs !== undefined && rawRefs !== '') {
+      const slugs = rawRefs.split(',').map(slug => slug.trim());
+      if (slugs.length > 8) throw new ApiError(400, 'At most 8 refs may be requested');
+      const seen = new Set(['style-guide']);
+      for (const slug of slugs) {
+        if (!/^[a-z0-9-]+$/.test(slug)) throw new ApiError(400, 'Invalid reference slug');
+        const docPath = `/references/${slug}.md`;
+        const resource = originalDocuments.get(docPath);
+        if (!resource) throw new ApiError(404, `Official reference not found: ${slug}`);
+        if (seen.has(slug)) continue;
+        seen.add(slug);
+        requested.push([docPath, resource]);
+      }
+    }
+    const docs = await Promise.all(requested.map(async ([docPath, resource]) => {
+      const result = await originalRequest(() => upstream.readResource({ uri: resource.uri }));
+      if (result.contents.length !== 1 || typeof result.contents[0].text !== 'string') {
+        throw new ApiError(502, 'Official resource did not return one text document');
+      }
+      return [docPath, result.contents[0].text];
+    }));
+    const sections = [
+      `=== ${originalPrefix} ===\n${JSON.stringify(originalIndex)}`,
+      ...docs.map(([docPath, text]) => `=== ${originalPrefix}${docPath} ===\n${text}`),
+    ];
+    return send(res, 200, sections.join('\n\n') + '\n', 'text/plain; charset=utf-8');
+  }
   if (req.method === 'GET') {
     const resource = originalDocuments.get('/' + parts.slice(1).join('/'));
     if (resource) {
@@ -875,6 +1207,9 @@ async function renderLocked(args, apiFilename = false, params = { name: 'visual_
   if (filename !== predicted || (apiFilename && filename !== args.filename)) throw new Error('Upstream changed the expected output filename');
   await readSource(filename);
   await saveSource(filename, sourceBytes ?? Buffer.from(args.html));
+  const renderedBytes = await regularBytes(filename);
+  if (renderedBytes) await captureThumbnails(renderedBytes.toString('utf8'), filename);
+  else await removeThumbs(filename);
   await catalog.assign(filename, assigned, logical);
   const revision = await history.snapshot(publishNote ? `Publish page ${filename}: ${publishNote}` : `Publish page ${filename}`);
   const latest = await history.latestVersion(filename);
@@ -1147,13 +1482,14 @@ const http = createServer(async (req, res) => {
                (parts.length === 5 && ['resolve', 'reopen'].includes(parts[4]) && req.method === 'POST'))));
           const ownPage = resource === 'pages' &&
             ((action === 'versions' && [3, 4].includes(parts.length) && req.method === 'GET') ||
+             (action === 'thumb' && parts.length === 3 && ['GET', 'HEAD'].includes(req.method)) ||
              (action === 'restore' && parts.length === 3 && req.method === 'POST') ||
              (action === 'comments' && ((parts.length === 3 && ['GET', 'POST'].includes(req.method)) ||
                (parts.length === 5 && ['resolve', 'reopen'].includes(parts[4]) && req.method === 'POST'))));
           if (!scoped && !ownPage && !originalRead) throw new ApiError(403, 'Entity-scoped access only');
           if (ownPage && !catalog.inScope(auth.entityId, catalog.assignment(id))) throw new ApiError(403, 'Page is outside current folder scope');
         }
-        if (resource === 'visual-explainer') return serveOriginal(req, res, parts);
+        if (resource === 'visual-explainer') return serveOriginal(req, res, parts, url);
         if (resource === 'moves' && parts.length === 1 && req.method === 'POST') {
           const body = await readJson(req, 8192); fields(body, ['source', 'destination', 'name'], ['source', 'destination']);
           if (!body.source || !body.destination) throw new ApiError(400, 'Source and destination required');
@@ -1283,8 +1619,8 @@ const http = createServer(async (req, res) => {
             const body = await readJson(req, 4096); fields(body, ['path'], ['path']);
             logicalPath(body.path, true);
             const target = catalog.fileLocation(id, body.path);
-            await catalog.assign(filename, target.entityId, target.path);
-            await history.snapshot(`Move page ${filename}`);
+            const move = await catalog.movePage(filename, target.entityId, target.path, id);
+            if (move.moved) await history.snapshot(`Move page ${filename}`);
             return json(res, 200, { page: scopedPage(await requirePage(filename), id) });
           }
         }
@@ -1406,6 +1742,19 @@ const http = createServer(async (req, res) => {
           if (filter !== null && filter !== '') catalog.entity(filter);
           const pages = await listPages();
           return json(res, 200, { pages: filter === null ? pages : pages.filter(page => filter ? catalog.inScope(filter, page.entityId) : page.entityId === null) });
+        }
+        if (resource === 'pages' && action === 'thumb' && parts.length === 3 && ['GET', 'HEAD'].includes(req.method)) {
+          await requirePage(id);
+          const theme = url.searchParams.get('theme') === 'dark' ? 'dark' : 'light';
+          let bytes = await regularBytes(thumbFilename(id, theme));
+          if (bytes === null && theme === 'dark') bytes = await regularBytes(thumbFilename(id, 'light'));
+          if (bytes === null) throw new ApiError(404, 'Thumbnail not found');
+          res.writeHead(200, {
+            'Content-Type': 'image/png',
+            'Cache-Control': 'private, max-age=60',
+            'X-Content-Type-Options': 'nosniff',
+          });
+          return res.end(req.method === 'HEAD' ? '' : bytes);
         }
         if (resource === 'pages' && action === 'listeners' && parts.length === 3 && req.method === 'GET') {
           if (!isWorkspaceMember) throw new ApiError(403, 'Authentication required');
@@ -1560,8 +1909,8 @@ const http = createServer(async (req, res) => {
           const path = body.path ?? (body.entityId === null ? id : catalog.location(id).path);
           const target = body.entityId === null ? { entityId: null, path } : catalog.fileLocation(body.entityId, path);
           if (target.entityId === null) await requireRootNameFree(target.path, id);
-          await catalog.assign(id, target.entityId, target.path);
-          await history.snapshot(`Move page ${id}`);
+          const move = await catalog.movePage(id, target.entityId, target.path);
+          if (move.moved) await history.snapshot(`Move page ${id}`);
           return json(res, 200, { page: await requirePage(id) });
         }
         if (resource === 'pages' && parts.length === 2 && req.method === 'PUT') {
@@ -1607,6 +1956,7 @@ for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, async () => {
   stopping = true;
   events.closeAll();
   http.close();
+  await closeThumbBrowser();
   await upstream.close();
   await history.close?.();
   process.exit(0);

@@ -136,7 +136,7 @@ try {
   await request(fileRoute('delete-parent', 'delete-child/nested/目标图解.html'), { status: 404 });
   await request(fileRoute('delete-child', 'nested/目标图解.html'), { status: 404 });
 
-  // Deleting a selected historical preview replaces its frame/hash/open-link with a surviving diagram.
+  // Deleting a selected historical preview replaces its frame/hash with a surviving diagram.
   await row(root.page.filename).click();
   await row(root.page.filename).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Version history', exact: true }).click();
@@ -150,7 +150,7 @@ try {
   assert.notEqual(await page.evaluate(() => selected?.filename), root.page.filename);
   assert.notEqual(await page.evaluate(() => decodeURIComponent(location.hash.slice(1))), root.page.filename);
   assert.ok(!(await page.locator('#preview').getAttribute('src') ?? '').includes(root.page.filename));
-  assert.notEqual(await page.locator('#open').getAttribute('href'), root.page.url);
+  assert.equal(await page.locator('#open').count(), 0);
   await page.goto(base.href + '#' + root.page.filename);
   await settled();
   assert.notEqual(await page.evaluate(() => decodeURIComponent(location.hash.slice(1))), root.page.filename);

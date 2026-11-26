@@ -86,6 +86,7 @@ const timestamp = value => typeof value === 'string' && Number.isFinite(Date.par
 const parents = path => path.split('/').slice(0, -1).map((_, index, parts) => parts.slice(0, index + 1).join('/'));
 const combine = (...parts) => parts.filter(Boolean).join('/');
 const inside = (value, path) => value === path || value.startsWith(path + '/');
+const pageStem = value => value.replace(/\.html?$/i, '');
 const copyEntity = entry => ({ ...entry, parent: entry.parent ? { ...entry.parent } : null });
 
 // A stable scope anchor can have a visual parent without changing its namespace.
@@ -336,6 +337,85 @@ export async function createCatalog(outputDir) {
       next.set(filename, { entityId: id, path }); addParents(folders, id, path);
       await persist(entities, next, folders);
     },
+    async movePage(filename, targetEntityId, targetPath, scope = undefined) {
+      pageFilename(filename);
+      const old = this.location(filename);
+      if (targetEntityId !== null) this.entity(targetEntityId);
+      if (targetEntityId === null && targetPath === filename) pageFilename(targetPath);
+      else logicalPath(targetPath, true);
+      if (targetEntityId === null && targetPath.includes('/')) throw new ApiError(400, 'Root page must have a basename');
+      if (scope !== undefined && (!this.inScope(scope, old.entityId) || !this.inScope(scope, targetEntityId))) {
+        throw new ApiError(403, 'Move is outside folder scope');
+      }
+      if (old.entityId === targetEntityId && old.path === targetPath && pages.has(filename)) {
+        return { moved: false, filename, entityId: targetEntityId, path: targetPath };
+      }
+      const fromStem = pageStem(old.path);
+      const hasWikiChildren = old.entityId !== null && (
+        directories.get(old.entityId).has(fromStem) ||
+        [...directories.get(old.entityId)].some(folder => folder.startsWith(fromStem + '/')) ||
+        [...pages.entries()].some(([name, entry]) => name !== filename && entry.entityId === old.entityId && entry.path.startsWith(fromStem + '/')) ||
+        [...entities.values()].some(entry => entry.parent?.entityId === old.entityId && inside(entry.parent.path, fromStem))
+      );
+      if (!hasWikiChildren) {
+        await this.assign(filename, targetEntityId, targetPath);
+        return { moved: true, filename, entityId: targetEntityId, path: targetPath };
+      }
+      if (targetEntityId === null) {
+        throw new ApiError(409, 'Cannot move a page with child diagrams to Root; move it into a folder instead');
+      }
+      const toStem = logicalPath(pageStem(targetPath));
+      if (old.entityId === targetEntityId && fromStem === toStem) {
+        await this.assign(filename, targetEntityId, targetPath);
+        return { moved: true, filename, entityId: targetEntityId, path: targetPath };
+      }
+      const relTarget = this.relative(old.entityId, targetEntityId, toStem);
+      if (relTarget !== null && inside(relTarget, fromStem)) {
+        throw new ApiError(409, 'Cannot move a page into its own child diagram');
+      }
+      if (directories.get(targetEntityId).has(toStem) ||
+          [...entities.values()].some(entry => entry.parent?.entityId === targetEntityId && combine(entry.parent.path, entry.name) === toStem)) {
+        throw new ApiError(409, 'Destination already exists');
+      }
+      const nextEntities = new Map(entities);
+      const nextPages = new Map(pages);
+      const nextDirectories = copyDirectories();
+      const replace = value => combine(toStem, value.slice(fromStem.length).replace(/^\//, ''));
+      nextPages.set(filename, { entityId: targetEntityId, path: targetPath });
+      addParents(nextDirectories, targetEntityId, targetPath);
+      for (const [childFilename, entry] of pages) {
+        if (childFilename !== filename && entry.entityId === old.entityId && entry.path.startsWith(fromStem + '/')) {
+          const replaced = logicalPath(replace(entry.path), true);
+          nextPages.set(childFilename, { entityId: targetEntityId, path: replaced });
+          addParents(nextDirectories, targetEntityId, replaced);
+        }
+      }
+      for (const folder of directories.get(old.entityId)) {
+        if (inside(folder, fromStem)) {
+          nextDirectories.get(old.entityId).delete(folder);
+          const replaced = replace(folder);
+          if (replaced) nextDirectories.get(targetEntityId).add(logicalPath(replaced));
+        }
+      }
+      for (const entry of entities.values()) {
+        if (entry.parent?.entityId === old.entityId && inside(entry.parent.path, fromStem)) {
+          const replacedParentPath = replace(entry.parent.path);
+          if (replacedParentPath) logicalPath(replacedParentPath);
+          nextEntities.set(entry.id, {
+            ...entry,
+            parent: { entityId: targetEntityId, path: replacedParentPath },
+            updatedAt: new Date().toISOString(),
+          });
+          if (replacedParentPath) {
+            nextDirectories.get(targetEntityId).add(replacedParentPath);
+            addParents(nextDirectories, targetEntityId, replacedParentPath);
+          }
+        }
+      }
+      check(nextEntities, nextPages, nextDirectories);
+      await persist(nextEntities, nextPages, nextDirectories);
+      return { moved: true, filename, entityId: targetEntityId, path: targetPath };
+    },
     async forgetPage(filename) {
       pageFilename(filename);
       const next = new Map(pages);
@@ -370,10 +450,7 @@ export async function createCatalog(outputDir) {
         const old = this.location(source.filename);
         name ??= old.path.split('/').at(-1);
         const path = logicalPath(combine(target.path, name), true);
-        if (scope !== undefined && (!this.inScope(scope, old.entityId) || !this.inScope(scope, target.entityId))) throw new ApiError(403, 'Move is outside folder scope');
-        const moved = old.entityId !== target.entityId || old.path !== path;
-        if (moved) await this.assign(source.filename, target.entityId, path);
-        return { moved, filename: source.filename, ...target, path };
+        return this.movePage(source.filename, target.entityId, path, scope);
       }
       const from = this.resolve(source.entityId, source.path);
       if (from.path && !directories.get(from.entityId).has(from.path)) throw new ApiError(404, 'Folder not found');

@@ -129,3 +129,58 @@ test('atomic hierarchy moves, mixed anchored subtrees, scoped resolution and roo
     assert.deepEqual(c.location('one.html'), { entityId: null, path: 'one.html' });
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
+
+test('moving or renaming a Wiki parent page atomically carries its child subtree and rejects cycles or root moves', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 've-catalog-wiki-move-'));
+  try {
+    let c = await createCatalog(dir);
+    for (const id of ['arch', 'other', 'sub']) await c.create(id, id.toUpperCase());
+    await c.assign('sys.html', 'arch', 'system.html');
+    await c.assign('gw.html', 'arch', 'system/api-gateway.html');
+    await c.assign('tb.html', 'arch', 'system/api-gateway/token-bucket.html');
+    await c.assign('leaf.html', 'arch', 'standalone.html');
+    await c.move({ kind: 'folder', entityId: 'sub', path: '' }, { entityId: 'arch', path: 'system/api-gateway' });
+    await c.assign('subpage.html', 'sub', 'detail.html');
+
+    async function unchanged(action, status = 409) {
+      const before = await readFile(join(dir, '.entities.json'), 'utf8');
+      await assert.rejects(action, error => error.status === status);
+      assert.equal(await readFile(join(dir, '.entities.json'), 'utf8'), before);
+    }
+
+    // Reject Root move and self/descendant cycles (including through an anchored child).
+    await unchanged(() => c.movePage('sys.html', null, 'system.html'), 409);
+    await unchanged(() => c.move({ kind: 'page', filename: 'sys.html' }, { entityId: null, path: '' }), 409);
+    await unchanged(() => c.movePage('sys.html', 'arch', 'system/system.html'), 409);
+    await unchanged(() => c.movePage('sys.html', 'arch', 'system/api-gateway/system.html'), 409);
+    await unchanged(() => c.movePage('sys.html', 'sub', 'system.html'), 409);
+
+    // Rename system.html -> platform.html in place.
+    const renamed = await c.movePage('sys.html', 'arch', 'platform.html');
+    assert.equal(renamed.moved, true);
+    assert.deepEqual(c.location('sys.html'), { entityId: 'arch', path: 'platform.html' });
+    assert.deepEqual(c.location('gw.html'), { entityId: 'arch', path: 'platform/api-gateway.html' });
+    assert.deepEqual(c.location('tb.html'), { entityId: 'arch', path: 'platform/api-gateway/token-bucket.html' });
+    assert.deepEqual(c.entity('sub').parent, { entityId: 'arch', path: 'platform/api-gateway' });
+    assert.equal(c.find('arch', 'platform/api-gateway/SUB/detail.html'), 'subpage.html');
+    assert.ok(!c.folders('arch').some(f => f.path === 'system' || f.path.startsWith('system/')));
+
+    // Move platform.html to another entity via catalog.move().
+    await c.createFolder('other', 'migrated');
+    const moved = await c.move({ kind: 'page', filename: 'sys.html' }, { entityId: 'other', path: 'migrated' });
+    assert.equal(moved.moved, true);
+    assert.deepEqual(c.location('sys.html'), { entityId: 'other', path: 'migrated/platform.html' });
+    assert.deepEqual(c.location('gw.html'), { entityId: 'other', path: 'migrated/platform/api-gateway.html' });
+    assert.deepEqual(c.location('tb.html'), { entityId: 'other', path: 'migrated/platform/api-gateway/token-bucket.html' });
+    assert.deepEqual(c.entity('sub').parent, { entityId: 'other', path: 'migrated/platform/api-gateway' });
+
+    // Leaf page without Wiki children can still move to Root normally.
+    await c.move({ kind: 'page', filename: 'leaf.html' }, { entityId: null, path: '' });
+    assert.deepEqual(c.location('leaf.html'), { entityId: null, path: 'standalone.html' });
+
+    // Reload from disk verifies persistence.
+    c = await createCatalog(dir);
+    assert.deepEqual(c.location('gw.html'), { entityId: 'other', path: 'migrated/platform/api-gateway.html' });
+    assert.deepEqual(c.location('tb.html'), { entityId: 'other', path: 'migrated/platform/api-gateway/token-bucket.html' });
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});

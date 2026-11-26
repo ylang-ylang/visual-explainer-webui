@@ -277,8 +277,11 @@ try {
   assert.equal(copyPayload.split(fresh.secret).length - 1, 1, 'Key should be declared once, not repeated across every curl');
   assert.ok(!copyPayload.includes('YOUR_FOLDER_TOKEN'));
   assert.ok(copyPayload.includes('## 1.') && copyPayload.includes('## 2.') && copyPayload.includes('## 3.'));
+  assert.ok(copyPayload.includes('/api/visual-explainer/bundle?refs=kit,diagrams'));
   assert.ok(copyPayload.includes('/api/visual-explainer/SKILL.md') && copyPayload.includes('/api/visual-explainer/references/style-guide.md'));
-  assert.ok(copyPayload.indexOf('/api/visual-explainer/SKILL.md') < copyPayload.indexOf('-X PUT'), 'Original resources must come before publishing');
+  assert.ok(copyPayload.indexOf('/api/visual-explainer/bundle?refs=kit,diagrams') < copyPayload.indexOf('-X PUT'), 'Original bundle must come before publishing');
+  const firstBashBlock = copyPayload.match(/```bash\n([\s\S]*?)```/)?.[1] ?? '';
+  assert.equal((firstBashBlock.match(/\bcurl\b/g) ?? []).length, 1, 'Section 1 bootstrap must be a single curl command');
   for (const marker of ['/prepare', '/prompts/', 'diagram.src.html', 'diagram.render.json', 'render.content', 'checksheet', '/comments?status=open', '/resolve', '/reopen', '/api/pages/<filename>/versions/v2', '/api/pages/<filename>/restore']) assert.ok(copyPayload.includes(marker));
   assert.equal(await page.locator('#api-dialog button:visible').count(), 2, 'No extra bootstrap, copy or generation buttons');
   assert.equal(await page.locator('#api-payload').isVisible(), false);

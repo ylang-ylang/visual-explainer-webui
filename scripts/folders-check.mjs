@@ -26,6 +26,9 @@ try {
   secrets.push(key);
   const url = new URL(`/api/entities/${entityId}/files/${path.split('/').map(encodeURIComponent).join('/')}`, base);
   assert.ok(copyPayload.includes(url.href), 'Copied upload target must match the selected nested folder');
+  const eventsOnceUrl = new URL(`/api/entities/${entityId}/events?events=comment.dispatch&once=1&timeout=300&client=agent`, base);
+  assert.ok(copyPayload.includes(eventsOnceUrl.href), 'Copied prompt must include default background one-shot events listener URL');
+  assert.ok(copyPayload.includes('non-blocking background listener') && copyPayload.includes('Re-arm') && copyPayload.includes('204'), 'Copied prompt must instruct default background listener and closed-loop re-arm/204 handling');
   const blocks = [...copyPayload.matchAll(/```bash\n([\s\S]*?)```/g)].map(match => match[1].trim());
   assert.equal(blocks.length, 2, 'Copied prompt must include bootstrap and publish bash blocks');
   const script = blocks.join('\n');
@@ -38,10 +41,16 @@ try {
     input: script, encoding: 'utf8', cwd: directory, timeout: 180000, env: { ...process.env, BASH_ENV: '/dev/null' },
   });
   assert.equal(published.status, 0, redact(published.stderr || 'Copied curl failed'));
-  for (const path of ['/api/visual-explainer', '/api/visual-explainer/SKILL.md', '/api/visual-explainer/references/style-guide.md']) {
+  for (const path of [
+    '/api/visual-explainer',
+    '/api/visual-explainer/SKILL.md',
+    '/api/visual-explainer/references/style-guide.md',
+    '/api/visual-explainer/references/kit.md',
+    '/api/visual-explainer/references/diagrams.md',
+  ]) {
     const official = await fetch(new URL(path, base), { headers: { Authorization: `Bearer ${key}` } });
     assert.equal(official.status, 200);
-    assert.ok(published.stdout.includes(await official.text()), 'Copied curls must really fetch the official bootstrap documents before PUT');
+    assert.ok(published.stdout.includes(await official.text()), `Copied bundle curl must really fetch ${path} verbatim before PUT`);
   }
   const result = JSON.parse(await readFile(join(directory, 'diagram.render.json'), 'utf8'));
   assert.ok(result.render.structuredContent.report, 'Copy command retains original diagnostics in the response file');

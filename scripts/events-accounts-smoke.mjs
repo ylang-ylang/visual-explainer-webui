@@ -203,11 +203,12 @@ try {
     await ownerPage.waitForSelector('.report[aria-current="page"]');
     await ownerPage.waitForSelector('#preview:not([hidden])');
 
-    // File API prompt includes SSE & ?once=1 documentation
+    // File API prompt includes default non-blocking background listener, closed-loop updates & SSE docs
     await ownerPage.click('#viewer-api');
     await ownerPage.waitForFunction(() => !document.querySelector('#copy-api').disabled);
     const payloadText = await ownerPage.locator('#api-payload').inputValue();
-    assert.ok(payloadText.includes('/events?') && payloadText.includes('once=1'), 'Copied prompt must document /events SSE and ?once=1');
+    assert.ok(payloadText.includes('/events?') && payloadText.includes('events=comment.dispatch&once=1&timeout=300&client=agent'), 'Copied File API prompt must include default one-shot comment.dispatch listener URL');
+    assert.ok(payloadText.includes('non-blocking background listener') && payloadText.includes('Re-arm') && payloadText.includes('204'), 'Copied File API prompt must instruct default background listener and closed-loop re-arm/204 handling');
     await ownerPage.click('[data-close="api-dialog"]');
 
     // Open comments panel -> verify 1 host & Send button -> click Send with parallel ?once=1 listener
