@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add the missing administrator-only **删除图解** right-click action with exact clicked-title/path confirmation. Delete only the stable diagram and owned sources/render sheets, reconcile preview/hash/tree state, and preserve containing folders, keys, shared assets and all Git ancestry. Add isolated Chromium, authorization, source-ownership, failure-recovery and restart checks; current links become 404 while historical signed versions remain readable.
+
 - Drag diagrams and complete folder subtrees onto folders or Root as an administrator, including cross-folder moves and nesting previously top-level folders. Keep the existing keyboard/touch rename/move dialog; reject cycles/collisions atomically, preserve drag state during library refresh, and never pretend non-target drops reorder rows.
 - Upgrade catalog v1/v2 to v3 with an exact private pre-migration catalog backup. Real parent edges preserve moved API-folder IDs, endpoints and Keys; parent scopes follow current subtree membership, including history/restore authorization. Serving filenames, source bytes and signed current/version URLs stay stable. Downgrades require restoring the full pre-upgrade data backup.
 - Remove Desktop/Mobile preview controls and forced viewport styling/state; fit the current window while retaining responsive navigation, fullscreen and independent opening. Add isolated migration, actual-pointer browser, scope/history and restart regressions.

@@ -336,6 +336,13 @@ export async function createCatalog(outputDir) {
       next.set(filename, { entityId: id, path }); addParents(folders, id, path);
       await persist(entities, next, folders);
     },
+    async forgetPage(filename) {
+      pageFilename(filename);
+      const next = new Map(pages);
+      next.delete(filename);
+      // Removing a diagram never removes its containing folders or scope anchor.
+      await persist(entities, next, directories);
+    },
     async createFolder(id, path) {
       const requestedPath = path;
       const target = this.resolve(id, logicalPath(path));

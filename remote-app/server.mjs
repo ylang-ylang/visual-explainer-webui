@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { constants } from 'node:fs';
-import { readFile, readdir, open, rename, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdtemp, readFile, readdir, open, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -134,6 +134,86 @@ async function requirePage(filename) {
   const page = await readPage(filename);
   if (!page) throw new ApiError(404, 'Page not found');
   return page;
+}
+
+// Called inside the catalog queue, like rendering and moves. Only exact owned
+// flat files are staged; no directory, generic image, font or credential is a target.
+async function deletePage(filename) {
+  pageFilename(filename);
+  const names = await readdir(outputDir);
+  const companions = sourcePairs(names).get(filename) ?? [];
+  const stem = filename.replace(/\.html?$/i, '');
+  const sheetPattern = new RegExp(`^${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.sheet(?:-\\d+)?\\.png$`);
+  const sheets = names.filter(name => sheetPattern.test(name));
+  const owners = entries => entries.filter(name => !/\.src\.html?$/i.test(name) &&
+    /\.html?$/i.test(name) && name.replace(/\.html?$/i, '') === stem);
+  const files = [];
+  for (const name of [filename, ...companions, ...sheets]) {
+    const info = await lstat(join(outputDir, name)).catch(error => {
+      if (error.code === 'ENOENT') throw new ApiError(name === filename ? 404 : 409, name === filename ? 'Page not found' : 'Page files changed; refresh and retry');
+      throw error;
+    });
+    if (!info.isFile() || info.isSymbolicLink()) throw new ApiError(409, 'Page files must be regular files, not symlinks');
+    files.push({ name, info });
+  }
+  if (sheets.length && owners(names).length > 1) {
+    throw new ApiError(409, 'Render sheets have multiple possible page owners');
+  }
+  // Direct filesystem edits may not yet be in Git. Preserve the exact old HTML
+  // and source before removing anything; identical snapshots make no new commit.
+  await history.snapshot(`Snapshot before deleting page ${filename}`);
+  const currentNames = await readdir(outputDir);
+  if (JSON.stringify(companions) !== JSON.stringify(sourcePairs(currentNames).get(filename) ?? []) ||
+      JSON.stringify(sheets) !== JSON.stringify(currentNames.filter(name => sheetPattern.test(name))) ||
+      JSON.stringify(owners(names)) !== JSON.stringify(owners(currentNames))) {
+    throw new ApiError(409, 'Page file ownership changed; refresh and retry');
+  }
+  const staging = await mkdtemp(join(outputDir, '.delete-'));
+  const moved = [];
+  try {
+    for (const { name, info } of files) {
+      const current = await lstat(join(outputDir, name));
+      if (!current.isFile() || current.dev !== info.dev || current.ino !== info.ino ||
+          current.size !== info.size || current.mtimeMs !== info.mtimeMs || current.ctimeMs !== info.ctimeMs) {
+        throw new ApiError(409, 'Page files changed; refresh and retry');
+      }
+      await rename(join(outputDir, name), join(staging, name));
+      moved.push(name);
+    }
+    await catalog.forgetPage(filename);
+  } catch (error) {
+    // A filesystem/catalog failure restores staged originals. A Git failure below
+    // follows the existing local-first contract instead of rolling back content.
+    try {
+      for (const name of moved.reverse()) {
+        const occupied = await lstat(join(outputDir, name)).catch(failure => {
+          if (failure.code === 'ENOENT') return null;
+          throw failure;
+        });
+        if (occupied) throw new Error('Cannot overwrite a file created during deletion');
+        await rename(join(staging, name), join(outputDir, name));
+      }
+      await rm(staging, { recursive: true });
+    } catch (recovery) {
+      console.error('Page deletion rollback failed', { code: recovery.code });
+      throw new ApiError(500, 'Deletion failed and could not be fully rolled back. Preserve the data directory for recovery.');
+    }
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(500, 'Deletion failed; original page files were restored.');
+  }
+  try {
+    await history.snapshot(`Delete page ${filename}`);
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 503) throw error;
+    throw new ApiError(503, 'Diagram deleted, but Git history synchronization failed. Previous snapshots and local commits are preserved. Refresh the library; the next mutation or restart retries synchronization.');
+  } finally {
+    // These are transient rollback files, not a trash/undelete feature. Failure is
+    // surfaced rather than claiming a completely cleaned deletion.
+    await rm(staging, { recursive: true }).catch(error => {
+      console.error('Page deletion temporary cleanup failed', { code: error.code });
+      throw new ApiError(500, 'Diagram deleted, but temporary file cleanup failed. Preserve the data directory for recovery.');
+    });
+  }
 }
 
 async function listPages() {
@@ -573,6 +653,11 @@ const http = createServer(async (req, res) => {
           return json(res, 200, { page: result.page, revision: result.revision });
         }
         if (resource === 'pages' && parts.length === 2 && req.method === 'GET') return json(res, 200, { page: await requirePage(id) });
+        if (resource === 'pages' && parts.length === 2 && req.method === 'DELETE') {
+          if (auth.role !== 'admin') throw new ApiError(403, 'Admin authentication required');
+          await deletePage(id);
+          return send(res, 204, '');
+        }
         if (resource === 'pages' && parts.length === 2 && req.method === 'PATCH') {
           await requirePage(id);
           const body = await readJson(req, 4096); fields(body, ['entityId', 'path'], ['entityId']);

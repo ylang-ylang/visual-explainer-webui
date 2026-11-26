@@ -541,6 +541,7 @@
     let versionsRequest = null;
     let dragging = null;
     let movePending = false;
+    let deletePending = false;
     let dropTarget = null;
     let expandTimer;
     let contextMenuState = null;
@@ -914,7 +915,7 @@
     }
 
     async function loadPages(manual = false) {
-      if (pageRequest || signingOut || $('login').open || dragging || movePending || contextMenuState) return false;
+      if (pageRequest || signingOut || $('login').open || dragging || movePending || deletePending || contextMenuState) return false;
       const request = new AbortController();
       pageRequest = request;
       const timeout = setTimeout(() => request.abort(), REQUEST_TIMEOUT);
@@ -1409,6 +1410,8 @@
           separator();
           item('重命名', () => requireAdmin(() => openEditor('page', { page, operation: 'rename' })));
           item('移动到…', () => requireAdmin(() => openEditor('page', { page, operation: 'move' })));
+          separator();
+          item('删除图解', () => requireAdmin(() => deleteDiagram(page)), { danger: true });
         }
       } else {
         const parent = { entityId: target.entityId || null, path: target.path || '' };
@@ -1721,6 +1724,32 @@
       }
     });
     $('confirm-dialog').addEventListener('close', () => { confirmation = null; });
+    function deleteDiagram(page) {
+      askConfirmation('删除图解？', `「${pageTitle(page)}」 · ${fullPagePath(page)}。删除当前图解及其源文件，已有当前链接将失效；Git 历史保留（无撤销入口）。`, async () => {
+        deletePending = true;
+        pageRequest?.abort();
+        pageRequest = null;
+        try {
+          await apiRequest('/api/pages/' + encodeURIComponent(page.filename), { method: 'DELETE' });
+          pages = pages.filter(item => item.filename !== page.filename);
+          entityCatalog.totalCount = pages.length;
+          entityCatalog.unassignedCount = pages.filter(item => item.entityId === null).length;
+          if (pendingFilename === page.filename) pendingFilename = '';
+          if (selected?.filename === page.filename) {
+            clearPreview();
+            showPlaceholder('图解已删除', '从列表中选择另一份图解。');
+          }
+          if (hashFilename() === page.filename) history.replaceState(null, '', location.pathname + location.search);
+          renderList();
+          notify('已删除图解');
+        } finally {
+          deletePending = false;
+          // Also reconcile local-first history failures: deletion may already
+          // have happened even when synchronization returned an explicit error.
+          await reloadPages();
+        }
+      }, '删除图解');
+    }
     function deleteFolder(context) {
       askConfirmation('删除空文件夹？', folderLabel(context.entityId, context.path), async () => {
         const route = entityRoute(context.entityId) + (context.path ? '/folders?path=' + encodeURIComponent(context.path) : '');
