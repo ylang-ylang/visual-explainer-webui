@@ -7,6 +7,10 @@ Independent Web UI and remote MCP wrapper for [nicobailon/visual-explainer](http
 - **Official upstream:** skill/resources/prompts, HTML compilation and rendering.
 - **This wrapper:** light visual library, sandboxed previews, authentication, one folder hierarchy, scoped HTTP publishing, Git version previews/restores and remote MCP transport.
 - **Working agent:** inspects its own project, writes HTML and sends it to the renderer. The server does not run a model or accept local project paths.
+- **Feedback boundary:** original kit/Comment/Ask/Reply behavior belongs upstream; this wrapper must not add its own comment queue, feedback protocol or agent orchestration, or claim automatic cross-host return.
+- **Browser feedback:** select text → Comment/Ask → Reply → Copy/paste into the working agent's chat.
+- **Original automatic send-back:** native Pi + Glimpse only, not the browser or remote MCP wrapper.
+- **Current sandbox limit:** the opaque preview blocks original localStorage draft persistence; unsent notes are lost on reload.
 
 The source of truth for the upstream revision is the `visual-explainer` dependency in `remote-app/package.json`: an official GitHub archive at an immutable commit. `remote-app/package-lock.json` locks the archive integrity and transitive dependencies. There is no copied renderer tree, fork patch set or startup download. The image installs the original package's dependencies rather than linking a fork checkout to wrapper dependencies.
 
