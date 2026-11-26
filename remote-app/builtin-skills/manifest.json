@@ -1,0 +1,131 @@
+{
+  "explainers": [
+    {
+      "id": "overview",
+      "title": "Visual Explainer Skill 体系总览（渐进式导航）",
+      "summary": "4 层渐进式 Skill 架构全景：接入层、主调度层、4 份核心规范与 16 份按需文档，并说明 WebUI 的 Git 3-Way Merge 与 SHA-256 哈希绑定。",
+      "layer": 0,
+      "parentId": null,
+      "covers": [
+        "*"
+      ],
+      "htmlFile": "explainers/overview.html",
+      "sourceFile": "explainers/overview.src.html",
+      "skillHash": "21a7a59ce7013d4c21e37c40abefcc3c2760c183e7ec104f5422ce7815292df7",
+      "updatedAt": "2026-11-26T18:22:00.000Z"
+    },
+    {
+      "id": "bootstrap-prompt",
+      "title": "WebUI 入口提示词（bootstrap-prompt）",
+      "summary": "拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle、编写渲染与 Checksheet 自查、非阻塞挂 SSE 监听后汇报链接、收到 Send 后拉评改图并续挂。",
+      "layer": 1,
+      "parentId": "overview",
+      "covers": [
+        "webui/bootstrap-prompt.md"
+      ],
+      "htmlFile": "explainers/bootstrap-prompt.html",
+      "sourceFile": "explainers/bootstrap-prompt.src.html",
+      "skillHash": "002658240cf3d9fa845a22295d7ea3fa1f4fe20d419fd221cb2e53cf12a4ff77",
+      "updatedAt": "2026-11-26T18:22:00.000Z"
+    },
+    {
+      "id": "SKILL",
+      "title": "核心调度规范（SKILL.md · v0.16.0）",
+      "summary": "提炼官方 v0.16.0 SKILL.md 主调度规范：十秒读懂原则、视觉形态与组件路由表、<ve-flow> 默认规则、Checksheet 闭环及反模式禁令。",
+      "layer": 1,
+      "parentId": "overview",
+      "covers": [
+        "SKILL.md"
+      ],
+      "htmlFile": "explainers/SKILL.html",
+      "sourceFile": "explainers/SKILL.src.html",
+      "skillHash": "6abc82735d6868470121d4b97b820cdbd69d7128aca416e4c21d465a9c56d044",
+      "updatedAt": "2026-11-26T18:22:00.000Z"
+    },
+    {
+      "id": "style-guide",
+      "title": "视觉设计规范（references/style-guide.md）",
+      "summary": "解析 4 套视觉语域（Instrument / Blueprint / Paper / Editorial）、90% 中性色配 10% 信号色法则、四层线宽对比度、网格排版与反 AI 塑料感约束。",
+      "layer": 1,
+      "parentId": "overview",
+      "covers": [
+        "references/style-guide.md"
+      ],
+      "htmlFile": "explainers/style-guide.html",
+      "sourceFile": "explainers/style-guide.src.html",
+      "skillHash": "f61c31b82e89e668e61859d3c8e8016fe92a29e2aa02f1bfa507697b63769c81",
+      "updatedAt": "2026-11-26T18:22:00.000Z"
+    },
+    {
+      "id": "kit",
+      "title": "单文件编译与 Kit 组件（references/kit.md · v0.16.0）",
+      "summary": "详解 .src.html 编译为自包含 HTML 的机制：kit.css 注入、.ve-n 与 <ve-flow>、v0.16.0 桌面侧边目录与子项、自动图号交叉引用及严格标签校验。",
+      "layer": 1,
+      "parentId": "overview",
+      "covers": [
+        "references/kit.md"
+      ],
+      "htmlFile": "explainers/kit.html",
+      "sourceFile": "explainers/kit.src.html",
+      "skillHash": "8b74533892710552623ae91c161b550ec10a77aefc7557557a5cdeb9104e1760",
+      "updatedAt": "2026-11-26T18:22:00.000Z"
+    },
+    {
+      "id": "diagrams",
+      "title": "图表与 SVG 布局规范（references/diagrams.md）",
+      "summary": "明确 <ve-flow>、手绘 SVG 与 Mermaid 的选型边界，掌握网格规划、正交路由、双视口 12px 字号底线、尺寸线与防遮挡排错要点。",
+      "layer": 1,
+      "parentId": "overview",
+      "covers": [
+        "references/diagrams.md"
+      ],
+      "htmlFile": "explainers/diagrams.html",
+      "sourceFile": "explainers/diagrams.src.html",
+      "skillHash": "ecd6c35e52e86169982ea72736ae624c347d340d97cbbf0797467946af5d8c3a",
+      "updatedAt": "2026-11-26T18:22:00.000Z"
+    },
+    {
+      "id": "motion",
+      "title": "动效与交互克制规范（references/motion.md）",
+      "summary": "阐述动效只解释过程与变化的克制原则：.ve-steps 步进与回放、Live 实时控件、.js-motion 轻入场、prefers-reduced-motion 退化，以及 Checksheet 与缩略图为何禁用动效。",
+      "layer": 1,
+      "parentId": "overview",
+      "covers": [
+        "references/motion.md"
+      ],
+      "htmlFile": "explainers/motion.html",
+      "sourceFile": "explainers/motion.src.html",
+      "skillHash": "fed82c41a8c56673aa7c4d009e0d3d3f6f180839bc52c9873db0625d2be1cd45",
+      "updatedAt": "2026-11-26T18:22:00.000Z"
+    },
+    {
+      "id": "commands-and-extras",
+      "title": "按需加载的专项参考与任务命令（6 Refs + 10 Commands）",
+      "summary": "完整汇总 6 份专项 References 与 10 份任务 Commands 的触发场景、核心组件骨架、远程 MCP 边界，以及何时为单文件拆分定制覆盖或 L2 专属子图解。",
+      "layer": 1,
+      "parentId": "overview",
+      "covers": [
+        "commands/compare.md",
+        "commands/diff-review.md",
+        "commands/fact-check.md",
+        "commands/generate-slides.md",
+        "commands/generate-video.md",
+        "commands/generate-visual-plan.md",
+        "commands/generate-web-diagram.md",
+        "commands/plan-review.md",
+        "commands/project-recap.md",
+        "commands/state-machine.md",
+        "references/extras.md",
+        "references/machines.md",
+        "references/plans.md",
+        "references/slides.md",
+        "references/themes.md",
+        "references/video.md"
+      ],
+      "htmlFile": "explainers/commands-and-extras.html",
+      "sourceFile": "explainers/commands-and-extras.src.html",
+      "skillHash": "bcac807f724c97fe374644114adc0fe71ca833e1b75838888f12c1449431f6c2",
+      "updatedAt": "2026-11-26T18:22:00.000Z"
+    }
+  ]
+}

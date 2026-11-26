@@ -13,6 +13,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 COPY LICENSE ./
 COPY remote-app/*.mjs remote-app/index.html ./
 COPY remote-app/static/ ./static/
+COPY remote-app/builtin-skills/ ./builtin-skills/
 ARG SOURCE_REVISION
 LABEL org.opencontainers.image.source="https://github.com/ylang-ylang/visual-explainer-webui" \
       org.opencontainers.image.revision="${SOURCE_REVISION}" \

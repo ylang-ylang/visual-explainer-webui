@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN" data-register="blueprint">
+<head>
+<title>单文件编译与 Kit 组件（references/kit.md · v0.16.0）</title>
+<meta name="description" content="详解 .src.html 编译为自包含 HTML 的机制：kit.css 注入、.ve-n 与 <ve-flow>、v0.16.0 桌面侧边目录与子项、自动图号交叉引用及严格标签校验。">
+<link rel="stylesheet" href="kit.css" data-ve-kit>
+<style>
+.demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s-4); margin: var(--s-4) 0; }
+.demo-box { background: var(--surface); border: 1px solid var(--border-bright); border-radius: var(--r-2); padding: var(--s-4); }
+.demo-box h3 { margin: 0 0 var(--s-2); font-size: var(--t-body); }
+</style>
+</head>
+<body>
+<nav class="ve-toc" data-layout="side" aria-label="Sections">
+  <div>
+    <a href="#fig-compile">编译管线</a>
+    <a href="#v016">v0.16.0 新能力</a>
+    <a class="sub" href="#side-toc">侧边目录</a>
+    <a class="sub" href="#auto-ref">自动图号与报错</a>
+    <a href="#parts">内置组件契约</a>
+    <a href="#tags">数据标签与边界</a>
+  </div>
+  <span class="pos"></span>
+</nav>
+<main>
+  <header>
+    <p class="eyebrow">SKILL WIKI · L1 · COMPILER &amp; KIT · v0.16.0</p>
+    <h1>一行占位标签注入全套样式与脚本，把源文档编成单文件</h1>
+    <p class="lead"><code>references/kit.md</code> 定义源码骨架、内置视觉零件与声明式数据标签；<b>v0.16.0</b> 新增桌面侧边目录、自动图号交叉引用与严格语法拦截。</p>
+    <p class="meta">covers: references/kit.md · Single-File HTML · Strict Tag Check</p>
+  </header>
+
+  <figure id="fig-compile">
+    <ve-flow label="源 HTML 通过 v0.16.0 编译器完成严格标签校验、资产注入与数据标签展开，输出零外部依赖的独立 HTML">
+      <ve-node id="src" at="1 1" sub="含 data-ve-kit">*.src.html 源码</ve-node>
+      <ve-node id="lint" at="2 1" sub="未闭合即停">严格标签校验</ve-node>
+      <ve-node id="inject" at="3 1" key sub="CSS · JS · Defs">Kit 资产注入</ve-node>
+      <ve-node id="out" at="4 1" shape="db" sub="零外部依赖">自包含 *.html</ve-node>
+      <ve-node id="refs" at="3 2" sub=".fig-n 与空 a">自动图号引用</ve-node>
+      <ve-edge from="src" to="lint" label="解析校验"/>
+      <ve-edge from="lint" to="inject" label="通过编译" hot/>
+      <ve-edge from="inject" to="refs" label="按页序编号"/>
+      <ve-edge from="inject" to="out" label="产出单文件" hot/>
+    </ve-flow>
+    <figcaption><span class="fig-n"></span>编译器用一行 <code>&lt;link rel="stylesheet" href="kit.css" data-ve-kit&gt;</code> 自动注入 charset、viewport、favicon、字体、全套 CSS/JS 与 SVG defs（<code>#ve-ah</code>、<code>#ve-node</code>、waffle 单元格）。</figcaption>
+  </figure>
+
+  <section id="v016">
+    <div class="sec-head"><p class="ve-label caps">New in v0.16.0</p><h2>三项 v0.16.0 核心增强：侧边目录、自动交叉引用、严格标签报错</h2></div>
+
+    <h3 id="side-toc">长页桌面侧边目录（<code>.ve-toc[data-layout="side"]</code>）</h3>
+    <p>包含 4 个及以上章节的页面，在 <code>&lt;main&gt;</code> 前放置 <code>&lt;nav class="ve-toc"&gt;</code> 即可获得滚动定位与进度计数；加上 <code>data-layout="side"</code>（本页即开启）会在宽屏自动切换为左侧固定栏，紧跟章节后的 <code>&lt;a class="sub" href="#h3-id"&gt;</code> 会缩进展示子标题。</p>
+
+    <h3 id="auto-ref">自动图号、空链接回填与源码语法拦截</h3>
+    <p>编译器按页面顺序为每个空的 <code>&lt;span class="fig-n"&gt;&lt;/span&gt;</code> 填入 <code>Fig. N</code>，并把对应图号写进指向 <code>&lt;figure id="…"&gt;</code> 的空链接中——例如 <a href="#fig-compile"></a> 就是由空 <code>&lt;a href="#fig-compile"&gt;&lt;/a&gt;</code> 自动填出的。若源码出现未闭合标签、多余闭合标签或非法数据属性（如 <code>line 42 &lt;ve-bar&gt;: value="-3" is negative</code>），编译器直接报错且不写出损坏文件。</p>
+  </section>
+
+  <section id="parts">
+    <div class="sec-head"><p class="ve-label caps">Kit Parts</p><h2>内置语义零件直接复用，自定义 CSS 只覆盖差异</h2></div>
+    <p>Kit 已为裸 <code>&lt;p&gt;</code>、<code>&lt;ul&gt;/&lt;ol&gt;</code>（65ch 栏宽）、<code>&lt;pre&gt;</code> 代码块与节内间距做好排版，页面只需写特有样式。SVG 节点与结构类遵循固定契约：</p>
+    <div class="ve-table">
+      <table>
+        <thead>
+          <tr>
+            <th>零件</th>
+            <th>标准标记</th>
+            <th>关键坑点 / 约束</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SVG 节点 <code>.ve-n</code></td>
+            <td><code>&lt;g class="ve-n [is-key]"&gt;&lt;rect class="sh"/&gt;&lt;text/&gt;&lt;text class="sub"/&gt;&lt;/g&gt;</code></td>
+            <td>Kit 强制 <code>text-anchor: middle</code>，<code>x</code> 须填矩形中心；存储用 <code>path.sh</code> + <code>ellipse.sh.lid</code></td>
+          </tr>
+          <tr>
+            <td>连线 <code>.ve-e</code></td>
+            <td><code>&lt;path class="ve-e [is-hot|is-async]"/&gt;</code> + <code>&lt;text class="ve-el [l|r]"&gt;</code></td>
+            <td>自带箭头；必须先画边再画节点；<code>l</code> 右对齐终点、<code>r</code> 左对齐起点</td>
+          </tr>
+          <tr>
+            <td>边界与文字标签</td>
+            <td><code>rect.ve-bnd</code> + <code>text.ve-bnd-t</code> · <code>&lt;text class="ve-tag [key|risk]"&gt;</code></td>
+            <td>任何缺少 fill 的 SVG <code>&lt;text&gt;</code> 会渲成纯黑并触发渲染错误</td>
+          </tr>
+          <tr>
+            <td>状态与变更标记</td>
+            <td><code>.is-new</code> · <code>.is-gone</code> · <code>&lt;text class="ve-x"&gt;✕&lt;/text&gt;</code> · <code>.chip ok|warn|risk</code></td>
+            <td><code>.kpis &gt; .kpi</code> 支持 <code>data-count</code> 计数；<code>.cases &gt; .case[data-st]</code> 用于小多图</td>
+          </tr>
+          <tr>
+            <td>联动与步进</td>
+            <td><code>data-ref="id"</code> + <code>&lt;span class="ve-ref" tabindex="0"&gt;</code> · <code>.ve-steps</code></td>
+            <td>悬停或聚焦正文术语时同步点亮图中对应节点与连线</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tags">
+    <div class="sec-head"><p class="ve-label caps">Data Tags &amp; Boundary</p><h2>声明式数据标签在编译期转成内联 SVG，运行时仅做轻量交互</h2></div>
+    <div class="demo-grid">
+      <div class="demo-box">
+        <h3><code>&lt;ve-bars&gt;</code> 限宽强校验</h3>
+        <ve-bars unit="字符" max="12" label="标签与数值字符上限：柱标签 9 字符，数值含单位 6 字符，flow 箭头 12 字符">
+          <ve-bar value="12" hot>flow 边</ve-bar>
+          <ve-bar value="9">bar 标签</ve-bar>
+          <ve-bar value="6">bar 数值</ve-bar>
+        </ve-bars>
+      </div>
+      <div class="demo-box">
+        <h3><code>&lt;ve-waffle&gt;</code> 整数占比</h3>
+        <ve-waffle value="85" note="15 其余" label="waffle 接受 0 到 100 的整数并用 note 标注未点亮部分"></ve-waffle>
+      </div>
+    </div>
+    <div class="cases">
+      <div class="case" data-st="ok">
+        <span class="chip ok">编译期展开</span>
+        <h3><code>&lt;ve-flow&gt;</code> 与数据标签</h3>
+        <p><code>&lt;ve-flow&gt;</code> 用 <code>at="col row"</code> 自动排版并自带 <code>.frame</code>，支持 <code>key/hot/async/new/gone</code> 与 <code>data-s</code> 令牌；<code>&lt;ve-stack&gt;</code> 须包在 <code>.frame</code> 内防窄屏溢出。</p>
+      </div>
+      <div class="case" data-st="warn">
+        <span class="chip warn">静态 vs 交互</span>
+        <h3>运行时脚本边界</h3>
+        <p>Kit 运行时仅负责 <code>.ve-toc</code> 定位、<code>.ve-steps</code> 步进、<code>data-ref</code> 高亮与 <code>&lt;ve-ask&gt;</code> 收集回答（未点击前即使设 <code>default</code> 仍记为 <code>no answer</code>）。</p>
+      </div>
+      <div class="case" data-st="ok">
+        <span class="chip ok">WebUI 托管</span>
+        <h3>嵌入桥接无缝接管</h3>
+        <p>在 WebUI 内嵌浏览时，宿主脚本静默接管官方 <code>veReply</code>，改为左侧评论批注与 <code>data-ve-child</code> 悬停下钻；独立打开 HTML 依然完全自包含。</p>
+      </div>
+    </div>
+    <p>进一步查看 <span data-ve-child="diagrams">diagrams</span> 掌握手绘 SVG 几何规则，或进入 <span data-ve-child="motion">motion</span> 了解步进回放。</p>
+  </section>
+
+  <section class="sources" aria-label="Sources">
+    <p class="ve-label caps">Sources</p>
+    <p><code>references/kit.md</code> (v0.16.0) · <code>remote-app/server.mjs</code></p>
+  </section>
+</main>
+</body>
+</html>

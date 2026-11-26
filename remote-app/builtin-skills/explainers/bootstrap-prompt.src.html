@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN" data-register="blueprint">
+<head>
+<title>WebUI 入口提示词（bootstrap-prompt）</title>
+<meta name="description" content="拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle、编写渲染与 Checksheet 自查、非阻塞挂 SSE 监听后汇报链接、收到 Send 后拉评改图并续挂。">
+<link rel="stylesheet" href="kit.css" data-ve-kit>
+<style>
+.seq-svg text { font-size: 15px; }
+.seq-svg text.sub { font-size: 14px; }
+.seq-svg text.ve-el { font-size: 14px; }
+.seq-svg text.ve-bnd-t { font-size: 14px; }
+.seq-svg .ve-dim text { font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">SKILL WIKI · L1 · ENTRY PROTOCOL</p>
+    <h1>四步闭环：先拉 bundle 写图自检，再后台挂监听后汇报链接</h1>
+    <p class="lead"><code>webui/bootstrap-prompt.md</code> 是 WebUI 注入给所有远程 Agent 的操作手册，将 <b>拉规范、渲染校验、Wiki 下钻与评论唤醒</b> 统一为标准 HTTP 协议。</p>
+    <p class="meta">covers: webui/bootstrap-prompt.md · 4 Stages · 300 s One-Shot SSE</p>
+  </header>
+
+  <figure class="ve-steps">
+    <ve-flow label="Agent 遵循 bootstrap-prompt.md 执行的四阶段发布与评论闭环">
+      <ve-node id="s1" at="1 1" sub="GET /bundle" data-s="1" data-ref="bundle">1. 单命令拉规范</ve-node>
+      <ve-node id="s2" at="2 1" sub="PUT .src.html" key data-s="2" data-ref="publish">2. 渲染与自查</ve-node>
+      <ve-node id="s3" at="3 1" sub="后台 events/once" data-s="3" data-ref="listen">3. 挂监听再报链</ve-node>
+      <ve-node id="s4" at="4 1" sub="改图 + Resolve" data-s="4" data-ref="loop">4. 响应 Send 续挂</ve-node>
+      <ve-edge from="s1" to="s2" label="读完再写" data-s="2"/>
+      <ve-edge from="s2" to="s3" label="零 ✗ 放行" hot data-s="3"/>
+      <ve-edge from="s3" to="s4" label="200 唤醒" hot data-s="4"/>
+      <ve-edge from="s4" to="s3" label="&amp;after=id" async data-s="4"/>
+    </ve-flow>
+    <div class="ve-player">
+      <ol class="ve-cap">
+        <li data-n="1/4">执行单条 <code>curl /bundle</code> 拉取索引、<code>SKILL.md</code> 与核心规范，严禁直接上传随意 HTML。</li>
+        <li data-n="2/4">本地核实事实并写 <code>./diagram.src.html</code>，<code>PUT</code> 渲染后解码 Checksheet 截图，小步修到零 <code>✗</code>。</li>
+        <li data-n="3/4">在回复 <code>page.url</code> 前，先以非阻塞后台任务启动 <code>events/once</code> 监听，让 WebUI 立即显示在线。</li>
+        <li data-n="4/4">用户点 Send 触发 <code>comment.dispatch</code> 后拉评与源码、发新版、Resolve 线程，并带 <code>&amp;after=&lt;id&gt;</code> 续挂监听。</li>
+      </ol>
+      <button type="button" data-go="-1" aria-label="上一步">‹</button>
+      <button type="button" data-play aria-label="播放">▶</button>
+      <input type="range" aria-label="步骤">
+      <button type="button" data-go="1" aria-label="下一步">›</button>
+    </div>
+    <figcaption><span class="fig-n"></span>四阶段闭环把“一次性出图”升级为可实时协作修改的交互工作流。</figcaption>
+  </figure>
+
+  <section id="publish">
+    <div class="sec-head"><p class="ve-label caps">Stage 1–2</p><h2>上传阶段四条硬约束：传源码文本、查完 Checksheet、不伪造门户样式</h2></div>
+    <div class="cases">
+      <div class="case" data-st="ok">
+        <span class="chip ok">Bundle First</span>
+        <h3>先拉规范，按需追加</h3>
+        <p>默认 <code>/bundle</code> 一次返回 <code>SKILL.md</code> + <code>style-guide</code> + <code>kit</code> + <code>diagrams</code>；动效页追加 <code>?refs=motion</code>，亦可用 <code>POST /prepare</code> 或 <code>/prompts/&lt;name&gt;</code>。</p>
+      </div>
+      <div class="case" data-st="warn">
+        <span class="chip warn">PUT Guard</span>
+        <h3>只发 UTF-8 HTML 源码</h3>
+        <p>最大 <code>12 MiB</code>，目标名须为 <code>.html/.htm</code>（禁止传 <code>.src.html</code> 后缀或本地文件路径），可附 <code>?note=</code> 或 <code>X-VE-Note</code> 记录版本说明。</p>
+      </div>
+      <div class="case" data-st="ok">
+        <span class="chip ok">Wiki Drill</span>
+        <h3>规范下钻与悬停摘要</h3>
+        <p>页面必含 <code>&lt;meta name="description"&gt;</code> 供悬停卡片展示；节点写 <code>data-ve-child="&lt;child&gt;"</code>（省略 <code>.html</code>），严禁手写假 Portal CSS，由查看器运行时注入。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="listener">
+    <div class="sec-head"><p class="ve-label caps">Stage 3–4</p><h2>非阻塞后台监听与 <code>&amp;after=&lt;id&gt;</code> 游标避免遗漏编辑期评论</h2></div>
+    <figure>
+      <div class="frame">
+        <svg class="ve-svg seq-svg" viewBox="0 0 860 306" aria-label="Agent 与 WebUI 之间的发布、监听、唤醒与续挂时序图">
+          <g class="ve-n">
+            <rect class="sh" x="62" y="18" width="180" height="38" rx="6"/>
+            <text x="152" y="42">Agent Harness</text>
+          </g>
+
+          <g class="ve-n is-key">
+            <rect class="sh" x="382" y="18" width="180" height="38" rx="6"/>
+            <text x="472" y="42">WebUI Server</text>
+          </g>
+
+          <g class="ve-n">
+            <rect class="sh" x="668" y="18" width="180" height="38" rx="6"/>
+            <text x="758" y="42">Reviewer 浏览器</text>
+          </g>
+
+          <path class="ve-axis" d="M152 56 V286 M472 56 V286 M758 56 V286"/>
+
+          <path class="ve-e" d="M152 88 H466"/>
+          <text class="ve-el" x="312" y="79">1. PUT v1 → 零 ✗ 通过</text>
+
+          <path class="ve-e is-async" d="M152 124 H466"/>
+          <text class="ve-el" x="312" y="115">2. 后台挂 GET events/once（≤ 300 s）</text>
+
+          <path class="ve-e" d="M152 160 H752"/>
+          <text class="ve-el" x="615" y="151">3. 汇报 page.url（已在线）</text>
+
+          <path class="ve-e is-hot" d="M758 196 H478"/>
+          <text class="ve-el" x="615" y="187">4. 批注并点击 Send</text>
+
+          <path class="ve-e is-hot" d="M472 230 H158"/>
+          <text class="ve-el" x="312" y="221">5. 200 comment.dispatch (e_9)</text>
+
+          <path class="ve-e is-hot" d="M152 268 H466"/>
+          <text class="ve-el" x="312" y="259">6. 改图 PUT v2 → Resolve → &amp;after=e_9</text>
+
+          <g class="ve-dim is-key">
+            <path class="ext" d="M22 124 H44 M22 230 H44"/>
+            <path class="ln" d="M32 124 V230 M28 128 l8-8 M28 234 l8-8"/>
+            <text x="92" y="182">≤ 300 s</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption><span class="fig-n"></span>先挂后台再汇报链接，避免用户在空白窗口点击 Send；遇到 <code>204</code> 超时静默退出，无后台能力的环境则跳过监听不阻塞回复。</figcaption>
+    </figure>
+  </section>
+
+  <section id="endpoints">
+    <div class="sec-head"><p class="ve-label caps">API Map</p><h2>提示词第 4 节提供的完整协作端点速查</h2></div>
+    <div class="ve-table">
+      <table>
+        <thead>
+          <tr>
+            <th>能力域</th>
+            <th>HTTP 方法与路径</th>
+            <th>关键参数 / 行为</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>读取官方规范</td>
+            <td><code>GET /bundle</code> · <code>POST /prepare</code> · <code>POST /prompts/&lt;name&gt;</code></td>
+            <td>支持 <code>?refs=motion,…</code> 一次合拉多份参考</td>
+          </tr>
+          <tr>
+            <td>发布与读源码</td>
+            <td><code>PUT /files/&lt;path&gt;.html</code> · <code>GET /files/&lt;path&gt;.src.html</code></td>
+            <td>同路径覆盖自动递增 <code>v2 / v3</code> 版本</td>
+          </tr>
+          <tr>
+            <td>评论与线程闭环</td>
+            <td><code>GET /comments</code> · <code>POST /comments</code> · <code>POST /comments/&lt;id&gt;/resolve|reopen</code></td>
+            <td>回复已解决线程会自动重新打开；Resolve 可附 <code>note</code></td>
+          </tr>
+          <tr>
+            <td>事件唤醒</td>
+            <td><code>GET /events/once</code> · <code>GET /events</code>（持久 SSE）</td>
+            <td>均支持 <code>after=&lt;id&gt;</code> / <code>Last-Event-ID</code> 断点续传</td>
+          </tr>
+          <tr>
+            <td>目录与版本回溯</td>
+            <td><code>GET /tree</code> · <code>POST/PATCH/DELETE /folders</code> · <code>GET /versions</code> · <code>POST /restore</code></td>
+            <td>支持文件移动重命名与按 <code>vN</code> 恢复历史版本</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>拉完 bundle 后由 <span data-ve-child="SKILL">SKILL</span> 接管视觉形态与出图规则，或返回 <span data-ve-child="overview">overview</span> 查看全套体系。</p>
+  </section>
+
+  <section class="sources" aria-label="Sources">
+    <p class="ve-label caps">Sources</p>
+    <p><code>webui/bootstrap-prompt.md</code></p>
+  </section>
+</main>
+</body>
+</html>

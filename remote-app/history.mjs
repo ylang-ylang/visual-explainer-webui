@@ -10,7 +10,7 @@ import { ApiError, entityId, logicalPath, pageFilename, scopePath, sourceFilenam
 const execute = promisify(execFile);
 const author = 'Visual Explainer';
 const email = 'visual-explainer@localhost';
-const managed = name => name === '.entities.json' || (!name.includes('/') && /\.html?$/i.test(name));
+const managed = name => name === '.entities.json' || (!name.includes('/') && !name.startsWith('__skill-render-') && /\.html?$/i.test(name));
 const source = name => /\.src\.html?$/i.test(name);
 const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
 

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN" data-register="blueprint">
+<head>
+<title>按需加载的专项参考与任务命令（6 Refs + 10 Commands）</title>
+<meta name="description" content="完整汇总 6 份专项 References 与 10 份任务 Commands 的触发场景、核心组件骨架、远程 MCP 边界，以及何时为单文件拆分定制覆盖或 L2 专属子图解。">
+<link rel="stylesheet" href="kit.css" data-ve-kit>
+<style>
+.cat-svg text { font-size: 15px; }
+.cat-svg text.sub { font-size: 14px; }
+.cat-svg text.ve-el { font-size: 14px; }
+.cat-svg text.ve-bnd-t { font-size: 14px; }
+</style>
+</head>
+<body>
+<nav class="ve-toc" aria-label="Sections">
+  <div>
+    <a href="#dispatch">触发路由图</a>
+    <a href="#refs">6 份专项参考</a>
+    <a href="#cmds">10 份任务命令</a>
+    <a href="#split">覆盖与拆分时机</a>
+  </div>
+  <span class="pos"></span>
+</nav>
+<main>
+  <header>
+    <p class="eyebrow">SKILL WIKI · L1 · ON-DEMAND CATALOG · 16 DOCS</p>
+    <h1>按需加载层：六套专项载体规范与十条任务命令工作流</h1>
+    <p class="lead">这 16 份文档默认不随 <code>/bundle</code> 注入上下文，仅当任务命中特定载体（计划书、状态机、幻灯片、视频、换肤）或斜杠命令时按需加载。</p>
+    <p class="meta">covers: 6 references/*.md + 10 commands/*.md · Progressive Disclosure</p>
+  </header>
+
+  <figure id="dispatch">
+    <div class="frame">
+      <svg class="ve-svg cat-svg" viewBox="0 0 880 398" aria-label="10 份任务命令与 6 份专项参考文档的按需映射关系图">
+        <rect class="ve-bnd" x="18" y="16" width="398" height="366" rx="6"/>
+        <text class="ve-bnd-t" x="34" y="38">10 份任务命令 · commands/*.md</text>
+
+        <rect class="ve-bnd" x="456" y="16" width="406" height="366" rx="6"/>
+        <text class="ve-bnd-t" x="472" y="38">6 份专项参考 · references/*.md</text>
+
+        <path class="ve-e is-hot" d="M398 86 H472"/>
+        <path class="ve-e is-hot" d="M398 158 H436 V148 H472"/>
+        <path class="ve-e is-async" d="M398 242 H436 V148 H472"/>
+        <path class="ve-e" d="M398 334 H436 V210 H472"/>
+        <path class="ve-e" d="M398 334 H436 V272 H472"/>
+
+        <g class="ve-n is-key">
+          <rect class="sh" x="36" y="58" width="362" height="56" rx="6"/>
+          <text x="217" y="81">计划与评审（2）</text>
+          <text class="sub" x="217" y="102">generate-visual-plan · plan-review</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="36" y="130" width="362" height="56" rx="6"/>
+          <text x="217" y="153">代码状态机（1）</text>
+          <text class="sub" x="217" y="174">state-machine</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="36" y="202" width="362" height="80" rx="6"/>
+          <text x="217" y="226">图解、Diff、对比、回顾与核查（5）</text>
+          <text class="sub" x="217" y="248">web-diagram · diff-review · compare</text>
+          <text class="sub" x="217" y="268">project-recap · fact-check</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="36" y="302" width="362" height="60" rx="6"/>
+          <text x="217" y="327">幻灯片与视频（2）</text>
+          <text class="sub" x="217" y="348">generate-slides · generate-video</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="476" y="58" width="368" height="52" rx="6"/>
+          <text x="660" y="80">references/plans.md</text>
+          <text class="sub" x="660" y="100">&lt;ve-plan&gt; · &lt;ve-claim&gt; · &lt;ve-ask&gt;</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="476" y="122" width="368" height="52" rx="6"/>
+          <text x="660" y="144">references/machines.md</text>
+          <text class="sub" x="660" y="164">代码状态机遍历与破例路径</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="476" y="186" width="368" height="52" rx="6"/>
+          <text x="660" y="208">references/slides.md</text>
+          <text class="sub" x="660" y="228">100dvh 预算 · 自检与 PPTX</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="476" y="250" width="368" height="52" rx="6"/>
+          <text x="660" y="272">references/video.md</text>
+          <text class="sub" x="660" y="292">虚拟时钟分镜 · TTS 与 MP4</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="476" y="314" width="368" height="52" rx="6"/>
+          <text x="660" y="336">themes.md · extras.md</text>
+          <text class="sub" x="660" y="356">11 套换肤 · Mermaid 与位图</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption><span class="fig-n"></span>大多数单页架构图无需触碰这 16 份文件；仅当进入专项任务时，命令模板会自动指引读取对应 Reference。</figcaption>
+  </figure>
+
+  <section id="refs">
+    <div class="sec-head"><p class="ve-label caps">6 Specialized References</p><h2>六份专项参考：覆盖计划树、状态机验证、幻灯片、视频与扩展</h2></div>
+    <div class="ve-table">
+      <table>
+        <thead>
+          <tr>
+            <th>参考文件</th>
+            <th>触发场景</th>
+            <th>核心输出结构与边界</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>references/plans.md</code></td>
+            <td>交互式实施计划与计划评审</td>
+            <td>左侧粘性 <code>&lt;ve-flow&gt;</code> Hero + 右侧 3 层行为主张树（<code>&lt;ve-claim&gt;</code>、<code>&lt;ve-code&gt;</code>、<code>&lt;ve-calls&gt;</code>、<code>&lt;ve-mock&gt;</code>、<code>&lt;ve-ask&gt;</code>、<code>data-if</code> 动态联动与 <code>status="built"</code> 交付回执）</td>
+          </tr>
+          <tr>
+            <td><code>references/machines.md</code></td>
+            <td>从代码（reducer / XState）抽状态机</td>
+            <td><code>&lt;ve-flow&gt;</code> 内嵌 <code>&lt;script type="text/plain" model&gt;</code> 遍历 ≤ 2000 态并标出 <code>breaks/may-break/bug-path/dead end</code>；远程 MCP 默认关闭可执行模型（需 <code>VISUAL_EXPLAINER_RUN_MODELS=1</code>），远程场景改用手绘回放</td>
+          </tr>
+          <tr>
+            <td><code>references/slides.md</code></td>
+            <td>要求做幻灯片或 <code>--pptx</code></td>
+            <td>复用 <code>templates/slide-deck.html</code> 引擎，每页严守 <code>100dvh</code> 无滚动预算（≤ 5 条要点/8 行表/10 行代码）、过 <code>Slide delivery check</code>，可经 <code>visual-explainer-pptx</code> 转 PPTX（会丢失 SVG 须补正文）</td>
+          </tr>
+          <tr>
+            <td><code>references/video.md</code></td>
+            <td>要求生成带旁白 MP4 或录操作教程</td>
+            <td>1280×720 虚拟时钟逐句驱动 <code>data-say</code> / <code>data-beat</code>，先出 <code>--stills</code> 静帧自检，再用 ElevenLabs / Seed Audio / OpenAI / xAI 合成语音，本地 <code>ffmpeg + playwright</code> 合成（远程 MCP 不支持）</td>
+          </tr>
+          <tr>
+            <td><code>references/themes.md</code></td>
+            <td>要求运行时切换配色或字体</td>
+            <td>提供 11 套固定配色（7 暗 4 亮：Dracula、Nord、One Dark、Catppuccin 等）+ 5 组字体对、右上角固定切换条契约及 <code>visual-explainer.config.md</code> 默认项</td>
+          </tr>
+          <tr>
+            <td><code>references/extras.md</code></td>
+            <td>用户提供 Mermaid、需内嵌位图或旧配方</td>
+            <td><code>&lt;pre class="mermaid"&gt;</code> 静态转 SVG（不支持步进）；位图用脚本转 base64 禁手写；保留 v0.11 旧配方链接仅供查机制</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="cmds">
+    <div class="sec-head"><p class="ve-label caps">10 Task Commands</p><h2>十份任务命令：将高频工程评审与可视化场景沉淀为标准模板</h2></div>
+    <div class="ve-table">
+      <table>
+        <thead>
+          <tr>
+            <th>命令文件</th>
+            <th>适用任务</th>
+            <th>核心骨架与关键动作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>commands/generate-web-diagram.md</code></td>
+            <td>任意主题单页图解</td>
+            <td>提炼“读者带走的一句话”，按 <code>SKILL.md</code> 全规则出图并过交付核对</td>
+          </tr>
+          <tr>
+            <td><code>commands/generate-visual-plan.md</code></td>
+            <td>可批复的实施计划页</td>
+            <td>先查清 <code>file:line</code> → 写一级行为主张 → 画 Hero → 放 <code>&lt;ve-ask&gt;</code> 等答复后再写代码，完工标 <code>status</code></td>
+          </tr>
+          <tr>
+            <td><code>commands/plan-review.md</code></td>
+            <td>对照真实代码评审计划</td>
+            <td>按 <code>plans.md</code> 骨架输出 Approve/Revise/Reject 结论，每个问题配 <code>&lt;ve-ask&gt;</code> 逐条采纳或拒绝</td>
+          </tr>
+          <tr>
+            <td><code>commands/diff-review.md</code></td>
+            <td>代码变更可视化审查</td>
+            <td>结论 + <code>&lt;ve-stack&gt;</code> 增删量 + 文件树 + 同坐标 Before/After 行为图 + 风险表 + <code>&lt;ve-ask&gt;</code> 勾选修复项</td>
+          </tr>
+          <tr>
+            <td><code>commands/compare.md</code></td>
+            <td>多技术方案并排对比</td>
+            <td>并排差异图 + 小多图场景 + 芯片权衡表 + 推荐理由 + <code>&lt;ve-ask id="pick"&gt;</code> 让读者拍板</td>
+          </tr>
+          <tr>
+            <td><code>commands/project-recap.md</code></td>
+            <td>跨周/切上下文项目回顾</td>
+            <td>一句话定位 + 架构图 + 主题时间线 + 未提交/阻塞芯片 + <code>&lt;ve-bars&gt;</code> 热点模块 + 下一步选择</td>
+          </tr>
+          <tr>
+            <td><code>commands/fact-check.md</code></td>
+            <td>核查已有文档与代码一致性</td>
+            <td>抽取可验证事实对照源码/<code>git show</code>，小改源码修正错误标签或边，顶部加验证芯片统计条</td>
+          </tr>
+          <tr>
+            <td><code>commands/state-machine.md</code></td>
+            <td>代码状态机全状态验错</td>
+            <td>先与用户约定 1–3 条业务不变式，再建模型遍历并给出可复现破例的最短路径脚本</td>
+          </tr>
+          <tr>
+            <td><code>commands/generate-slides.md</code></td>
+            <td>网页演示稿 / PPTX</td>
+            <td>按 <code>slides.md</code> 全量映射源纲要为多页 <code>100dvh</code> 幻灯片，识别 <code>--pptx</code> 导出标志</td>
+          </tr>
+          <tr>
+            <td><code>commands/generate-video.md</code></td>
+            <td>旁白 MP4 / 应用录制教程</td>
+            <td>按 <code>video.md</code> 核实数字后编排分镜脚本，或用 Playwright 实录 Web 应用操作流</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="split">
+    <div class="sec-head"><p class="ve-label caps">Customization Strategy</p><h2>何时保持聚合，何时新建单文件覆盖或 L2 专属子图解</h2></div>
+    <div class="cases">
+      <div class="case" data-st="ok">
+        <span class="chip ok">保持聚合</span>
+        <h3>低频且沿用官方原版</h3>
+        <p>只要 16 份文档维持上游原样，统一由本页做组合哈希校验即可，保持 Admin Skills 图解树清爽不臃肿。</p>
+      </div>
+      <div class="case" data-st="warn">
+        <span class="chip warn">单文件覆盖</span>
+        <h3>团队有固定审查规范</h3>
+        <p>例如想给 <code>diff-review.md</code> 加安全检查项或给 <code>themes.md</code> 加公司色板，可在开启编辑后单改该文件，仅该文件偏离 <code>upstream</code>，其余 21 份自动跟随升级。</p>
+      </div>
+      <div class="case" data-st="ok">
+        <span class="chip ok">拆分 L2 子图解</span>
+        <h3>高频定制需独立说明</h3>
+        <p>当某份文档（如 <code>references/plans.md</code>）被深度改写后，可发布新图解设 <code>parentId: "commands-and-extras"</code> 且 <code>covers</code> 只绑定该文件，让同步状态与浏览路径精准对应。</p>
+      </div>
+    </div>
+    <p>返回 <span data-ve-child="overview">overview</span> 查看四层总览，或进入 <span data-ve-child="SKILL">SKILL</span>、<span data-ve-child="kit">kit</span>、<span data-ve-child="diagrams">diagrams</span>、<span data-ve-child="motion">motion</span> 深入核心规范。</p>
+  </section>
+
+  <section class="sources" aria-label="Sources">
+    <p class="ve-label caps">Sources</p>
+    <p><code>references/plans.md</code> · <code>references/machines.md</code> · <code>references/slides.md</code> · <code>references/video.md</code> · <code>references/themes.md</code> · <code>references/extras.md</code> · <code>commands/compare.md</code> · <code>commands/diff-review.md</code> · <code>commands/fact-check.md</code> · <code>commands/generate-slides.md</code> · <code>commands/generate-video.md</code> · <code>commands/generate-visual-plan.md</code> · <code>commands/generate-web-diagram.md</code> · <code>commands/plan-review.md</code> · <code>commands/project-recap.md</code> · <code>commands/state-machine.md</code></p>
+  </section>
+</main>
+</body>
+</html>

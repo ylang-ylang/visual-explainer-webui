@@ -31,11 +31,12 @@ function cleanSingleLine(value, field, max) {
 }
 
 export function normalizeAuthor(input, role) {
-  const fallback = role === 'agent' ? 'Agent' : 'Owner';
+  const isAgent = role === 'agent' || role === 'skill-editor';
+  const fallback = isAgent ? 'Agent' : 'Owner';
   const name = input === undefined || input === null || input === ''
     ? fallback
     : cleanSingleLine(input, 'authorName', MAX_AUTHOR) || fallback;
-  return { role: role === 'agent' ? 'agent' : 'admin', name };
+  return { role: isAgent ? 'agent' : 'admin', name };
 }
 
 export function normalizeWhere(input) {
@@ -150,9 +151,9 @@ function validateReply(reply) {
     timestamp(reply.createdAt) && timestamp(reply.updatedAt);
 }
 
-function validateThread(thread) {
+function validateThread(thread, validateKey = pageFilename) {
   if (!object(thread) || typeof thread.id !== 'string' || !/^c_\d+$/.test(thread.id)) return false;
-  try { pageFilename(thread.filename); } catch { return false; }
+  try { validateKey(thread.filename); } catch { return false; }
   if (!['open', 'resolved'].includes(thread.status)) return false;
   if (thread.version !== null && (!Number.isInteger(thread.version) || thread.version < 1)) return false;
   if (thread.revision !== null && (typeof thread.revision !== 'string' || !/^[0-9a-f]{40,64}$/.test(thread.revision))) return false;
@@ -166,8 +167,8 @@ function validateThread(thread) {
 }
 
 // Mutations are serialized by the catalog queue, matching tokens.mjs and catalog.mjs.
-export async function createComments(outputDir) {
-  const path = join(outputDir, '.comments.json');
+export async function createComments(outputDir, { storeFile = '.comments.json', validateKey = pageFilename } = {}) {
+  const path = join(outputDir, storeFile);
   let nextId = 1;
   let threads = [];
 
@@ -180,7 +181,7 @@ export async function createComments(outputDir) {
     }
     const seen = new Set();
     for (const thread of data.threads) {
-      if (!validateThread(thread) || seen.has(thread.id)) throw new Error('Malformed comment thread');
+      if (!validateThread(thread, validateKey) || seen.has(thread.id)) throw new Error('Malformed comment thread');
       seen.add(thread.id);
       for (const reply of thread.replies) {
         if (seen.has(reply.id)) throw new Error('Duplicate comment id');
@@ -215,14 +216,14 @@ export async function createComments(outputDir) {
     return thread;
   }
 
-  function countsFor(filename) {
-    const owned = threads.filter(entry => entry.filename === filename);
+  function countsFor(filename = null) {
+    const owned = filename === null || filename === undefined ? threads : threads.filter(entry => entry.filename === filename);
     const open = owned.filter(entry => entry.status === 'open').length;
     return { open, resolved: owned.length - open, total: owned.length };
   }
 
   return {
-    counts(filename) { return countsFor(filename); },
+    counts(filename = null) { return countsFor(filename); },
     countsByVersion(filename) {
       const byVersion = new Map();
       for (const entry of threads) {
@@ -239,15 +240,15 @@ export async function createComments(outputDir) {
       const thread = findThread(threadId);
       return cloneThread(thread);
     },
-    list(filename, { status: filter = 'all', version = null } = {}) {
+    list(filename = null, { status: filter = 'all', version = null } = {}) {
       if (!['all', 'open', 'resolved'].includes(filter)) throw new ApiError(400, 'status must be open, resolved, or all');
-      let list = threads.filter(entry => entry.filename === filename);
+      let list = filename === null || filename === undefined ? threads : threads.filter(entry => entry.filename === filename);
       if (filter !== 'all') list = list.filter(entry => entry.status === filter);
       if (version !== null && version !== undefined) list = list.filter(entry => entry.version === version);
       return { threads: list.map(cloneThread), counts: countsFor(filename) };
     },
     async create({ filename, version = null, revision = null, where, author, body }) {
-      pageFilename(filename);
+      validateKey(filename);
       const cleanBody = cleanText(body, 'body', MAX_BODY, true);
       const cleanWhere = normalizeWhere(where);
       const now = new Date().toISOString();
@@ -270,9 +271,10 @@ export async function createComments(outputDir) {
       await persist([...threads, thread], nextId + 1);
       return { thread: cloneThread(thread), counts: countsFor(filename) };
     },
-    async reply({ filename, threadId, author, body }) {
-      pageFilename(filename);
-      const existing = findThread(threadId, filename);
+    async reply({ filename = null, threadId, author, body }) {
+      if (filename !== null && filename !== undefined) validateKey(filename);
+      const existing = findThread(threadId, filename ?? null);
+      const targetKey = existing.filename;
       const cleanBody = cleanText(body, 'body', MAX_BODY, true);
       const now = new Date().toISOString();
       const reply = { id: `c_${nextId}`, author: { ...author }, body: cleanBody, createdAt: now, updatedAt: now };
@@ -286,13 +288,14 @@ export async function createComments(outputDir) {
         replies: [...existing.replies, reply],
       };
       await persist(threads.map(entry => entry === existing ? updated : entry), nextId + 1);
-      return { thread: cloneThread(updated), reply: cloneReply(reply), reopened, counts: countsFor(filename) };
+      return { thread: cloneThread(updated), reply: cloneReply(reply), reopened, counts: countsFor(targetKey) };
     },
-    async resolve({ filename, threadId, actor, note = '' }) {
-      pageFilename(filename);
-      const existing = findThread(threadId, filename);
+    async resolve({ filename = null, threadId, actor, note = '' }) {
+      if (filename !== null && filename !== undefined) validateKey(filename);
+      const existing = findThread(threadId, filename ?? null);
+      const targetKey = existing.filename;
       if (existing.status === 'resolved') {
-        return { thread: cloneThread(existing), changed: false, counts: countsFor(filename) };
+        return { thread: cloneThread(existing), changed: false, counts: countsFor(targetKey) };
       }
       const cleanNote = cleanText(note, 'note', MAX_BODY, false);
       const now = new Date().toISOString();
@@ -311,13 +314,14 @@ export async function createComments(outputDir) {
         replies,
       };
       await persist(threads.map(entry => entry === existing ? updated : entry), counter);
-      return { thread: cloneThread(updated), changed: true, counts: countsFor(filename) };
+      return { thread: cloneThread(updated), changed: true, counts: countsFor(targetKey) };
     },
-    async reopen({ filename, threadId }) {
-      pageFilename(filename);
-      const existing = findThread(threadId, filename);
+    async reopen({ filename = null, threadId }) {
+      if (filename !== null && filename !== undefined) validateKey(filename);
+      const existing = findThread(threadId, filename ?? null);
+      const targetKey = existing.filename;
       if (existing.status === 'open') {
-        return { thread: cloneThread(existing), changed: false, counts: countsFor(filename) };
+        return { thread: cloneThread(existing), changed: false, counts: countsFor(targetKey) };
       }
       const now = new Date().toISOString();
       const updated = {
@@ -328,16 +332,16 @@ export async function createComments(outputDir) {
         updatedAt: now,
       };
       await persist(threads.map(entry => entry === existing ? updated : entry), nextId);
-      return { thread: cloneThread(updated), changed: true, counts: countsFor(filename) };
+      return { thread: cloneThread(updated), changed: true, counts: countsFor(targetKey) };
     },
-    async edit({ filename, commentId, body }) {
-      pageFilename(filename);
+    async edit({ filename = null, commentId, body }) {
+      if (filename !== null && filename !== undefined) validateKey(filename);
       if (typeof commentId !== 'string' || !/^c_\d+$/.test(commentId)) throw new ApiError(400, 'Invalid comment id');
       const cleanBody = cleanText(body, 'body', MAX_BODY, true);
       const now = new Date().toISOString();
       let updatedThread = null;
       const nextThreads = threads.map(entry => {
-        if (entry.filename !== filename) return entry;
+        if (filename !== null && filename !== undefined && entry.filename !== filename) return entry;
         if (entry.id === commentId) {
           updatedThread = { ...entry, body: cleanBody, updatedAt: now };
           return updatedThread;
@@ -354,18 +358,18 @@ export async function createComments(outputDir) {
       });
       if (!updatedThread) throw new ApiError(404, 'Comment not found');
       await persist(nextThreads, nextId);
-      return { thread: cloneThread(updatedThread), counts: countsFor(filename) };
+      return { thread: cloneThread(updatedThread), counts: countsFor(updatedThread.filename) };
     },
-    async remove({ filename, commentId }) {
-      pageFilename(filename);
+    async remove({ filename = null, commentId }) {
+      if (filename !== null && filename !== undefined) validateKey(filename);
       if (typeof commentId !== 'string' || !/^c_\d+$/.test(commentId)) throw new ApiError(400, 'Invalid comment id');
-      let found = false;
+      let foundKey = null;
       const nextThreads = [];
       for (const entry of threads) {
-        if (entry.filename !== filename) { nextThreads.push(entry); continue; }
-        if (entry.id === commentId) { found = true; continue; }
+        if (filename !== null && filename !== undefined && entry.filename !== filename) { nextThreads.push(entry); continue; }
+        if (entry.id === commentId) { foundKey = entry.filename; continue; }
         if (entry.replies.some(reply => reply.id === commentId)) {
-          found = true;
+          foundKey = entry.filename;
           nextThreads.push({
             ...entry,
             updatedAt: new Date().toISOString(),
@@ -375,12 +379,12 @@ export async function createComments(outputDir) {
         }
         nextThreads.push(entry);
       }
-      if (!found) throw new ApiError(404, 'Comment not found');
+      if (foundKey === null) throw new ApiError(404, 'Comment not found');
       await persist(nextThreads, nextId);
-      return { deleted: true, counts: countsFor(filename) };
+      return { deleted: true, filename: foundKey, counts: countsFor(foundKey) };
     },
     async forgetPage(filename) {
-      pageFilename(filename);
+      validateKey(filename);
       const removed = threads.filter(entry => entry.filename === filename);
       if (!removed.length) return [];
       await persist(threads.filter(entry => entry.filename !== filename), nextId);
@@ -395,3 +399,5 @@ export async function createComments(outputDir) {
     },
   };
 }
+
+export const createCommentsStore = createComments;

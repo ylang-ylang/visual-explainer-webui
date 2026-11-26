@@ -47,6 +47,17 @@
       --accent-border: rgba(36, 88, 214, 0.34);
       --danger: #c22e3c;
       --danger-soft: rgba(194, 46, 60, 0.10);
+      --danger-border: rgba(194, 46, 60, 0.30);
+      --ok: #15803d;
+      --ok-soft: rgba(21, 128, 61, 0.10);
+      --ok-border: rgba(21, 128, 61, 0.28);
+      --warn: #b45309;
+      --warn-soft: rgba(180, 83, 9, 0.11);
+      --warn-border: rgba(180, 83, 9, 0.32);
+      --diff-add-bg: rgba(21, 128, 61, 0.10);
+      --diff-add-fg: #14532d;
+      --diff-del-bg: rgba(194, 46, 60, 0.10);
+      --diff-del-fg: #991b1b;
       --popover-bg: #ffffff;
       --popover-border: rgba(21, 25, 34, 0.14);
       --popover-shadow: 0 16px 38px -8px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.07);
@@ -83,6 +94,17 @@
       --accent-border: rgba(110, 160, 255, 0.38);
       --danger: #f5737f;
       --danger-soft: rgba(245, 115, 127, 0.14);
+      --danger-border: rgba(245, 115, 127, 0.36);
+      --ok: #4ade80;
+      --ok-soft: rgba(74, 222, 128, 0.13);
+      --ok-border: rgba(74, 222, 128, 0.30);
+      --warn: #fbbf24;
+      --warn-soft: rgba(251, 191, 36, 0.14);
+      --warn-border: rgba(251, 191, 36, 0.36);
+      --diff-add-bg: rgba(74, 222, 128, 0.13);
+      --diff-add-fg: #86efac;
+      --diff-del-bg: rgba(245, 115, 127, 0.14);
+      --diff-del-fg: #fca5a5;
       --popover-bg: #1a202c;
       --popover-border: rgba(226, 234, 248, 0.16);
       --popover-shadow: 0 20px 44px -8px rgba(0, 0, 0, 0.65), 0 4px 14px rgba(0, 0, 0, 0.40);
@@ -354,7 +376,10 @@
     #account-self { flex: 1; min-width: 0; justify-content: flex-start; height: 30px; padding: 0 8px; color: var(--ink-2); font-size: 12.5px; }
     #account-self:hover { color: var(--ink); }
     #account-self-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-    #accounts-open { flex: none; height: 30px; padding: 0 8px; font-size: 12px; color: var(--ink-3); }
+    #skills-open { flex: none; height: 30px; padding: 0 7px; font-size: 12px; color: var(--ink-3); }
+    #skills-open:hover { color: var(--ink); }
+    #skills-open[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
+    #accounts-open { flex: none; height: 30px; padding: 0 7px; font-size: 12px; color: var(--ink-3); }
     #accounts-open:hover { color: var(--ink); }
     #logout { flex: none; width: 30px; height: 30px; padding: 0; color: var(--ink-3); }
     #logout:hover { color: var(--ink); }
@@ -1111,6 +1136,647 @@
       font-weight: 500;
     }
 
+    /* Admin Skills Workspace */
+    .library.skills-mode { flex: 0 0 304px; width: 304px; }
+    .skills-sidebar {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+    }
+    .skills-head {
+      flex: none;
+      padding: 4px 12px 10px;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      gap: 9px;
+    }
+    .skills-head-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    #skills-back {
+      height: 28px;
+      padding: 0 9px;
+      font-size: 12px;
+      font-weight: 500;
+      flex: none;
+    }
+    #skills-upstream-ver {
+      font-size: 12px;
+      line-height: 1.3;
+      flex: none;
+    }
+    #skills-hosts-pill {
+      margin-left: auto;
+      font-size: 12px;
+    }
+    .skills-lock-card {
+      padding: 10px 11px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface);
+      display: grid;
+      gap: 8px;
+      transition: border-color 140ms ease, background 140ms ease;
+    }
+    .skills-lock-card.unlocked {
+      border-color: var(--warn-border);
+      background: var(--warn-soft);
+    }
+    .skills-lock-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .skills-lock-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .skills-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 42px;
+      height: 24px;
+      padding: 2px;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      background: var(--surface-2);
+      transition: background 140ms ease, border-color 140ms ease;
+      flex: none;
+    }
+    .skills-switch[aria-checked="true"] {
+      background: var(--warn);
+      border-color: var(--warn);
+    }
+    .skills-switch-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--surface);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.28);
+      transform: translateX(0);
+      transition: transform 140ms ease;
+    }
+    .skills-switch[aria-checked="true"] .skills-switch-thumb {
+      transform: translateX(18px);
+      background: #ffffff;
+    }
+    .skills-lock-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .skills-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .skills-status-pill.unlocked {
+      border-color: var(--warn-border);
+      background: var(--surface);
+      color: var(--warn);
+    }
+    .skills-status-pill.synced {
+      border-color: var(--ok-border);
+      background: var(--ok-soft);
+      color: var(--ok);
+    }
+    .skills-status-pill.stale {
+      border-color: var(--warn-border);
+      background: var(--warn-soft);
+      color: var(--warn);
+    }
+    .skills-status-pill.overridden {
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .skills-status-pill.conflict {
+      border-color: var(--danger-border);
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+    #skills-api-open {
+      height: 26px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+    .skills-lock-hint {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--ink-2);
+    }
+    .skills-conflict-banner {
+      margin: 8px 12px 0;
+      padding: 8px 10px;
+      border: 1px solid var(--danger-border);
+      border-radius: 8px;
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .skills-conflict-banner .btn {
+      height: 26px;
+      padding: 0 8px;
+      font-size: 12px;
+      border-color: var(--danger-border);
+      color: var(--danger);
+      background: var(--surface);
+    }
+    .skills-nav {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 8px 10px 14px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .skills-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
+    #skills-explainers-tree, #skills-docs-list { min-width: 0; }
+    .skills-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .skills-count {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-2);
+    }
+    .skills-empty-note {
+      padding: 10px 10px;
+      border: 1px dashed var(--border-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink-2);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .skill-sync-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex: none;
+    }
+    .skill-sync-dot.synced { background: var(--ok); }
+    .skill-sync-dot.stale { background: var(--warn); }
+    .skill-pill {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 6px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.35;
+      white-space: nowrap;
+    }
+    .skill-pill.stale {
+      border-color: var(--warn-border);
+      background: var(--warn-soft);
+      color: var(--warn);
+      font-weight: 600;
+    }
+    .skill-pill.overridden {
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .skill-pill.conflict {
+      border-color: var(--danger-border);
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-weight: 600;
+    }
+    .skill-pill.synced {
+      border-color: var(--ok-border);
+      background: var(--ok-soft);
+      color: var(--ok);
+    }
+    .skill-group { margin: 2px 0; min-width: 0; }
+    .skill-group > summary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      list-style: none;
+      color: var(--ink-2);
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+    .skill-group > summary::-webkit-details-marker { display: none; }
+    .skill-group > summary:hover { background: var(--hover); color: var(--ink); }
+    .skill-group > summary .chevron { width: 12px; height: 12px; color: var(--ink-3); transition: transform 120ms ease; }
+    .skill-group[open] > summary .chevron { transform: rotate(90deg); }
+    .skill-group-count { margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); font-weight: 500; }
+    .skill-group-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; padding: 3px 0 4px 6px; min-width: 0; }
+    .skill-doc-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 6px 6px 8px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      transition: background 110ms ease, border-color 110ms ease;
+      min-width: 0;
+    }
+    .skill-doc-row:hover { background: var(--hover); }
+    .skill-doc-row.is-covered-active {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+    }
+    .skill-doc-main {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      text-align: left;
+      display: grid;
+      gap: 3px;
+    }
+    .skill-doc-name {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 550;
+      color: var(--ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .skill-doc-sub {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+    .skill-doc-sync {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--ink-2);
+    }
+    .skill-doc-sync.synced { color: var(--ok); }
+    .skill-doc-sync.stale { color: var(--warn); font-weight: 550; }
+    .skill-doc-inspect {
+      flex: none;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      color: var(--ink-3);
+    }
+    .skill-doc-inspect:hover { color: var(--accent); background: var(--surface); }
+
+    /* Viewer Hash-Binding Status Bar */
+    .skills-hash-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      padding: 6px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      font-size: 12px;
+      min-width: 0;
+    }
+    .skills-hash-bar.stale {
+      background: var(--warn-soft);
+      border-bottom-color: var(--warn-border);
+    }
+    .skills-hash-left {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+    .skills-hash-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--ok-border);
+      background: var(--ok-soft);
+      color: var(--ok);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .skills-hash-pill.stale {
+      border-color: var(--warn-border);
+      background: var(--surface);
+      color: var(--warn);
+    }
+    .skills-hash-detail {
+      color: var(--ink-2);
+      font-size: 12px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .skills-hash-covers {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .skill-cover-chip {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 7px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--surface);
+      color: var(--ink-2);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      transition: border-color 110ms ease, color 110ms ease, background 110ms ease;
+    }
+    .skill-cover-chip:hover {
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .skill-cover-chip.overridden {
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+    .skill-cover-chip.conflict {
+      border-color: var(--danger-border);
+      color: var(--danger);
+    }
+    .skills-hash-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: none;
+    }
+    #skills-hash-inspect { height: 26px; padding: 0 9px; font-size: 12px; }
+    #skills-history-open { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+
+    .comments-lock-note {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--ink-2);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    /* Wide Skill Modals (API, Doc Inspector, History) */
+    dialog.panel.wide { width: 760px; }
+    .skill-dialog-head-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: none;
+    }
+    #skill-doc-select {
+      width: auto;
+      max-width: 260px;
+      height: 30px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .skill-doc-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px 10px;
+      margin-top: 12px;
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      font-size: 12px;
+      color: var(--ink-2);
+    }
+    .skill-meta-hash {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink);
+    }
+    .skill-tabs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+    .skill-tab {
+      height: 30px;
+      padding: 0 11px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink-2);
+      font-size: 12.5px;
+      font-weight: 500;
+    }
+    .skill-tab:hover { background: var(--hover); color: var(--ink); }
+    .skill-tab[aria-selected="true"] {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .skill-tab.conflict-tab[aria-selected="true"] {
+      background: var(--danger-soft);
+      border-color: var(--danger-border);
+      color: var(--danger);
+    }
+    .skill-code-view {
+      margin-top: 10px;
+      max-height: 52dvh;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.55;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+    }
+    .skill-md-pre {
+      margin: 0;
+      padding: 12px 14px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 12px;
+    }
+    .skill-diff-empty {
+      padding: 20px 14px;
+      color: var(--ink-2);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      text-align: center;
+    }
+    .diff-pre {
+      margin: 0;
+      padding: 8px 0;
+      min-width: 100%;
+      width: max-content;
+    }
+    .diff-line {
+      display: block;
+      padding: 0 12px;
+      white-space: pre;
+      color: var(--ink);
+    }
+    .diff-line.diff-add { background: var(--diff-add-bg); color: var(--diff-add-fg); }
+    .diff-line.diff-del { background: var(--diff-del-bg); color: var(--diff-del-fg); }
+    .diff-line.diff-hunk { background: var(--accent-soft); color: var(--accent); font-weight: 600; padding-top: 2px; padding-bottom: 2px; }
+    .diff-line.diff-meta { color: var(--ink-3); }
+    .conflict-wrap {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+      font-family: var(--font-sans);
+    }
+    .conflict-summary { font-size: 12.5px; color: var(--danger); font-weight: 500; }
+    .conflict-panes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .conflict-pane {
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .conflict-pane-head {
+      padding: 6px 9px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-2);
+      background: var(--surface-2);
+      border-radius: 7px 7px 0 0;
+    }
+    .conflict-pane pre {
+      margin: 0;
+      padding: 9px;
+      max-height: 220px;
+      overflow: auto;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      color: var(--ink);
+    }
+    .skill-ver-diff-box {
+      margin-top: 12px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      background: var(--bg);
+      overflow: hidden;
+    }
+    .skill-ver-diff-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .skill-ver-diff-box .skill-code-view {
+      margin-top: 0;
+      border: 0;
+      border-radius: 0;
+      max-height: 36dvh;
+    }
+    .skill-ver-files {
+      display: block;
+      margin-top: 3px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+    #skill-editor-prompt {
+      min-height: 180px;
+      margin-top: 4px;
+      font-size: 12px;
+      background: var(--surface);
+    }
+    .btn.danger-outline {
+      border-color: var(--danger-border);
+      color: var(--danger);
+      background: var(--surface);
+    }
+    .btn.danger-outline:hover:not(:disabled) {
+      background: var(--danger-soft);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    @media (max-width: 760px) {
+      .conflict-panes { grid-template-columns: 1fr; }
+      .library.skills-mode { width: min(320px, calc(100% - 44px)); flex: 0 0 auto; }
+    }
+
     @media (max-width: 960px) {
       .comments-panel { position: absolute; z-index: 15; inset: 0 0 0 auto; width: min(364px, 100%); box-shadow: var(--shadow-lg); }
       .viewer-title p { display: none; }
@@ -1149,13 +1815,13 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
         </button>
       </div>
-      <div class="library-search-wrap">
+      <div id="library-search-wrap" class="library-search-wrap">
         <label class="search">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
           <input id="search" type="search" placeholder="Search…" aria-label="Search diagrams" aria-keyshortcuts="Control+k Meta+k" autocomplete="off">
         </label>
       </div>
-      <nav class="folder-location" aria-label="Root">
+      <nav id="library-folder-location" class="folder-location" aria-label="Root">
         <button id="folder-root" class="btn" type="button" aria-current="location" data-context-kind="root" data-drop-entity-id="" data-drop-path="" title="Root" aria-keyshortcuts="Shift+F10">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2-3h9v16H3z"/></svg>
           <span>Root</span>
@@ -1163,6 +1829,48 @@
         <span id="folder-location" class="sr-only"></span>
       </nav>
       <nav id="list" aria-label="Folders and diagrams" aria-busy="true" tabindex="-1"></nav>
+      <div id="skills-sidebar" class="skills-sidebar" hidden>
+        <div class="skills-head">
+          <div class="skills-head-top">
+            <button id="skills-back" class="btn bordered" type="button" title="Back to diagram library">← Library</button>
+            <span id="skills-upstream-ver" class="ver-pill" title="Upstream visual-explainer version">v0.0.0</span>
+            <span id="skills-hosts-pill" class="hosts-pill" title="No connected skill agents">
+              <span class="hosts-dot" aria-hidden="true"></span>
+              <span id="skills-hosts-text">0 hosts</span>
+            </span>
+          </div>
+          <div id="skills-lock-card" class="skills-lock-card">
+            <div class="skills-lock-top">
+              <span class="skills-lock-title">Skill Editing</span>
+              <button id="skills-edit-toggle" class="skills-switch" type="button" role="switch" aria-checked="false" aria-label="Skill Editing">
+                <span class="skills-switch-thumb" aria-hidden="true"></span>
+              </button>
+            </div>
+            <div class="skills-lock-meta">
+              <span id="skills-lock-status" class="skills-status-pill">Locked · Read-only</span>
+              <button id="skills-api-open" class="btn bordered" type="button" title="Turn on Skill Editing to manage Skill Editor API keys" disabled>Skill Editor API</button>
+            </div>
+            <p id="skills-lock-hint" class="skills-lock-hint">Turn on Skill Editing to comment, edit, or roll back skills.</p>
+          </div>
+        </div>
+        <div id="skills-conflict-banner" class="skills-conflict-banner" hidden></div>
+        <nav id="skills-nav" class="skills-nav" aria-label="Admin Skills navigation" tabindex="-1">
+          <section id="skills-explainers-section" class="skills-section">
+            <div class="skills-section-head">
+              <span>Explainers</span>
+              <span id="skills-explainers-count" class="skills-count">0</span>
+            </div>
+            <div id="skills-explainers-tree"></div>
+          </section>
+          <section id="skills-docs-section" class="skills-section">
+            <div class="skills-section-head">
+              <span>All Skills</span>
+              <span id="skills-docs-count" class="skills-count">0</span>
+            </div>
+            <div id="skills-docs-list"></div>
+          </section>
+        </nav>
+      </div>
       <div class="library-account" id="library-account" hidden>
         <button id="admin-unlock" class="btn" type="button" hidden>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-5-4 5-5-5-5m5 5H3"/></svg>
@@ -1172,6 +1880,7 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
           <span id="account-self-name">Owner</span>
         </button>
+        <button id="skills-open" class="btn" type="button" title="Admin Skills Workspace" aria-pressed="false" hidden>Skills</button>
         <button id="accounts-open" class="btn" type="button" title="Manage users" hidden>Users</button>
         <button id="logout" class="btn icon-only" type="button" aria-label="Sign out" title="Sign out" hidden>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9"/></svg>
@@ -1197,6 +1906,10 @@
           </button>
           <button id="viewer-version" class="btn bordered" type="button" title="Version history" hidden>
             <span id="viewer-version-label">v1</span>
+          </button>
+          <button id="skills-source-open" class="btn bordered" type="button" title="Inspect skill Markdown &amp; diff" hidden>Source / Diff</button>
+          <button id="skills-history-open" class="btn bordered" type="button" title="Skill version history" hidden>
+            <span id="skills-history-label">History</span>
           </button>
           <div id="comments-split" class="split-btn" hidden>
             <button id="pick-element" class="btn split-left" type="button" aria-pressed="false" aria-label="Pick element to comment" title="Pick element to comment" hidden>
@@ -1232,6 +1945,18 @@
         <button id="history-restore" class="btn primary" type="button">Restore</button>
       </div>
 
+      <div id="skills-hash-bar" class="skills-hash-bar" hidden>
+        <div class="skills-hash-left">
+          <span id="skills-hash-status" class="skills-hash-pill"></span>
+          <span id="skills-hash-detail" class="skills-hash-detail"></span>
+          <div id="skills-hash-covers" class="skills-hash-covers"></div>
+        </div>
+        <div class="skills-hash-actions">
+          <span id="skills-readonly-tag" class="skills-status-pill" hidden>Read-only</span>
+          <button id="skills-hash-inspect" class="btn bordered" type="button">Inspect diff</button>
+        </div>
+      </div>
+
       <div class="viewer-body">
         <div id="stage" class="stage" aria-busy="true">
           <div id="placeholder" class="placeholder" data-loading="true" role="status">
@@ -1256,6 +1981,7 @@
             </span>
             <button id="comments-dispatch" class="btn primary" type="button" hidden>Send</button>
           </div>
+          <p id="comments-lock-note" class="comments-lock-note" hidden>Unlock Skill Editing to comment or dispatch changes.</p>
           <form id="comment-composer" class="comment-composer" hidden>
             <div id="comment-anchor" class="anchor-chip" hidden>
               <span id="comment-anchor-box" class="anchor-box-pill" hidden>
@@ -1465,6 +2191,72 @@
     <p id="share-error" class="dialog-error" role="alert"></p>
   </dialog>
 
+  <dialog id="skills-api-dialog" class="panel wide" aria-labelledby="skills-api-title">
+    <div class="dialog-heading">
+      <h2 id="skills-api-title">Skill Editor API</h2>
+      <button class="btn icon-only" type="button" data-close="skills-api-dialog" aria-label="Close">×</button>
+    </div>
+    <p class="subtle">Scoped bearer keys (<code>ve_sk_…</code>) for external agents to inspect, edit, and listen to skills while Skill Editing is unlocked.</p>
+    <form id="skill-key-create-form" class="inline-form-row">
+      <input id="skill-key-name" autocomplete="off" maxlength="64" placeholder="Key label (e.g. Claude Skill Editor)" aria-label="Skill Editor key name">
+      <button id="skill-key-create-submit" class="btn primary" type="submit">Create key</button>
+    </form>
+    <div id="skill-key-created-box" class="secret-reveal" hidden>
+      <span class="secret-reveal-label">Skill Editor Key (shown once)</span>
+      <div class="secret-reveal-row">
+        <input id="skill-key-secret" readonly autocomplete="off" spellcheck="false" aria-label="Generated skill editor key">
+        <button id="skill-key-secret-copy" class="btn bordered" type="button">Copy key</button>
+      </div>
+      <div class="field-row" style="margin:6px 0 2px;">
+        <label for="skill-editor-prompt" style="margin:0;">Skill Editor Prompt</label>
+        <button id="skill-prompt-copy" class="btn primary" type="button">Copy Skill Editor Prompt</button>
+      </div>
+      <textarea id="skill-editor-prompt" class="code-field" rows="10" readonly spellcheck="false" aria-label="Skill Editor Agent Prompt"></textarea>
+    </div>
+    <div id="skill-keys-list" class="mgmt-list"></div>
+    <p id="skills-api-error" class="dialog-error" role="alert"></p>
+  </dialog>
+
+  <dialog id="skill-doc-dialog" class="panel wide" aria-labelledby="skill-doc-title">
+    <div class="dialog-heading">
+      <h2 id="skill-doc-title">Skill Document</h2>
+      <div class="skill-dialog-head-tools">
+        <select id="skill-doc-select" aria-label="Switch skill document" hidden></select>
+        <button class="btn icon-only" type="button" data-close="skill-doc-dialog" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div id="skill-doc-meta" class="skill-doc-meta"></div>
+    <div class="skill-tabs" role="tablist" aria-label="Document view">
+      <button id="skill-tab-content" class="skill-tab" type="button" role="tab" aria-selected="true" data-tab="content">Effective Markdown</button>
+      <button id="skill-tab-diff" class="skill-tab" type="button" role="tab" aria-selected="false" data-tab="diff">Diff vs Upstream</button>
+      <button id="skill-tab-conflict" class="skill-tab conflict-tab" type="button" role="tab" aria-selected="false" data-tab="conflict" hidden>Merge Conflict</button>
+    </div>
+    <div id="skill-doc-body" class="skill-code-view"></div>
+    <p id="skill-doc-error" class="dialog-error" role="alert"></p>
+    <div class="dialog-actions">
+      <button id="skill-doc-open-explainer" class="btn bordered" type="button" hidden>Open explainer</button>
+      <button id="skill-doc-reset" class="btn danger-outline" type="button" hidden>Reset to upstream</button>
+      <button class="btn bordered" type="button" data-close="skill-doc-dialog">Close</button>
+    </div>
+  </dialog>
+
+  <dialog id="skills-history-dialog" class="panel wide" aria-labelledby="skills-history-title">
+    <div class="dialog-heading">
+      <h2 id="skills-history-title">Skill Version History</h2>
+      <button class="btn icon-only" type="button" data-close="skills-history-dialog" aria-label="Close">×</button>
+    </div>
+    <p id="skills-history-subtitle" class="subtle">Markdown docs and hash-bound explainers are versioned together in lockstep.</p>
+    <div id="skills-version-diff-box" class="skill-ver-diff-box" hidden>
+      <div class="skill-ver-diff-head">
+        <span id="skills-version-diff-title">Diff</span>
+        <button id="skills-version-diff-close" class="btn bordered" type="button" style="height:26px;padding:0 8px;font-size:12px;">Close diff</button>
+      </div>
+      <div id="skills-version-diff-body" class="skill-code-view"></div>
+    </div>
+    <div id="skills-versions-list" class="mgmt-list"></div>
+    <p id="skills-history-error" class="dialog-error" role="alert"></p>
+  </dialog>
+
   <div id="wiki-popover" class="wiki-popover" role="tooltip" aria-hidden="true" hidden>
     <div class="wiki-popover-head">
       <span class="wiki-popover-badge">
@@ -1550,6 +2342,138 @@
     let listenersPollTimer = null;
     let sharePage = null;
     let editingAccountId = null;
+
+    /* Admin Skills Workspace State */
+    const DEFAULT_BOOTSTRAP_PROMPT_TEMPLATE = [
+      '{{SCOPE_INTRO}}',
+      '',
+      '{{ENDPOINT_LIST}}',
+      '- Official skill & docs bundle: {{ORIGINAL_BASE}}/bundle',
+      '',
+      '## 1. Read the official skill before writing HTML',
+      '',
+      'Do not upload arbitrary HTML. First fetch the official bootstrap bundle (index, `SKILL.md`, `references/style-guide.md`, `references/kit.md`, and `references/diagrams.md`) in one command:',
+      '',
+      '```bash',
+      'VE_KEY={{VE_KEY_QUOTED}}',
+      '',
+      'curl --fail-with-body {{BUNDLE_URL_QUOTED}} -H "Authorization: Bearer $VE_KEY"',
+      '```',
+      '',
+      'Individual docs (`{{ORIGINAL_BASE}}/SKILL.md`, `{{ORIGINAL_BASE}}/references/style-guide.md`, `{{ORIGINAL_BASE}}/references/<name>.md`) also remain available separately, and `?refs=...` can include extra references like `motion` in one call.',
+      'Optional official helpers (`POST` JSON with `Authorization: Bearer $VE_KEY` and `Content-Type: application/json`):',
+      '- Prepare: `POST {{ORIGINAL_BASE}}/prepare` (matches `visual_explainer_prepare.inputSchema`, e.g. `{"topic":"..."}`)',
+      '- Prompt: `POST {{ORIGINAL_BASE}}/prompts/<name>` (e.g. `generate-web-diagram` with `{"request":"..."}`)',
+      '',
+      '## 2. Write, publish, and verify',
+      '',
+      "Verify project facts locally, write `./diagram.src.html` (never send local filesystem paths), then publish it (`Content-Type: text/html; charset=utf-8`, max 12 MiB, `.html`/`.htm`, not `.src.html`; optional `?note=...` or `-H 'X-VE-Note: ...'` for a version note):",
+      '',
+      '```bash',
+      'curl --fail-with-body -X PUT \\',
+      '  {{TARGET_URL_QUOTED}} \\',
+      '  -H "Authorization: Bearer $VE_KEY" \\',
+      "  -H 'Content-Type: text/html; charset=utf-8' \\",
+      '  --data-binary @./diagram.src.html \\',
+      '  --output ./diagram.render.json',
+      '```',
+      '',
+      'Inspect `./diagram.render.json`:',
+      '- Check `render.structuredContent.report` and every diagnostic in `render.content`; decode any `type: "image"` base64 blocks to inspect the official checksheet screenshots.',
+      '- Fix every `✗` diagnostic with small targeted edits to `./diagram.src.html` and re-PUT the same path until clean.',
+      '- Include `<meta name="description" content="...">` for a concise 1-line hover preview summary (Light and Dark thumbnails are captured automatically on publish).',
+      '- Wiki drill-down: publish child diagrams under `{{CHILD_PATH_EXAMPLE}}` (same scoped folder key) and add `data-ve-child="<child>"` (omit `.html`) on any SVG node (`<g class="ve-n" data-ve-child="...">`) or inline `<span>`. The WebUI viewer injects portal styling, stacked badges, hover previews, and click navigation at view time — plain appearance in standalone checksheets is expected, so do NOT add custom fake-portal CSS.',
+      '- **Before replying with `page.url`**, start the non-blocking background comment listener in §3 by default (if your harness supports background/async execution), then share `page.url` from the response (also returns `page.filename`, `version`, `commentsUrl`, and `openComments`).',
+      '',
+      '## 3. Live comment listener (default) & closed-loop updates',
+      '',
+      'By default, after publishing and passing visual checks, start a **non-blocking background listener** (using whatever background task / async command / watcher mechanism your harness provides — never block your reply) **before** replying with `page.url`, so the WebUI immediately shows an active listener and clicking **Send** in Comments wakes you automatically:',
+      "- Background one-shot listener: `curl -sS -w '\\nHTTP %{http_code}\\n' -H \"Authorization: Bearer $VE_KEY\" {{EVENTS_ONCE_URL_QUOTED}}` (waits up to 300s and exits with a JSON `comment.dispatch` event on `200`, or `204` on timeout{{EVENTS_ONCE_NOTE}}). If your harness has no non-blocking background task capability, skip this step rather than blocking your reply.",
+      '- **When a `comment.dispatch` event arrives (`200` JSON):**',
+      '  1. Fetch open comments (`GET {{COMMENT_LIST_URL}}`{{COMMENT_LIST_SUFFIX}}) and current source (`GET {{READ_SOURCE_URL}}`) to confirm the latest threads and HTML.',
+      "  2. Edit `./diagram.src.html` locally, re-`PUT` the same path (with optional `?note=...` or `-H 'X-VE-Note: ...'`), and verify `./diagram.render.json` has no `✗` diagnostics.",
+      '  3. Resolve each addressed thread via `POST {{BASE_URL}}/comments/<threadId>/resolve` with `{"note":"Done in v2: ..."}` (or reply via `POST {{BASE_URL}}/comments` if clarification is needed).',
+      '  4. **Re-arm** the non-blocking background listener (append `&after=<eventId>` from the received event so nothing dispatched while editing is missed) before finishing your reply.',
+      '- **On `204` timeout:** exit quietly, or re-arm if a review is still actively in progress.',
+      '',
+      '## 4. Comments, SSE & versions reference',
+      '',
+      '- List open comments: `GET {{COMMENT_LIST_URL}}`{{COMMENT_LIST_SUFFIX}}. Returns structured `threads` (anchor quote/selector/headings, `version`, `replies`) and a readable `summary`.',
+      '- Read current source: `GET {{READ_SOURCE_URL}}` — edit locally and re-`PUT` the same path for a new version (`v2`, `v3`, …).',
+      '- Reply: `POST {{BASE_URL}}/comments` with `{"path":{{REPLY_PATH_ARG}},"replyTo":"c_1","body":"..."}` (replying to a resolved thread reopens it automatically).',
+      '- Resolve: `POST {{BASE_URL}}/comments/<threadId>/resolve` with `{"note":"Done in v2: ..."}` (optional `note` is posted as a reply first).',
+      '- Reopen: `POST {{BASE_URL}}/comments/<threadId>/reopen`.',
+      '- Persistent SSE stream (alternative for daemon runners): `GET {{EVENTS_STREAM_URL}}` (supports `Last-Event-ID` / `after=<id>`, optional `path=`, `events=`, `client=`).',
+      '- Folder tree & moves: `GET {{BASE_URL}}/tree` (list folder & child pages); `POST/PATCH/DELETE {{BASE_URL}}/folders`; `PATCH {{BASE_URL}}/files/<path>` `{"path":"new/name.html"}`.',
+      '- Version history{{VERSION_HINT}}: `GET {{VERSION_BASE}}/versions`, `GET {{VERSION_BASE}}/versions/v2`, `POST {{VERSION_BASE}}/restore` `{"version":"v2"}`.',
+    ].join('\n');
+    let bootstrapPromptTemplate = DEFAULT_BOOTSTRAP_PROMPT_TEMPLATE;
+    let workspaceMode = 'library';
+    let lastLibraryFilename = null;
+    let skillsData = null;
+    let skillsRequest = null;
+    let selectedSkillId = null;
+    let lastRenderedSkillKey = '';
+    const skillsExpanded = new Map();
+    const skillGroupsExpanded = new Map([['core-webui', true], ['reference', true], ['command', true]]);
+    let skillDocDialogState = null;
+    let skillsPollTimer = null;
+
+    const isSkillsMode = () => workspaceMode === 'skills' && role === 'admin';
+    const isSkillsEditable = () => role === 'admin' && Boolean(skillsData?.editEnabled);
+    const canWriteComments = () => (isSkillsMode() ? isSkillsEditable() : canEdit());
+    const selectedSkillExplainer = () => (skillsData?.explainers || []).find(entry => entry.id === selectedSkillId) || null;
+    const hasActiveTarget = () => (isSkillsMode() ? Boolean(selectedSkillExplainer()) : Boolean(selected));
+    const skillDocRoute = docId => '/api/skills/docs/' + docId.split('/').map(encodeURIComponent).join('/');
+    const skillExplainerRoute = id => '/api/skills/explainers/' + id.split('/').map(encodeURIComponent).join('/');
+
+    async function loadBootstrapPrompt() {
+      if (!authenticated) return;
+      try {
+        const res = await fetch('/api/visual-explainer/bootstrap-prompt', {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (typeof data?.content === 'string' && data.content.trim()) {
+          bootstrapPromptTemplate = data.content;
+        }
+      } catch {}
+    }
+
+    function skillParentOf(exp) {
+      if (!exp || !skillsData?.explainers) return null;
+      if (exp.parentId) {
+        return skillsData.explainers.find(item => item.id === exp.parentId) || null;
+      }
+      if (exp.id.includes('/')) {
+        const stem = exp.id.slice(0, exp.id.lastIndexOf('/'));
+        return skillsData.explainers.find(item => item.id === stem) || null;
+      }
+      return null;
+    }
+
+    function skillChildrenOf(exp) {
+      if (!exp || !skillsData?.explainers) return [];
+      return skillsData.explainers.filter(item => {
+        if (item.id === exp.id) return false;
+        if (item.parentId) return item.parentId === exp.id;
+        return item.id.startsWith(exp.id + '/') && !item.id.slice(exp.id.length + 1).includes('/');
+      });
+    }
+
+    function skillAncestorsOf(exp) {
+      const chain = [];
+      const seen = new Set(exp ? [exp.id] : []);
+      let cur = skillParentOf(exp);
+      while (cur && !seen.has(cur.id)) {
+        seen.add(cur.id);
+        chain.unshift(cur);
+        cur = skillParentOf(cur);
+      }
+      return chain;
+    }
 
     /* Theme (Auto / Light / Dark) */
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1646,8 +2570,10 @@
       selected = null;
       historical = null;
       $('history-banner').hidden = true;
+      $('skills-hash-bar').hidden = true;
+      $('comments-lock-note').hidden = true;
       closeContextMenu();
-      $('page-title').textContent = 'Visual Explainer';
+      $('page-title').textContent = isSkillsMode() ? 'Admin Skills' : 'Visual Explainer';
       $('page-title').removeAttribute('title');
       $('page-meta').textContent = '';
       $('page-meta').removeAttribute('title');
@@ -1660,6 +2586,7 @@
       hideWikiPopover();
       $('comments-split').hidden = true;
       $('pick-element').hidden = true;
+      $('pick-element').disabled = false;
       $('comments-toggle').hidden = true;
       setPickMode(false);
       setCommentsPanel(false);
@@ -1672,10 +2599,17 @@
       commentAnchor = null;
       openReplyBoxId = null;
       openEditBoxId = null;
-      document.title = 'Visual Explainer';
+      document.title = isSkillsMode() ? 'Admin Skills · Visual Explainer' : 'Visual Explainer';
     }
 
     function showLogin() {
+      exitSkillsMode(false);
+      skillsData = null;
+      selectedSkillId = null;
+      lastRenderedSkillKey = '';
+      lastLibraryFilename = null;
+      skillsExpanded.clear();
+      bootstrapPromptTemplate = DEFAULT_BOOTSTRAP_PROMPT_TEMPLATE;
       apiKeys.clear();
       role = 'viewer';
       currentAccount = null;
@@ -1694,6 +2628,7 @@
       document.documentElement.dataset.sync = 'locked';
       $('library-account').hidden = true;
       $('account-self').hidden = true;
+      $('skills-open').hidden = true;
       $('accounts-open').hidden = true;
       $('logout').hidden = true;
       clearPreview();
@@ -1767,25 +2702,28 @@
         hideWikiPopover();
         return;
       }
-      const childCount = wikiDirectChildCount(target);
+      const isSkill = Boolean(target._isSkill);
+      const childCount = isSkill ? skillChildrenOf(target).length : wikiDirectChildCount(target);
+      const titleText = isSkill ? (target.title || target.id) : pageTitle(target);
       $('wiki-popover-meta').textContent = childCount > 0 ? `${childCount} sub` : 'Detail';
-      $('wiki-popover-title').textContent = pageTitle(target);
+      $('wiki-popover-title').textContent = titleText;
       const summary = (target.summary || '').trim();
       $('wiki-popover-summary').textContent = summary;
       $('wiki-popover-summary').hidden = !summary;
       const thumbWrap = $('wiki-popover-thumb-wrap');
       const thumbImg = $('wiki-popover-thumb');
       if (target.thumbUrl) {
-        const themedThumbUrl = `${target.thumbUrl}&theme=${encodeURIComponent(currentTheme())}`;
+        const sep = target.thumbUrl.includes('?') ? '&' : '?';
+        const themedThumbUrl = `${target.thumbUrl}${sep}theme=${encodeURIComponent(currentTheme())}`;
         thumbImg.onerror = () => { thumbWrap.hidden = true; };
         if (thumbImg.getAttribute('src') !== themedThumbUrl) thumbImg.src = themedThumbUrl;
-        thumbImg.alt = pageTitle(target);
+        thumbImg.alt = titleText;
         thumbWrap.hidden = false;
       } else {
         thumbWrap.hidden = true;
         thumbImg.removeAttribute('src');
       }
-      $('wiki-popover-path').textContent = displayPagePath(target);
+      $('wiki-popover-path').textContent = isSkill ? `Skills / ${target.id}` : displayPagePath(target);
       pop.hidden = false;
       pop.setAttribute('aria-hidden', 'false');
       const pw = pop.offsetWidth || 304;
@@ -1928,6 +2866,26 @@
     }
 
     function syncIframeWiki() {
+      if (isSkillsMode()) {
+        const exp = selectedSkillExplainer();
+        if (!exp) return;
+        const curDir = exp.id.includes('/') ? exp.id.slice(0, exp.id.lastIndexOf('/')) : '';
+        const scopePages = (skillsData?.explainers || []).map(item => ({
+          filename: item.id,
+          path: item.id,
+          stem: item.id.includes('/') ? item.id.split('/').pop() : item.id,
+          title: item.title || item.id,
+          summary: item.summary || '',
+          childCount: skillChildrenOf(item).length,
+          thumbUrl: item.thumbUrl || null,
+        }));
+        sendToIframe({
+          type: 've-wiki:pages',
+          current: { filename: exp.id, path: exp.id, stem: exp.id, dir: curDir },
+          pages: scopePages,
+        });
+        return;
+      }
       if (!selected) return;
       const curPath = pagePath(selected);
       const curStem = stripHtmlExt(curPath);
@@ -2312,9 +3270,12 @@
         authenticated = true;
         role = session.role;
         currentAccount = session.accountId ? { id: session.accountId, name: session.name || 'Owner', role: session.role, builtIn: Boolean(session.builtIn) } : null;
+        void loadBootstrapPrompt();
+        if (workspaceMode === 'skills' && role !== 'admin') exitSkillsMode(false);
         listState = 'ready';
         document.documentElement.dataset.sync = 'ready';
         updateControls();
+        if (isSkillsMode()) return true;
         if (currentFolder.entityId && (!data.entities.some(entity => entity.id === currentFolder.entityId)
           || (currentFolder.path && !treeFolders.some(folder => folder.entityId === currentFolder.entityId && folder.path === currentFolder.path)))) chooseFolder();
         const linked = pendingFilename && pages.find(page => page.filename === pendingFilename);
@@ -2434,6 +3395,11 @@
       else if ($('library').hidden && focusWasInLibrary) $('nav-toggle').focus();
     });
     $('wiki-up').addEventListener('click', () => {
+      if (isSkillsMode()) {
+        const parentExp = skillParentOf(selectedSkillExplainer());
+        if (parentExp) selectSkillExplainer(parentExp, true);
+        return;
+      }
       const parentPage = selected && wikiParentOf(selected);
       if (parentPage) {
         revealPage(parentPage);
@@ -2445,7 +3411,8 @@
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setNavigation(true);
-        $('search').select();
+        if (isSkillsMode()) $('skills-nav').focus();
+        else $('search').select();
       }
       if (event.key === 'Escape' && pickMode) {
         event.preventDefault();
@@ -2458,6 +3425,14 @@
         return;
       }
       if (event.key === 'Escape' && !document.fullscreenElement && !contextMenuState && !event.target?.closest?.('input, textarea, select, [contenteditable]')) {
+        if (isSkillsMode()) {
+          const parentExp = skillParentOf(selectedSkillExplainer());
+          if (parentExp) {
+            event.preventDefault();
+            selectSkillExplainer(parentExp, true);
+            return;
+          }
+        }
         const parentPage = selected && wikiParentOf(selected);
         if (parentPage) {
           event.preventDefault();
@@ -2495,14 +3470,23 @@
     document.addEventListener('fullscreenchange', syncFullscreenButton);
     syncFullscreenButton();
     window.addEventListener('hashchange', () => {
+      if (isSkillsMode()) return;
       pendingFilename = hashFilename();
       if (!authenticated) return;
       const page = pages.find(item => item.filename === pendingFilename);
       if (page) { pendingFilename = ''; revealPage(page); renderList(); }
       else loadPages();
     });
-    document.addEventListener('visibilitychange', () => { if (!document.hidden && authenticated) loadPages(); });
-    setInterval(() => { if (!document.hidden && authenticated) loadPages(); }, POLL_INTERVAL);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden || !authenticated) return;
+      if (isSkillsMode()) void loadSkillsOverview(true);
+      else loadPages();
+    });
+    setInterval(() => {
+      if (document.hidden || !authenticated) return;
+      if (isSkillsMode()) void loadSkillsOverview(true);
+      else loadPages();
+    }, POLL_INTERVAL);
 
     /* Drag & Drop */
     function dragMessage(message, invalid = false) {
@@ -2696,6 +3680,7 @@
 
     /* Context Menu */
     function contextTarget(element) {
+      if (isSkillsMode()) return null;
       const row = element.closest('[data-context-kind]');
       if (row && $('library').contains(row)) {
         if (row.dataset.contextKind === 'page') {
@@ -2884,10 +3869,14 @@
     }
     function updateControls() {
       const editable = canEdit();
+      const inSkills = isSkillsMode();
       $('library-account').hidden = !authenticated;
       $('admin-unlock').hidden = !authenticated || editable;
       $('account-self').hidden = !authenticated || !editable;
       $('account-self-name').textContent = currentAccount?.name || 'Owner';
+      $('skills-open').hidden = !authenticated || role !== 'admin';
+      $('skills-open').setAttribute('aria-pressed', String(inSkills));
+      $('skills-open').classList.toggle('active', inSkills);
       $('accounts-open').hidden = !authenticated || role !== 'admin';
       $('logout').hidden = !authenticated || !editable;
       $('folder-root').disabled = !authenticated;
@@ -2897,9 +3886,27 @@
       const hasScopedEntity = !apiContext || Boolean(apiContext.entityId);
       $('api-admin').hidden = !editable || !hasScopedEntity;
       $('api-unlock').hidden = editable || !hasScopedEntity;
-      $('viewer-share').hidden = !selected || !editable;
-      $('pick-element').hidden = !selected || !editable;
-      $('comment-composer').hidden = !selected || !editable;
+      if (inSkills) {
+        $('viewer-version').hidden = true;
+        $('viewer-api').hidden = true;
+        $('viewer-share').hidden = true;
+        $('skills-source-open').hidden = false;
+        $('skills-history-open').hidden = false;
+        const hasSkillExp = Boolean(selectedSkillExplainer());
+        $('pick-element').hidden = !hasSkillExp;
+        $('pick-element').disabled = !isSkillsEditable();
+        $('pick-element').title = isSkillsEditable()
+          ? (pickMode ? 'Cancel picking (Esc)' : 'Pick element to comment')
+          : 'Unlock Skill Editing to pick elements';
+        $('comment-composer').hidden = !hasSkillExp || !isSkillsEditable();
+      } else {
+        $('skills-source-open').hidden = true;
+        $('skills-history-open').hidden = true;
+        $('viewer-share').hidden = !selected || !editable;
+        $('pick-element').hidden = !selected || !editable;
+        $('pick-element').disabled = false;
+        $('comment-composer').hidden = !selected || !editable;
+      }
       updateDispatchBar();
       if (!editable) {
         setPickMode(false);
@@ -3316,12 +4323,11 @@
         ? `${base}/events?path=${encodedTargetPath}&events=comment.dispatch&once=1&timeout=300&client=agent`
         : `${base}/events?events=comment.dispatch&once=1&timeout=300&client=agent`;
       const childPathExample = isFile ? `${stripHtmlExt(targetPath)}/<child>.html` : '<parent-stem>/<child>.html';
-      $('api-payload').value = usable ? [
-        isFile
+      const templateVars = usable ? {
+        SCOPE_INTRO: isFile
           ? `You have scoped HTTP access to the Visual Explainer diagram "${displayPagePath(context.page)}" and its parent folder "${folderLabel(context.entityId)}" (the scoped key covers the whole folder subtree, including creating and updating child pages). Use this key directly over HTTP — no MCP, repo clone, local skill install, or admin key is needed. Keep the key private.`
           : `You have scoped HTTP access to a Visual Explainer folder ("${folderLabel(context.entityId)}" and its entire subfolder subtree, including creating child pages). Use this folder key directly over HTTP — no MCP, repo clone, local skill install, or admin key is needed. Keep the key private.`,
-        '',
-        ...(isFile ? [
+        ENDPOINT_LIST: (isFile ? [
           `- Diagram endpoint (\`GET\` current source / \`PUT\` update): ${targetUrl}`,
           `- Folder API: ${base} (\`GET ${base}/tree\` lists all pages and child diagrams in this folder)`,
           `- Logical path: ${targetPath}`,
@@ -3330,66 +4336,27 @@
           `- Folder API: ${base} (\`GET ${base}/tree\` lists all pages and child diagrams in this folder)`,
           `- Read current source of any page: \`GET ${readSourceUrl}\``,
           `- Example target path: ${targetPath} (relative to this folder; URL-encode each segment)`,
-        ]),
-        `- Official skill & docs bundle: ${original}/bundle`,
-        '',
-        '## 1. Read the official skill before writing HTML',
-        '',
-        'Do not upload arbitrary HTML. First fetch the official bootstrap bundle (index, `SKILL.md`, `references/style-guide.md`, `references/kit.md`, and `references/diagrams.md`) in one command:',
-        '',
-        '```bash',
-        `VE_KEY=${shellQuote(key.secret)}`,
-        '',
-        `curl --fail-with-body ${shellQuote(original + '/bundle?refs=kit,diagrams')} -H "Authorization: Bearer $VE_KEY"`,
-        '```',
-        '',
-        `Individual docs (\`${original}/SKILL.md\`, \`${original}/references/style-guide.md\`, \`${original}/references/<name>.md\`) also remain available separately, and \`?refs=...\` can include extra references like \`motion\` in one call.`,
-        'Optional official helpers (`POST` JSON with `Authorization: Bearer $VE_KEY` and `Content-Type: application/json`):',
-        `- Prepare: \`POST ${original}/prepare\` (matches \`visual_explainer_prepare.inputSchema\`, e.g. \`{"topic":"..."}\`)`,
-        `- Prompt: \`POST ${original}/prompts/<name>\` (e.g. \`generate-web-diagram\` with \`{"request":"..."}\`)`,
-        '',
-        '## 2. Write, publish, and verify',
-        '',
-        "Verify project facts locally, write `./diagram.src.html` (never send local filesystem paths), then publish it (`Content-Type: text/html; charset=utf-8`, max 12 MiB, `.html`/`.htm`, not `.src.html`; optional `?note=...` or `-H 'X-VE-Note: ...'` for a version note):",
-        '',
-        '```bash',
-        'curl --fail-with-body -X PUT \\',
-        `  ${shellQuote(targetUrl)} \\`,
-        '  -H "Authorization: Bearer $VE_KEY" \\',
-        "  -H 'Content-Type: text/html; charset=utf-8' \\",
-        '  --data-binary @./diagram.src.html \\',
-        '  --output ./diagram.render.json',
-        '```',
-        '',
-        'Inspect `./diagram.render.json`:',
-        '- Check `render.structuredContent.report` and every diagnostic in `render.content`; decode any `type: "image"` base64 blocks to inspect the official checksheet screenshots.',
-        '- Fix every `✗` diagnostic with small targeted edits to `./diagram.src.html` and re-PUT the same path until clean.',
-        '- Include `<meta name="description" content="...">` for a concise 1-line hover preview summary (Light and Dark thumbnails are captured automatically on publish).',
-        `- Wiki drill-down: publish child diagrams under \`${childPathExample}\` (same scoped folder key) and add \`data-ve-child="<child>"\` (omit \`.html\`) on any SVG node (\`<g class="ve-n" data-ve-child="...">\`) or inline \`<span>\`. The WebUI viewer injects portal styling, stacked badges, hover previews, and click navigation at view time — plain appearance in standalone checksheets is expected, so do NOT add custom fake-portal CSS.`,
-        '- **Before replying with `page.url`**, start the non-blocking background comment listener in §3 by default (if your harness supports background/async execution), then share `page.url` from the response (also returns `page.filename`, `version`, `commentsUrl`, and `openComments`).',
-        '',
-        '## 3. Live comment listener (default) & closed-loop updates',
-        '',
-        'By default, after publishing and passing visual checks, start a **non-blocking background listener** (using whatever background task / async command / watcher mechanism your harness provides — never block your reply) **before** replying with `page.url`, so the WebUI immediately shows an active listener and clicking **Send** in Comments wakes you automatically:',
-        `- Background one-shot listener: \`curl -sS -w '\\nHTTP %{http_code}\\n' -H "Authorization: Bearer $VE_KEY" ${shellQuote(eventsOnceUrl)}\` (waits up to 300s and exits with a JSON \`comment.dispatch\` event on \`200\`, or \`204\` on timeout${isFile ? '; omit `path=` to listen across the whole folder, including child diagrams' : '; add `&path=<url-encoded-path>` to narrow to one diagram'}). If your harness has no non-blocking background task capability, skip this step rather than blocking your reply.`,
-        '- **When a `comment.dispatch` event arrives (`200` JSON):**',
-        `  1. Fetch open comments (\`GET ${commentListUrl}\`${commentListSuffix}) and current source (\`GET ${readSourceUrl}\`) to confirm the latest threads and HTML.`,
-        "  2. Edit `./diagram.src.html` locally, re-`PUT` the same path (with optional `?note=...` or `-H 'X-VE-Note: ...'`), and verify `./diagram.render.json` has no `✗` diagnostics.",
-        `  3. Resolve each addressed thread via \`POST ${base}/comments/<threadId>/resolve\` with \`{"note":"Done in v2: ..."}\` (or reply via \`POST ${base}/comments\` if clarification is needed).`,
-        '  4. **Re-arm** the non-blocking background listener (append `&after=<eventId>` from the received event so nothing dispatched while editing is missed) before finishing your reply.',
-        '- **On `204` timeout:** exit quietly, or re-arm if a review is still actively in progress.',
-        '',
-        '## 4. Comments, SSE & versions reference',
-        '',
-        `- List open comments: \`GET ${commentListUrl}\`${commentListSuffix}. Returns structured \`threads\` (anchor quote/selector/headings, \`version\`, \`replies\`) and a readable \`summary\`.`,
-        `- Read current source: \`GET ${readSourceUrl}\` — edit locally and re-\`PUT\` the same path for a new version (\`v2\`, \`v3\`, …).`,
-        `- Reply: \`POST ${base}/comments\` with \`{"path":${replyPathArg},"replyTo":"c_1","body":"..."}\` (replying to a resolved thread reopens it automatically).`,
-        `- Resolve: \`POST ${base}/comments/<threadId>/resolve\` with \`{"note":"Done in v2: ..."}\` (optional \`note\` is posted as a reply first).`,
-        `- Reopen: \`POST ${base}/comments/<threadId>/reopen\`.`,
-        `- Persistent SSE stream (alternative for daemon runners): \`GET ${eventsStreamUrl}\` (supports \`Last-Event-ID\` / \`after=<id>\`, optional \`path=\`, \`events=\`, \`client=\`).`,
-        `- Folder tree & moves: \`GET ${base}/tree\` (list folder & child pages); \`POST/PATCH/DELETE ${base}/folders\`; \`PATCH ${base}/files/<path>\` \`{"path":"new/name.html"}\`.`,
-        `- Version history${isFile ? '' : ' (use `page.filename` from `PUT` or `/tree`)'}: \`GET ${versionBase}/versions\`, \`GET ${versionBase}/versions/v2\`, \`POST ${versionBase}/restore\` \`{"version":"v2"}\`.`,
-      ].join('\n') : '';
+        ]).join('\n'),
+        ORIGINAL_BASE: original,
+        VE_KEY_QUOTED: shellQuote(key.secret),
+        BUNDLE_URL_QUOTED: shellQuote(original + '/bundle?refs=kit,diagrams'),
+        TARGET_URL_QUOTED: shellQuote(targetUrl),
+        CHILD_PATH_EXAMPLE: childPathExample,
+        EVENTS_ONCE_URL_QUOTED: shellQuote(eventsOnceUrl),
+        EVENTS_ONCE_NOTE: isFile ? '; omit `path=` to listen across the whole folder, including child diagrams' : '; add `&path=<url-encoded-path>` to narrow to one diagram',
+        COMMENT_LIST_URL: commentListUrl,
+        COMMENT_LIST_SUFFIX: commentListSuffix,
+        READ_SOURCE_URL: readSourceUrl,
+        BASE_URL: base,
+        REPLY_PATH_ARG: replyPathArg,
+        EVENTS_STREAM_URL: eventsStreamUrl,
+        VERSION_HINT: isFile ? '' : ' (use `page.filename` from `PUT` or `/tree`)',
+        VERSION_BASE: versionBase,
+      } : null;
+      const rawTemplate = (bootstrapPromptTemplate || DEFAULT_BOOTSTRAP_PROMPT_TEMPLATE).replace(/\n+$/, '');
+      $('api-payload').value = usable
+        ? rawTemplate.replace(/\{\{([A-Z0-9_]+)\}\}/g, (match, name) => (Object.hasOwn(templateVars, name) ? templateVars[name] : match))
+        : '';
     }
     function openApi(context) {
       if (!context || (context.kind !== 'file' && !context.entityId)) return;
@@ -3417,6 +4384,7 @@
       let key = apiKeys.get(context.entityId);
       if (!key) { key = { secret: '', token: null, expiresIn: 604800, pending: null }; apiKeys.set(context.entityId, key); }
       if (!key.pending) key.pending = (async () => {
+        const promptSync = loadBootstrapPrompt();
         if (key.secret) {
           const data = await apiRequest(entityRoute(context.entityId) + '/tokens');
           key.token = data.tokens.find(token => token.id === key.token.id);
@@ -3429,6 +4397,7 @@
           key.secret = data.secret;
           key.token = data.token;
         }
+        await promptSync;
       })().finally(() => { key.pending = null; });
       updateApiExample(context);
       try { await key.pending; }
@@ -3609,9 +4578,11 @@
       try { $('preview')?.contentWindow?.postMessage(message, '*'); } catch {}
     }
     function setPickMode(active) {
-      pickMode = Boolean(active) && canEdit() && Boolean(selected);
+      pickMode = Boolean(active) && canWriteComments() && hasActiveTarget();
       $('pick-element').setAttribute('aria-pressed', String(pickMode));
-      const label = pickMode ? 'Cancel picking (Esc)' : 'Pick element to comment';
+      const label = isSkillsMode() && !isSkillsEditable()
+        ? 'Unlock Skill Editing to pick elements'
+        : (pickMode ? 'Cancel picking (Esc)' : 'Pick element to comment');
       $('pick-element').setAttribute('aria-label', label);
       $('pick-element').title = label;
       sendToIframe({ type: 've-comment:pick', active: pickMode });
@@ -3628,7 +4599,23 @@
       }
     }
     async function refreshListeners() {
-      if (!commentsPanelOpen || !selected?.entityId || !canEdit() || !authenticated || document.hidden) return;
+      if (!authenticated || document.hidden) return;
+      if (isSkillsMode()) {
+        if (!commentsPanelOpen || !selectedSkillId) return;
+        const targetId = selectedSkillId;
+        try {
+          const data = await apiRequest('/api/skills/comments?explainer=' + encodeURIComponent(targetId));
+          if (!isSkillsMode() || selectedSkillId !== targetId) return;
+          commentListeners = data.listeners || null;
+          if (skillsData && data.listeners) {
+            skillsData.listeners = data.listeners;
+            renderSkillsHostsBadge();
+          }
+          updateDispatchBar();
+        } catch {}
+        return;
+      }
+      if (!commentsPanelOpen || !selected?.entityId || !canEdit()) return;
       const filename = selected.filename;
       try {
         const data = await apiRequest('/api/pages/' + encodeURIComponent(filename) + '/listeners');
@@ -3639,11 +4626,31 @@
     }
     function syncListenersPoll() {
       stopListenersPoll();
-      if (commentsPanelOpen && selected?.entityId && canEdit() && authenticated) {
+      if (!commentsPanelOpen || !authenticated) return;
+      if (isSkillsMode() && selectedSkillId) {
+        listenersPollTimer = setInterval(() => { void refreshListeners(); }, 5000);
+      } else if (selected?.entityId && canEdit()) {
         listenersPollTimer = setInterval(() => { void refreshListeners(); }, 5000);
       }
     }
     function updateDispatchBar() {
+      if (isSkillsMode()) {
+        const hasExp = Boolean(selectedSkillExplainer());
+        $('comments-dispatch-bar').hidden = !hasExp;
+        $('comments-lock-note').hidden = !hasExp || isSkillsEditable();
+        $('comment-composer').hidden = !hasExp || !isSkillsEditable();
+        if (!hasExp) return;
+        const hostCount = commentListeners?.hostCount ?? skillsData?.listeners?.hostCount ?? 0;
+        const hosts = commentListeners?.hosts ?? skillsData?.listeners?.hosts ?? [];
+        $('comments-hosts').classList.toggle('online', hostCount > 0);
+        $('comments-hosts-text').textContent = `${hostCount} ${hostCount === 1 ? 'host' : 'hosts'}`;
+        $('comments-hosts').title = hosts.length
+          ? hosts.map(h => h.clients?.length ? `${h.ip} (${h.clients.join(', ')})` : h.ip).join('\n')
+          : 'No connected skill agents';
+        $('comments-dispatch').hidden = !(isSkillsEditable() && commentCounts.open > 0);
+        return;
+      }
+      $('comments-lock-note').hidden = true;
       const showBar = Boolean(selected?.entityId) && canEdit();
       $('comments-dispatch-bar').hidden = !showBar;
       if (!showBar) return;
@@ -3657,7 +4664,7 @@
       $('comments-dispatch').hidden = !(commentCounts.open > 0);
     }
     function setCommentsPanel(open) {
-      commentsPanelOpen = Boolean(open) && Boolean(selected);
+      commentsPanelOpen = Boolean(open) && hasActiveTarget();
       $('comments-panel').hidden = !commentsPanelOpen;
       $('comments-toggle').setAttribute('aria-expanded', String(commentsPanelOpen));
       $('comments-toggle').classList.toggle('active', commentsPanelOpen);
@@ -3667,14 +4674,26 @@
         sendToIframe({ type: 've-comment:draft-box', selector: '' });
         sendToIframe({ type: 've-comment:hover', id: '' });
       }
-      if (commentsPanelOpen && selected) {
+      if (commentsPanelOpen && hasActiveTarget()) {
         renderComposerAnchor();
         updateDispatchBar();
         syncListenersPoll();
-        void loadComments(selected.filename, true);
+        if (isSkillsMode()) void loadSkillComments(selectedSkillId, true);
+        else void loadComments(selected.filename, true);
       }
     }
     function updateCommentToolbar(page = selected) {
+      if (isSkillsMode()) {
+        const exp = selectedSkillExplainer();
+        const openCount = commentCounts ? commentCounts.open : (exp?.openComments ?? 0);
+        $('comments-badge').textContent = String(openCount);
+        $('comments-badge').hidden = openCount <= 0;
+        const verLabel = skillsData?.latestVersion?.label || '';
+        $('comments-version-tag').textContent = verLabel;
+        $('comments-version-tag').hidden = !verLabel;
+        updateDispatchBar();
+        return;
+      }
       const openCount = page?.filename === selected?.filename && commentCounts ? commentCounts.open : (page?.openComments ?? 0);
       $('comments-badge').textContent = String(openCount);
       $('comments-badge').hidden = openCount <= 0;
@@ -3724,7 +4743,7 @@
       }
     }
     async function loadComments(filename, quiet = false) {
-      if (!filename || !authenticated) return;
+      if (!filename || !authenticated || isSkillsMode()) return;
       commentsRequest?.abort();
       const request = new AbortController();
       commentsRequest = request;
@@ -3732,7 +4751,7 @@
         const data = await apiRequest('/api/pages/' + encodeURIComponent(filename) + '/comments', {
           signal: AbortSignal.any([request.signal, AbortSignal.timeout(REQUEST_TIMEOUT)]),
         });
-        if (commentsRequest !== request || selected?.filename !== filename) return;
+        if (commentsRequest !== request || selected?.filename !== filename || isSkillsMode()) return;
         commentThreads = data.threads;
         commentCounts = data.counts;
         commentListeners = data.listeners || null;
@@ -3748,7 +4767,75 @@
         if (!quiet) notify('Failed to load comments: ' + errorMessage(error));
       }
     }
+    async function loadSkillComments(explainerId, quiet = false) {
+      if (!explainerId || !authenticated || !isSkillsMode()) return;
+      commentsRequest?.abort();
+      const request = new AbortController();
+      commentsRequest = request;
+      try {
+        const data = await apiRequest('/api/skills/comments?explainer=' + encodeURIComponent(explainerId), {
+          signal: AbortSignal.any([request.signal, AbortSignal.timeout(REQUEST_TIMEOUT)]),
+        });
+        if (commentsRequest !== request || selectedSkillId !== explainerId || !isSkillsMode()) return;
+        commentThreads = data.threads || [];
+        commentCounts = data.counts || { open: 0, resolved: 0, total: 0 };
+        commentListeners = data.listeners || null;
+        currentPageVersion = skillsData?.latestVersion
+          ? { number: skillsData.latestVersion.version, label: skillsData.latestVersion.label, revision: skillsData.latestVersion.revision }
+          : null;
+        if (skillsData) {
+          if (data.listeners) skillsData.listeners = data.listeners;
+          const exp = skillsData.explainers.find(item => item.id === explainerId);
+          if (exp && (exp.openComments !== commentCounts.open || exp.totalComments !== commentCounts.total)) {
+            exp.openComments = commentCounts.open;
+            exp.totalComments = commentCounts.total;
+            renderSkillsExplainersTree();
+          }
+          renderSkillsHostsBadge();
+        }
+        updateCommentToolbar();
+        renderComposerAnchor();
+        renderComments();
+        syncIframeComments();
+        syncListenersPoll();
+      } catch (error) {
+        if (commentsRequest !== request || request.signal.aborted) return;
+        if (!quiet) notify('Failed to load skill comments: ' + errorMessage(error));
+      }
+    }
+    async function reloadActiveComments(quiet = false) {
+      if (isSkillsMode()) {
+        if (selectedSkillId) await loadSkillComments(selectedSkillId, quiet);
+      } else if (selected) {
+        await loadComments(selected.filename, quiet);
+      }
+    }
+    async function dispatchSkillThread(threadId, btn) {
+      if (!isSkillsMode() || !isSkillsEditable()) return;
+      if (btn) btn.disabled = true;
+      try {
+        const data = await apiRequest('/api/skills/comments/' + encodeURIComponent(threadId) + '/dispatch', {
+          method: 'POST', body: {},
+        });
+        commentListeners = data.listeners || commentListeners;
+        if (skillsData && data.listeners) {
+          skillsData.listeners = data.listeners;
+          renderSkillsHostsBadge();
+        }
+        updateDispatchBar();
+        if (data.deliveredHosts > 0) {
+          notify(`Sent skill comment to ${data.deliveredHosts} ${data.deliveredHosts === 1 ? 'host' : 'hosts'}`);
+        } else {
+          notify('Queued skill comment (0 hosts connected)');
+        }
+      } catch (error) {
+        notify('Send failed: ' + errorMessage(error));
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
     function makeCommentCard(thread) {
+      const writable = canWriteComments();
       const card = document.createElement('article');
       card.className = 'comment-card' + (thread.status === 'resolved' ? ' resolved' : '');
       card.dataset.threadId = thread.id;
@@ -3771,8 +4858,11 @@
         verBtn.type = 'button';
         verBtn.className = 'comment-ver';
         verBtn.textContent = 'v' + thread.version;
-        verBtn.title = `View v${thread.version}`;
-        verBtn.addEventListener('click', () => void jumpToVersionNumber(thread.version));
+        verBtn.title = isSkillsMode() ? `Inspect skill version v${thread.version}` : `View v${thread.version}`;
+        verBtn.addEventListener('click', () => {
+          if (isSkillsMode()) void openSkillsHistoryDialog({ previewVersion: 'v' + thread.version });
+          else void jumpToVersionNumber(thread.version);
+        });
         meta.append(verBtn);
       }
       if (thread.where?.kind === 'element' && thread.where.selector) {
@@ -3804,7 +4894,7 @@
         card.append(quoteBtn);
       }
 
-      if (openEditBoxId === thread.id) {
+      if (openEditBoxId === thread.id && writable) {
         card.append(makeEditBox(thread.id, thread.body));
       } else {
         const body = document.createElement('div');
@@ -3826,12 +4916,12 @@
           const when = document.createElement('span');
           when.textContent = formatDate(reply.createdAt);
           head.append(who, when);
-          if (canEdit()) {
+          if (writable) {
             head.append(makeButton('Edit', () => { openEditBoxId = reply.id; openReplyBoxId = null; renderComments(); }, 'link-btn quiet push-right'));
             head.append(makeButton('Delete', () => void deleteCommentItem(reply.id), 'link-btn quiet danger'));
           }
           item.append(head);
-          if (openEditBoxId === reply.id) item.append(makeEditBox(reply.id, reply.body));
+          if (openEditBoxId === reply.id && writable) item.append(makeEditBox(reply.id, reply.body));
           else {
             const text = document.createElement('div');
             text.className = 'comment-body';
@@ -3850,7 +4940,7 @@
         card.append(info);
       }
 
-      if (canEdit()) {
+      if (writable) {
         const actions = document.createElement('div');
         actions.className = 'comment-actions';
         actions.append(makeButton('Reply', () => {
@@ -3860,6 +4950,11 @@
         }, 'link-btn'));
         if (thread.status === 'open') {
           actions.append(makeButton('Resolve', () => void resolveThread(thread.id), 'link-btn accent'));
+          if (isSkillsMode()) {
+            const sendThreadBtn = makeButton('Send', () => void dispatchSkillThread(thread.id, sendThreadBtn), 'link-btn accent');
+            sendThreadBtn.title = 'Dispatch this comment to connected skill agents';
+            actions.append(sendThreadBtn);
+          }
         } else {
           actions.append(makeButton('Reopen', () => void reopenThread(thread.id), 'link-btn accent'));
         }
@@ -3868,7 +4963,7 @@
         card.append(actions);
       }
 
-      if (openReplyBoxId === thread.id && canEdit()) {
+      if (openReplyBoxId === thread.id && writable) {
         const form = document.createElement('form');
         form.className = 'reply-box';
         const ta = document.createElement('textarea');
@@ -3888,15 +4983,15 @@
         form.addEventListener('submit', async e => {
           e.preventDefault();
           const text = ta.value.trim();
-          if (!text || !selected) return;
+          if (!text || !hasActiveTarget() || !canWriteComments()) return;
           send.disabled = true;
           try {
-            const data = await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments', {
-              method: 'POST', body: { replyTo: thread.id, body: text },
-            });
+            const data = isSkillsMode()
+              ? await apiRequest('/api/skills/comments', { method: 'POST', body: { explainerId: selectedSkillId, replyTo: thread.id, body: text } })
+              : await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments', { method: 'POST', body: { replyTo: thread.id, body: text } });
             openReplyBoxId = null;
             if (data.reopened) notify('Comment reopened');
-            await loadComments(selected.filename);
+            await reloadActiveComments();
           } catch (error) { notify('Reply failed: ' + errorMessage(error)); }
           finally { send.disabled = false; }
         });
@@ -3925,14 +5020,18 @@
       form.addEventListener('submit', async e => {
         e.preventDefault();
         const text = ta.value.trim();
-        if (!text || !selected) return;
+        if (!text || !hasActiveTarget() || !canWriteComments()) return;
         save.disabled = true;
         try {
-          await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(commentId), {
-            method: 'PATCH', body: { body: text },
-          });
+          if (isSkillsMode()) {
+            await apiRequest('/api/skills/comments/' + encodeURIComponent(commentId), { method: 'PATCH', body: { body: text } });
+          } else {
+            await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(commentId), {
+              method: 'PATCH', body: { body: text },
+            });
+          }
           openEditBoxId = null;
-          await loadComments(selected.filename);
+          await reloadActiveComments();
         } catch (error) { notify('Save failed: ' + errorMessage(error)); }
         finally { save.disabled = false; }
       });
@@ -3940,27 +5039,39 @@
       return form;
     }
     async function resolveThread(threadId) {
-      if (!selected || !canEdit()) return;
+      if (!hasActiveTarget() || !canWriteComments()) return;
       try {
-        await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(threadId) + '/resolve', { method: 'POST', body: {} });
+        if (isSkillsMode()) {
+          await apiRequest('/api/skills/comments/' + encodeURIComponent(threadId) + '/resolve', { method: 'POST', body: {} });
+        } else {
+          await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(threadId) + '/resolve', { method: 'POST', body: {} });
+        }
         openReplyBoxId = null;
-        await loadComments(selected.filename);
+        await reloadActiveComments();
       } catch (error) { notify('Resolve failed: ' + errorMessage(error)); }
     }
     async function reopenThread(threadId) {
-      if (!selected || !canEdit()) return;
+      if (!hasActiveTarget() || !canWriteComments()) return;
       try {
-        await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(threadId) + '/reopen', { method: 'POST', body: {} });
-        await loadComments(selected.filename);
+        if (isSkillsMode()) {
+          await apiRequest('/api/skills/comments/' + encodeURIComponent(threadId) + '/reopen', { method: 'POST', body: {} });
+        } else {
+          await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(threadId) + '/reopen', { method: 'POST', body: {} });
+        }
+        await reloadActiveComments();
       } catch (error) { notify('Reopen failed: ' + errorMessage(error)); }
     }
     async function deleteCommentItem(commentId) {
-      if (!selected || !canEdit()) return;
+      if (!hasActiveTarget() || !canWriteComments()) return;
       try {
-        await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(commentId), { method: 'DELETE' });
+        if (isSkillsMode()) {
+          await apiRequest('/api/skills/comments/' + encodeURIComponent(commentId), { method: 'DELETE' });
+        } else {
+          await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(commentId), { method: 'DELETE' });
+        }
         if (openEditBoxId === commentId) openEditBoxId = null;
         if (openReplyBoxId === commentId) openReplyBoxId = null;
-        await loadComments(selected.filename);
+        await reloadActiveComments();
       } catch (error) { notify('Delete failed: ' + errorMessage(error)); }
     }
     function renderComments() {
@@ -3971,7 +5082,9 @@
       if (!openList.length && !resolvedList.length) {
         const empty = document.createElement('p');
         empty.className = 'comments-empty';
-        empty.textContent = canEdit() ? 'No comments yet. Select text or click Pick to highlight an area.' : 'No comments yet.';
+        empty.textContent = canWriteComments()
+          ? 'No comments yet. Select text or click Pick to highlight an area.'
+          : (isSkillsMode() ? 'No comments yet. Unlock Skill Editing to leave feedback.' : 'No comments yet.');
         fragment.append(empty);
       } else {
         if (!openList.length) {
@@ -4286,6 +5399,33 @@
 
     /* Comment Dispatch */
     $('comments-dispatch').addEventListener('click', async () => {
+      if (isSkillsMode()) {
+        if (!selectedSkillId || !isSkillsEditable()) return;
+        const btn = $('comments-dispatch');
+        btn.disabled = true;
+        try {
+          const data = await apiRequest('/api/skills/comments/dispatch', {
+            method: 'POST', body: { explainerId: selectedSkillId },
+          });
+          commentListeners = data.listeners || commentListeners;
+          if (skillsData && data.listeners) {
+            skillsData.listeners = data.listeners;
+            renderSkillsHostsBadge();
+          }
+          updateDispatchBar();
+          const noun = data.openCount === 1 ? 'open comment' : 'open comments';
+          if (data.deliveredHosts > 0) {
+            notify(`Sent ${data.openCount} ${noun} to ${data.deliveredHosts} ${data.deliveredHosts === 1 ? 'host' : 'hosts'}`);
+          } else {
+            notify(`Queued ${data.openCount} ${noun} (0 hosts connected)`);
+          }
+        } catch (error) {
+          notify('Send failed: ' + errorMessage(error));
+        } finally {
+          btn.disabled = false;
+        }
+        return;
+      }
       if (!selected || !canEdit()) return;
       const btn = $('comments-dispatch');
       btn.disabled = true;
@@ -4308,29 +5448,48 @@
       }
     });
 
-    $('viewer-version').addEventListener('click', () => { if (selected) openVersions(selected); });
-    $('viewer-api').addEventListener('click', () => { if (selected) openFileApi(selected); });
-    $('pick-element').addEventListener('click', () => { if (selected) requireAdmin(() => setPickMode(!pickMode)); });
+    $('viewer-version').addEventListener('click', () => { if (selected && !isSkillsMode()) openVersions(selected); });
+    $('viewer-api').addEventListener('click', () => { if (selected && !isSkillsMode()) openFileApi(selected); });
+    $('pick-element').addEventListener('click', () => {
+      if (isSkillsMode()) {
+        if (!selectedSkillExplainer()) return;
+        if (!isSkillsEditable()) {
+          notify('Unlock Skill Editing to comment or dispatch changes.');
+          return;
+        }
+        setPickMode(!pickMode);
+        return;
+      }
+      if (selected) requireAdmin(() => setPickMode(!pickMode));
+    });
     $('comments-toggle').addEventListener('click', () => setCommentsPanel(!commentsPanelOpen));
     $('comments-close').addEventListener('click', () => setCommentsPanel(false));
     $('comment-anchor-clear').addEventListener('click', () => clearCommentAnchor());
     $('comment-input').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('comment-composer').requestSubmit(); });
     $('comment-composer').addEventListener('submit', async e => {
       e.preventDefault();
-      if (!selected || !canEdit()) return;
+      if (!hasActiveTarget() || !canWriteComments()) return;
       const body = $('comment-input').value.trim();
       if (!body) return;
       $('comment-submit').disabled = true;
       try {
-        const payload = { body, where: commentAnchor || { kind: 'page' } };
-        if (historical?.version?.version) {
-          payload.version = historical.version.version;
-          payload.revision = historical.version.revision;
+        if (isSkillsMode()) {
+          const payload = { explainerId: selectedSkillId, body, where: commentAnchor || { kind: 'page' } };
+          await apiRequest('/api/skills/comments', { method: 'POST', body: payload });
+          $('comment-input').value = '';
+          clearCommentAnchor();
+          await loadSkillComments(selectedSkillId);
+        } else {
+          const payload = { body, where: commentAnchor || { kind: 'page' } };
+          if (historical?.version?.version) {
+            payload.version = historical.version.version;
+            payload.revision = historical.version.revision;
+          }
+          await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments', { method: 'POST', body: payload });
+          $('comment-input').value = '';
+          clearCommentAnchor();
+          await loadComments(selected.filename);
         }
-        await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments', { method: 'POST', body: payload });
-        $('comment-input').value = '';
-        clearCommentAnchor();
-        await loadComments(selected.filename);
       } catch (error) { notify('Post failed: ' + errorMessage(error)); }
       finally { $('comment-submit').disabled = false; }
     });
@@ -4342,12 +5501,27 @@
       } else if (event.data.type === 've-comment:pick-state') {
         pickMode = Boolean(event.data.active);
         $('pick-element').setAttribute('aria-pressed', String(pickMode));
-        const label = pickMode ? 'Cancel picking (Esc)' : 'Pick element to comment';
+        const label = isSkillsMode() && !isSkillsEditable()
+          ? 'Unlock Skill Editing to pick elements'
+          : (pickMode ? 'Cancel picking (Esc)' : 'Pick element to comment');
         $('pick-element').setAttribute('aria-label', label);
         $('pick-element').title = label;
       } else if (event.data.type === 've-comment:focus-miss') {
         notify('Region not found in current version. Click the version tag to view original.');
-      } else if (event.data.type === 've-comment:draft' && selected) {
+      } else if (event.data.type === 've-comment:draft' && hasActiveTarget()) {
+        if (isSkillsMode()) {
+          if (!isSkillsEditable()) {
+            sendToIframe({ type: 've-comment:draft-box', selector: '' });
+            notify('Unlock Skill Editing to comment or dispatch changes.');
+            return;
+          }
+          commentAnchor = event.data.where || { kind: 'page' };
+          setCommentsPanel(true);
+          renderComposerAnchor();
+          sendToIframe({ type: 've-comment:draft-box', selector: commentAnchor.selector || '' });
+          $('comment-input').focus();
+          return;
+        }
         const openDraft = () => {
           commentAnchor = event.data.where || { kind: 'page' };
           setCommentsPanel(true);
@@ -4357,7 +5531,7 @@
         };
         if (canEdit()) openDraft();
         else requireAdmin(openDraft);
-      } else if (event.data.type === 've-comment:select' && selected) {
+      } else if (event.data.type === 've-comment:select' && hasActiveTarget()) {
         setCommentsPanel(true);
         const card = $('comments-list').querySelector(`[data-thread-id="${CSS.escape(event.data.id)}"]`);
         if (card) {
@@ -4371,7 +5545,12 @@
           hideWikiPopover();
           return;
         }
-        const target = pages.find(item => item.filename === filename);
+        const target = isSkillsMode()
+          ? (() => {
+              const exp = (skillsData?.explainers || []).find(item => item.id === filename);
+              return exp ? { ...exp, _isSkill: true } : null;
+            })()
+          : pages.find(item => item.filename === filename);
         if (!target) {
           hideWikiPopover();
           return;
@@ -4386,6 +5565,11 @@
         });
       } else if (event.data.type === 've-wiki:navigate') {
         hideWikiPopover();
+        if (isSkillsMode()) {
+          const exp = (skillsData?.explainers || []).find(item => item.id === event.data.filename);
+          if (exp) selectSkillExplainer(exp, true);
+          return;
+        }
         const target = pages.find(item => item.filename === event.data.filename);
         if (target) {
           revealPage(target);
@@ -4394,6 +5578,11 @@
       } else if (event.data.type === 've-wiki:escape') {
         hideWikiPopover();
         if (!document.querySelector('dialog[open]') && !contextMenuState && !pickMode) {
+          if (isSkillsMode()) {
+            const parentExp = skillParentOf(selectedSkillExplainer());
+            if (parentExp) selectSkillExplainer(parentExp, true);
+            return;
+          }
           const parentPage = selected && wikiParentOf(selected);
           if (parentPage) {
             revealPage(parentPage);
@@ -4401,6 +5590,1163 @@
           }
         }
       }
+    });
+
+    /* Admin Skills Workspace Controller */
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return '';
+      if (bytes < 1024) return `${bytes} B`;
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+
+    function inspectIcon() {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'icon');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('aria-hidden', 'true');
+      const p1 = document.createElementNS(svg.namespaceURI, 'path');
+      p1.setAttribute('d', 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z');
+      const p2 = document.createElementNS(svg.namespaceURI, 'path');
+      p2.setAttribute('d', 'M14 3v6h6M9 13h6M9 17h4');
+      svg.append(p1, p2);
+      return svg;
+    }
+
+    function stopSkillsPoll() {
+      if (skillsPollTimer !== null) {
+        clearInterval(skillsPollTimer);
+        skillsPollTimer = null;
+      }
+    }
+
+    function syncSkillsPoll() {
+      stopSkillsPoll();
+      if (isSkillsMode() && authenticated) {
+        skillsPollTimer = setInterval(() => {
+          if (!document.hidden && isSkillsMode() && authenticated) void loadSkillsOverview(true);
+        }, 5000);
+      }
+    }
+
+    function renderSkillsHostsBadge() {
+      const listeners = skillsData?.listeners;
+      const hostCount = listeners?.hostCount ?? 0;
+      const hosts = listeners?.hosts ?? [];
+      $('skills-hosts-pill').classList.toggle('online', hostCount > 0);
+      $('skills-hosts-text').textContent = `${hostCount} ${hostCount === 1 ? 'host' : 'hosts'}`;
+      $('skills-hosts-pill').title = hosts.length
+        ? hosts.map(h => h.clients?.length ? `${h.ip} (${h.clients.join(', ')})` : h.ip).join('\n')
+        : 'No connected skill agents';
+    }
+
+    function renderSkillsLockCard() {
+      const unlocked = isSkillsEditable();
+      $('skills-lock-card').classList.toggle('unlocked', unlocked);
+      $('skills-edit-toggle').setAttribute('aria-checked', String(unlocked));
+      $('skills-lock-status').textContent = unlocked ? 'Editing enabled' : 'Locked · Read-only';
+      $('skills-lock-status').className = 'skills-status-pill ' + (unlocked ? 'unlocked' : '');
+      $('skills-api-open').disabled = !unlocked;
+      $('skills-api-open').title = unlocked
+        ? 'Manage Skill Editor keys and copy Agent prompt'
+        : 'Turn on Skill Editing to manage Skill Editor API keys';
+      $('skills-lock-hint').textContent = unlocked
+        ? 'Editing unlocked. External agents, comments, and rollback are active.'
+        : 'Turn on Skill Editing to comment, edit, or roll back skills.';
+    }
+
+    function renderSkillsConflictBanner() {
+      const banner = $('skills-conflict-banner');
+      const conflictIds = Object.keys(skillsData?.conflicts || {});
+      if (!conflictIds.length) {
+        banner.hidden = true;
+        banner.replaceChildren();
+        return;
+      }
+      const msg = document.createElement('span');
+      msg.textContent = `${conflictIds.length} merge ${conflictIds.length === 1 ? 'conflict' : 'conflicts'} pending`;
+      const btn = makeButton('Inspect', () => void openSkillDocDialog(conflictIds[0], { tab: 'conflict', docIds: conflictIds }), 'btn bordered');
+      banner.replaceChildren(msg, btn);
+      banner.hidden = false;
+    }
+
+    function renderSkillsExplainersTree() {
+      const tree = $('skills-explainers-tree');
+      const explainers = skillsData?.explainers || [];
+      $('skills-explainers-count').textContent = String(explainers.length);
+      if (!explainers.length) {
+        const empty = document.createElement('div');
+        empty.className = 'skills-empty-note';
+        empty.textContent = 'No explainers published yet. Inspect any managed skill below or unlock Skill Editing to publish explainers.';
+        tree.replaceChildren(empty);
+        return;
+      }
+      const byId = new Map(explainers.map(e => [e.id, e]));
+      const childrenMap = new Map(explainers.map(e => [e.id, []]));
+      const roots = [];
+      for (const exp of explainers) {
+        const parent = skillParentOf(exp);
+        if (parent && byId.has(parent.id)) childrenMap.get(parent.id).push(exp);
+        else roots.push(exp);
+      }
+      const sortEntries = list => list.sort((a, b) => (a.layer - b.layer) || (a.id === 'overview' ? -1 : b.id === 'overview' ? 1 : a.id.localeCompare(b.id, 'en')));
+      sortEntries(roots);
+      for (const kids of childrenMap.values()) sortEntries(kids);
+
+      function makeExplainerBtn(exp, hasChildren) {
+        const btn = makeButton('', () => {
+          selectSkillExplainer(exp, true);
+          if (compact.matches) {
+            setNavigation(false);
+            $('page-title').focus({ preventScroll: true });
+          }
+        }, hasChildren ? 'report wiki-parent-report' : 'report');
+        btn.dataset.explainerId = exp.id;
+        btn.title = (exp.title || exp.id) + (exp.summary ? '\n' + exp.summary : '');
+        if (selectedSkillId === exp.id) btn.setAttribute('aria-current', 'page');
+        const label = document.createElement('span');
+        label.className = 'report-title';
+        label.textContent = exp.title || exp.id;
+        btn.append(treeIcon(hasChildren ? 'wiki' : 'file'), label);
+        if (exp.openComments > 0) {
+          const badge = document.createElement('span');
+          badge.className = 'report-badge';
+          badge.textContent = String(exp.openComments);
+          badge.title = `${exp.openComments} open comment${exp.openComments === 1 ? '' : 's'}`;
+          btn.append(badge);
+        }
+        if (exp.synced) {
+          const dot = document.createElement('span');
+          dot.className = 'skill-sync-dot synced';
+          dot.title = `Synced (${(exp.skillHash || '').slice(0, 8)})`;
+          dot.setAttribute('aria-label', 'Synced');
+          btn.append(dot);
+        } else {
+          const stale = document.createElement('span');
+          stale.className = 'skill-pill stale';
+          stale.textContent = 'Out of sync';
+          stale.title = 'Covered skill doc(s) changed since this explainer was built';
+          btn.append(stale);
+        }
+        return btn;
+      }
+
+      const visited = new Set();
+      function appendExpNode(exp, container) {
+        if (visited.has(exp.id)) return;
+        visited.add(exp.id);
+        const kids = childrenMap.get(exp.id) || [];
+        if (!kids.length) {
+          container.append(makeExplainerBtn(exp, false));
+          return;
+        }
+        const isOpen = skillsExpanded.get(exp.id) ?? true;
+        const branch = document.createElement('div');
+        branch.className = 'wiki-branch';
+        branch.dataset.explainerId = exp.id;
+        branch.dataset.open = String(isOpen);
+        const row = document.createElement('div');
+        row.className = 'wiki-parent-row';
+        const chevron = document.createElement('button');
+        chevron.type = 'button';
+        chevron.className = 'wiki-chevron';
+        chevron.setAttribute('aria-expanded', String(isOpen));
+        chevron.setAttribute('aria-label', `Toggle child explainers of ${exp.title || exp.id}`);
+        chevron.append(treeIcon('chevron'));
+        const kidsEl = document.createElement('div');
+        kidsEl.className = 'wiki-children';
+        kidsEl.hidden = !isOpen;
+        chevron.addEventListener('click', event => {
+          event.stopPropagation();
+          const next = branch.dataset.open !== 'true';
+          branch.dataset.open = String(next);
+          chevron.setAttribute('aria-expanded', String(next));
+          kidsEl.hidden = !next;
+          skillsExpanded.set(exp.id, next);
+        });
+        row.append(chevron, makeExplainerBtn(exp, true));
+        for (const kid of kids) appendExpNode(kid, kidsEl);
+        branch.append(row, kidsEl);
+        container.append(branch);
+      }
+
+      const frag = document.createDocumentFragment();
+      for (const rootExp of roots) appendExpNode(rootExp, frag);
+      for (const exp of explainers) {
+        if (!visited.has(exp.id)) appendExpNode(exp, frag);
+      }
+      tree.replaceChildren(frag);
+    }
+
+    function renderSkillsDocsList() {
+      const container = $('skills-docs-list');
+      const docs = skillsData?.docs || [];
+      $('skills-docs-count').textContent = String(docs.length);
+      const groups = [
+        {
+          key: 'core-webui',
+          label: 'Core & WebUI',
+          items: docs.filter(d => d.category === 'core' || d.category === 'webui')
+            .sort((a, b) => (a.id === 'SKILL.md' ? -1 : b.id === 'SKILL.md' ? 1 : a.id.localeCompare(b.id, 'en'))),
+        },
+        {
+          key: 'reference',
+          label: 'References',
+          items: docs.filter(d => d.category === 'reference').sort((a, b) => a.id.localeCompare(b.id, 'en')),
+        },
+        {
+          key: 'command',
+          label: 'Commands',
+          items: docs.filter(d => d.category === 'command').sort((a, b) => a.id.localeCompare(b.id, 'en')),
+        },
+      ].filter(g => g.items.length > 0);
+
+      const frag = document.createDocumentFragment();
+      for (const group of groups) {
+        const details = document.createElement('details');
+        details.className = 'skill-group';
+        details.dataset.groupKey = group.key;
+        details.open = skillGroupsExpanded.get(group.key) ?? true;
+        details.addEventListener('toggle', () => {
+          if (details.isConnected) skillGroupsExpanded.set(group.key, details.open);
+        });
+        const summary = document.createElement('summary');
+        const nameEl = document.createElement('span');
+        nameEl.textContent = group.label;
+        const countEl = document.createElement('span');
+        countEl.className = 'skill-group-count';
+        countEl.textContent = String(group.items.length);
+        summary.append(treeIcon('chevron'), nameEl, countEl);
+        details.append(summary);
+
+        const list = document.createElement('div');
+        list.className = 'skill-group-list';
+        for (const doc of group.items) {
+          const row = document.createElement('div');
+          row.className = 'skill-doc-row' + (doc.explainerId && doc.explainerId === selectedSkillId ? ' is-covered-active' : '');
+          row.dataset.docId = doc.id;
+
+          const mainBtn = document.createElement('button');
+          mainBtn.type = 'button';
+          mainBtn.className = 'skill-doc-main';
+          mainBtn.title = `${doc.id} · ${doc.sha256.slice(0, 8)}` + (doc.explainerId ? ` · Explainer: ${doc.explainerId}` : '');
+          mainBtn.addEventListener('click', () => {
+            if (doc.explainerId) {
+              const exp = (skillsData?.explainers || []).find(item => item.id === doc.explainerId);
+              if (exp && selectedSkillId !== exp.id) {
+                selectSkillExplainer(exp, true);
+                if (compact.matches) setNavigation(false);
+                return;
+              }
+            }
+            void openSkillDocDialog(doc.id, { tab: doc.hasConflict ? 'conflict' : 'content' });
+          });
+
+          const docName = document.createElement('span');
+          docName.className = 'skill-doc-name';
+          docName.textContent = doc.id;
+
+          const sub = document.createElement('span');
+          sub.className = 'skill-doc-sub';
+
+          const statusPill = document.createElement('span');
+          statusPill.className = 'skill-pill' + (doc.status === 'overridden' ? ' overridden' : doc.status === 'conflict' ? ' conflict' : '');
+          statusPill.textContent = doc.status === 'conflict' ? 'Conflict' : doc.status === 'overridden' ? 'Overridden' : 'Upstream';
+          sub.append(statusPill);
+
+          const syncEl = document.createElement('span');
+          if (doc.explainerId) {
+            syncEl.className = 'skill-doc-sync ' + (doc.explainerSynced ? 'synced' : 'stale');
+            const dot = document.createElement('span');
+            dot.className = 'skill-sync-dot ' + (doc.explainerSynced ? 'synced' : 'stale');
+            const txt = document.createElement('span');
+            txt.textContent = doc.explainerSynced ? 'Synced' : 'Out of sync';
+            syncEl.append(dot, txt);
+          } else {
+            syncEl.className = 'skill-doc-sync';
+            syncEl.textContent = 'Overview';
+            syncEl.title = 'Covered by top-level overview or inspectable as Markdown';
+          }
+          sub.append(syncEl);
+
+          mainBtn.append(docName, sub);
+
+          const inspectBtn = document.createElement('button');
+          inspectBtn.type = 'button';
+          inspectBtn.className = 'btn icon-only skill-doc-inspect';
+          inspectBtn.dataset.inspectDoc = doc.id;
+          inspectBtn.title = `Inspect Markdown & diff for ${doc.id}`;
+          inspectBtn.setAttribute('aria-label', `Inspect ${doc.id}`);
+          inspectBtn.append(inspectIcon());
+          inspectBtn.addEventListener('click', event => {
+            event.stopPropagation();
+            void openSkillDocDialog(doc.id, { tab: doc.hasConflict ? 'conflict' : 'content' });
+          });
+
+          row.append(mainBtn, inspectBtn);
+          list.append(row);
+        }
+        details.append(list);
+        frag.append(details);
+      }
+      container.replaceChildren(frag);
+    }
+
+    function renderSkillsSidebar() {
+      if (!skillsData) return;
+      const ver = skillsData.upstream?.version || '';
+      $('skills-upstream-ver').textContent = ver ? (ver.startsWith('v') ? ver : 'v' + ver) : 'upstream';
+      $('skills-upstream-ver').title = skillsData.upstream?.revision
+        ? `Upstream ${ver} (${skillsData.upstream.revision.slice(0, 10)})`
+        : `Upstream ${ver}`;
+      $('skills-history-label').textContent = skillsData.latestVersion?.label || 'History';
+      renderSkillsHostsBadge();
+      renderSkillsLockCard();
+      renderSkillsConflictBanner();
+      renderSkillsExplainersTree();
+      renderSkillsDocsList();
+    }
+
+    function renderSkillBreadcrumb(exp) {
+      const meta = $('page-meta');
+      const upBtn = $('wiki-up');
+      const parentExp = skillParentOf(exp);
+      if (parentExp) {
+        $('wiki-up-label').textContent = parentExp.title || parentExp.id;
+        upBtn.title = `Up to ${parentExp.title || parentExp.id} (Esc)`;
+        upBtn.hidden = false;
+      } else {
+        upBtn.hidden = true;
+      }
+      const ancestors = skillAncestorsOf(exp);
+      const frag = document.createDocumentFragment();
+      const addSep = () => {
+        const sep = document.createElement('span');
+        sep.className = 'crumb-sep';
+        sep.textContent = ' / ';
+        frag.append(sep);
+      };
+      const rootSpan = document.createElement('span');
+      rootSpan.className = 'crumb-text';
+      rootSpan.textContent = 'Skills';
+      frag.append(rootSpan);
+      for (const anc of ancestors) {
+        addSep();
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'crumb-link';
+        btn.textContent = anc.title || anc.id;
+        btn.title = `Open ${anc.title || anc.id}`;
+        btn.addEventListener('click', () => selectSkillExplainer(anc, true));
+        frag.append(btn);
+      }
+      addSep();
+      const cur = document.createElement('span');
+      cur.className = 'crumb-current';
+      cur.textContent = exp.id;
+      frag.append(cur);
+      meta.title = ['Skills', ...ancestors.map(a => a.id), exp.id].join(' / ');
+      meta.replaceChildren(frag);
+    }
+
+    function renderSkillChildrenBar(exp) {
+      const bar = $('wiki-children-bar');
+      const children = exp ? skillChildrenOf(exp) : [];
+      if (!children.length) {
+        bar.hidden = true;
+        bar.replaceChildren();
+        return;
+      }
+      const label = document.createElement('span');
+      label.className = 'wiki-children-label';
+      label.append(treeIcon('wiki'));
+      const labelText = document.createElement('span');
+      labelText.textContent = `Sub-explainers (${children.length})`;
+      label.append(labelText);
+      const chips = document.createElement('div');
+      chips.className = 'wiki-children-chips';
+      for (const child of children) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'wiki-child-chip';
+        btn.dataset.explainerId = child.id;
+        btn.title = (child.title || child.id) + (child.summary ? '\n' + child.summary : '');
+        const text = document.createElement('span');
+        text.textContent = child.title || child.id;
+        btn.append(text);
+        const subCount = skillChildrenOf(child).length;
+        if (subCount > 0) {
+          const count = document.createElement('span');
+          count.className = 'wiki-child-chip-count';
+          count.textContent = String(subCount);
+          btn.append(count);
+        }
+        btn.addEventListener('pointerenter', () => showWikiPopover({ ...child, _isSkill: true }, btn.getBoundingClientRect()));
+        btn.addEventListener('pointerleave', () => hideWikiPopover());
+        btn.addEventListener('click', () => {
+          hideWikiPopover();
+          selectSkillExplainer(child, true);
+        });
+        chips.append(btn);
+      }
+      bar.replaceChildren(label, chips);
+      bar.hidden = false;
+    }
+
+    function coveredDocsForExplainer(exp) {
+      const allDocs = skillsData?.docs || [];
+      if (!exp || !exp.covers?.length) return allDocs;
+      if (exp.covers.length === 1 && exp.covers[0] === '*') return allDocs;
+      return exp.covers.map(id => allDocs.find(d => d.id === id)).filter(Boolean);
+    }
+
+    function renderSkillHashBar(exp) {
+      const bar = $('skills-hash-bar');
+      if (!exp || !isSkillsMode()) {
+        bar.hidden = true;
+        return;
+      }
+      const covered = coveredDocsForExplainer(exp);
+      const changedDocs = covered.filter(d => d.status !== 'upstream');
+      const shortBound = (exp.skillHash || '').slice(0, 8) || 'unbound';
+      const shortExpected = (exp.expectedSkillHash || '').slice(0, 8);
+      bar.classList.toggle('stale', !exp.synced);
+      const statusEl = $('skills-hash-status');
+      statusEl.className = 'skills-hash-pill' + (exp.synced ? '' : ' stale');
+      statusEl.textContent = exp.synced ? `Synced · ${shortBound}` : 'Out of sync · Skill changed';
+      statusEl.title = exp.synced
+        ? `Bound SHA-256 matches effective skill Markdown (${exp.skillHash})`
+        : `Bound hash ${shortBound} differs from effective hash ${shortExpected}`;
+
+      const detailEl = $('skills-hash-detail');
+      if (exp.synced) {
+        detailEl.textContent = exp.covers.length === 1 && exp.covers[0] === '*'
+          ? `Covers all ${covered.length} managed skill docs`
+          : `Bound to ${exp.covers.length} ${exp.covers.length === 1 ? 'doc' : 'docs'}`;
+      } else {
+        const names = (changedDocs.length ? changedDocs : covered).slice(0, 3).map(d => d.id).join(', ');
+        detailEl.textContent = `Expected ${shortExpected} vs ${shortBound}` + (names ? ` · Changed: ${names}` : '');
+      }
+      detailEl.title = detailEl.textContent;
+
+      const coversWrap = $('skills-hash-covers');
+      const frag = document.createDocumentFragment();
+      if (exp.covers.length === 1 && exp.covers[0] === '*') {
+        const allChip = makeButton(`All ${covered.length} docs`, () => {
+          const firstDoc = (changedDocs[0] || covered[0])?.id || 'SKILL.md';
+          void openSkillDocDialog(firstDoc, { docIds: covered.map(d => d.id) });
+        }, 'skill-cover-chip' + (changedDocs.length ? ' overridden' : ''));
+        frag.append(allChip);
+      } else {
+        for (const doc of covered.slice(0, 4)) {
+          const cls = 'skill-cover-chip' + (doc.status === 'conflict' ? ' conflict' : doc.status === 'overridden' ? ' overridden' : '');
+          const chip = makeButton(doc.id, () => void openSkillDocDialog(doc.id, {
+            tab: doc.hasConflict ? 'conflict' : (doc.status === 'overridden' ? 'diff' : 'content'),
+            docIds: covered.map(d => d.id),
+          }), cls);
+          frag.append(chip);
+        }
+        if (covered.length > 4) {
+          const more = makeButton(`+${covered.length - 4} more`, () => void openSkillDocDialog(covered[0].id, {
+            docIds: covered.map(d => d.id),
+          }), 'skill-cover-chip');
+          frag.append(more);
+        }
+      }
+      coversWrap.replaceChildren(frag);
+      $('skills-readonly-tag').hidden = isSkillsEditable();
+      bar.hidden = false;
+    }
+
+    function selectSkillExplainer(exp, explicit = false, { forceReload = false } = {}) {
+      if (!exp || !isSkillsMode()) return;
+      closeContextMenu();
+      hideWikiPopover();
+      const prevId = selectedSkillId;
+      const nextKey = `${exp.id}:${exp.skillHash || ''}:${exp.updatedAt || ''}`;
+      const changed = prevId !== exp.id || lastRenderedSkillKey !== nextKey || forceReload;
+      selectedSkillId = exp.id;
+      selected = null;
+      historical = null;
+      $('history-banner').hidden = true;
+      $('page-title').textContent = exp.title || exp.id;
+      $('page-title').title = exp.title || exp.id;
+      document.title = `${exp.title || exp.id} · Admin Skills · Visual Explainer`;
+
+      renderSkillBreadcrumb(exp);
+      renderSkillChildrenBar(exp);
+      renderSkillHashBar(exp);
+
+      $('comments-split').hidden = false;
+      $('comments-toggle').hidden = false;
+      $('pick-element').hidden = false;
+      if (prevId !== exp.id) {
+        clearCommentAnchor();
+        openReplyBoxId = null;
+        openEditBoxId = null;
+        setPickMode(false);
+      }
+      updateControls();
+      updateCommentToolbar();
+
+      for (const btn of $('skills-explainers-tree').querySelectorAll('.report[data-explainer-id]')) {
+        if (btn.dataset.explainerId === exp.id) btn.setAttribute('aria-current', 'page');
+        else btn.removeAttribute('aria-current');
+      }
+      for (const row of $('skills-docs-list').querySelectorAll('.skill-doc-row')) {
+        const doc = (skillsData?.docs || []).find(d => d.id === row.dataset.docId);
+        row.classList.toggle('is-covered-active', Boolean(doc?.explainerId && doc.explainerId === exp.id));
+      }
+
+      if (changed) {
+        lastRenderedSkillKey = nextKey;
+        loadPreview({
+          title: exp.title || exp.id,
+          url: exp.htmlUrl,
+          modified: `${exp.updatedAt || ''}-${exp.skillHash || ''}`,
+        });
+      }
+      if (changed || explicit || commentThreads.some(t => t.filename !== exp.id)) {
+        void loadSkillComments(exp.id, true);
+      }
+    }
+
+    async function loadSkillsOverview(quiet = false, { forceReloadPreview = false } = {}) {
+      if (!authenticated || role !== 'admin') return false;
+      if (skillsRequest && quiet) return false;
+      skillsRequest?.abort();
+      const request = new AbortController();
+      skillsRequest = request;
+      try {
+        const response = await fetch('/api/skills', {
+          cache: 'no-store',
+          signal: AbortSignal.any([request.signal, AbortSignal.timeout(REQUEST_TIMEOUT)]),
+        });
+        if (skillsRequest !== request) return false;
+        if (response.status === 401) { showLogin(); return false; }
+        if (response.status === 403) { exitSkillsMode(true); return false; }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error || `Failed to load skills (${response.status})`);
+        if (skillsRequest !== request || !isSkillsMode()) return false;
+        skillsData = data;
+        commentListeners = data.listeners || commentListeners;
+        renderSkillsSidebar();
+        const explainers = data.explainers || [];
+        const currentExp = explainers.find(e => e.id === selectedSkillId)
+          || explainers.find(e => e.id === 'overview')
+          || explainers.find(e => e.layer === 0)
+          || explainers[0]
+          || null;
+        if (currentExp) {
+          selectSkillExplainer(currentExp, false, { forceReload: forceReloadPreview });
+        } else {
+          selectedSkillId = null;
+          lastRenderedSkillKey = '';
+          clearPreview();
+          $('skills-source-open').hidden = false;
+          $('skills-history-open').hidden = false;
+          $('page-title').textContent = 'Admin Skills';
+          $('page-meta').textContent = `${data.docs.length} managed docs`;
+          const firstDoc = data.docs[0]?.id || 'SKILL.md';
+          showPlaceholder(
+            'Admin Skills Workspace',
+            `${data.docs.length} managed skill docs loaded. Select any skill in the sidebar to inspect Markdown and diffs, or unlock Skill Editing to publish explainers.`,
+            () => void openSkillDocDialog(firstDoc),
+            `Inspect ${firstDoc}`,
+            false,
+          );
+          updateControls();
+        }
+        return true;
+      } catch (error) {
+        if (skillsRequest !== request || request.signal.aborted) return false;
+        if (!quiet) notify('Failed to load skills: ' + errorMessage(error));
+        return false;
+      } finally {
+        if (skillsRequest === request) skillsRequest = null;
+      }
+    }
+
+    async function enterSkillsMode() {
+      if (!authenticated || role !== 'admin') return;
+      if (isSkillsMode()) return;
+      lastLibraryFilename = selected?.filename || lastLibraryFilename;
+      workspaceMode = 'skills';
+      lastRenderedSkillKey = '';
+      closeContextMenu();
+      clearPreview();
+      $('library').classList.add('skills-mode');
+      $('library-search-wrap').hidden = true;
+      $('library-folder-location').hidden = true;
+      $('list').hidden = true;
+      $('skills-sidebar').hidden = false;
+      updateControls();
+      showPlaceholder('Loading Admin Skills…', '', null, '', true);
+      await loadSkillsOverview(false, { forceReloadPreview: true });
+      syncSkillsPoll();
+    }
+
+    function exitSkillsMode(restoreLibrary = true) {
+      stopSkillsPoll();
+      skillsRequest?.abort();
+      skillsRequest = null;
+      const wasSkills = workspaceMode === 'skills';
+      workspaceMode = 'library';
+      lastRenderedSkillKey = '';
+      $('library').classList.remove('skills-mode');
+      $('library-search-wrap').hidden = false;
+      $('library-folder-location').hidden = false;
+      $('list').hidden = false;
+      $('skills-sidebar').hidden = true;
+      $('skills-source-open').hidden = true;
+      $('skills-history-open').hidden = true;
+      $('skills-hash-bar').hidden = true;
+      for (const id of ['skills-api-dialog', 'skill-doc-dialog', 'skills-history-dialog']) {
+        if ($(id)?.open) $(id).close();
+      }
+      if (wasSkills) clearPreview();
+      updateControls();
+      if (restoreLibrary && authenticated && wasSkills) {
+        const target = (lastLibraryFilename && pages.find(p => p.filename === lastLibraryFilename)) || pages[0];
+        if (target) {
+          selectPage(target, false);
+          renderList();
+        } else {
+          showEmptyLibrary();
+          renderList();
+        }
+      }
+    }
+
+    $('skills-open').addEventListener('click', () => {
+      if (role !== 'admin') return;
+      if (isSkillsMode()) exitSkillsMode(true);
+      else void enterSkillsMode();
+    });
+    $('skills-back').addEventListener('click', () => exitSkillsMode(true));
+
+    /* Explicit Skill Edit-Lock Switch */
+    $('skills-edit-toggle').addEventListener('click', async () => {
+      if (!isSkillsMode() || !skillsData) return;
+      const toggle = $('skills-edit-toggle');
+      const next = !skillsData.editEnabled;
+      toggle.disabled = true;
+      try {
+        const res = await apiRequest('/api/skills/settings', { method: 'PATCH', body: { editEnabled: next } });
+        skillsData.editEnabled = Boolean(res.editEnabled);
+        if (!skillsData.editEnabled) {
+          setPickMode(false);
+          clearCommentAnchor();
+          openReplyBoxId = null;
+          openEditBoxId = null;
+        }
+        renderSkillsLockCard();
+        renderSkillHashBar(selectedSkillExplainer());
+        updateControls();
+        renderComments();
+        if ($('skill-doc-dialog').open) renderSkillDocDialog();
+        if ($('skills-history-dialog').open) void loadSkillsVersionsList();
+        notify(skillsData.editEnabled ? 'Skill Editing unlocked' : 'Skill Editing locked (read-only)');
+      } catch (error) {
+        notify('Failed to update Skill Editing lock: ' + errorMessage(error));
+      } finally {
+        toggle.disabled = false;
+      }
+    });
+
+    /* Skill Editor API Modal (#skills-api-dialog) */
+    function buildSkillEditorPrompt(secret) {
+      const base = location.origin + '/api/skills';
+      const eventsOnceUrl = `${base}/events?events=comment.dispatch&once=1&timeout=300&client=agent`;
+      const eventsStreamUrl = `${base}/events?events=comment.dispatch&client=agent`;
+      return [
+        `You have scoped Skill Editor HTTP access to Visual Explainer Admin Skills at ${base}. Use this \`ve_sk_\` bearer key directly over HTTP while Admin has Skill Editing unlocked (writes return \`423 Locked\` when locked). Keep this key private.`,
+        '',
+        '## 1. Inspect managed skills & explainers',
+        '',
+        '```bash',
+        `VE_SKILL_KEY=${shellQuote(secret)}`,
+        '',
+        `curl --fail-with-body ${shellQuote(base)} -H "Authorization: Bearer $VE_SKILL_KEY"`,
+        '```',
+        '',
+        `- Inspect one doc (effective Markdown, upstream content, unified diff, SHA-256, conflict): \`GET ${base}/docs/<id>\` (e.g. \`SKILL.md\`, \`webui/bootstrap-prompt.md\`, \`references/kit.md\`, \`commands/diff-review.md\`).`,
+        `- Inspect current explainer source HTML: \`GET ${base}/explainers/<id>/source\`.`,
+        `- Inspect skill comments: \`GET ${base}/comments?status=open\` (or \`?explainer=<id>&status=open\`).`,
+        '',
+        '## 2. Update skill Markdown & hash-bound explainer',
+        '',
+        `1. Update a managed skill doc via \`PUT ${base}/docs/<id>\` (\`Content-Type: text/markdown; charset=utf-8\` or JSON \`{"content":"...","note":"..."}\`). The response returns the new \`skillHash\` and \`affectedExplainers\` with each explainer's \`expectedSkillHash\`:`,
+        '',
+        '```bash',
+        'curl --fail-with-body -X PUT \\',
+        `  ${shellQuote(base + '/docs/references/kit.md')} \\`,
+        '  -H "Authorization: Bearer $VE_SKILL_KEY" \\',
+        "  -H 'Content-Type: text/markdown; charset=utf-8' \\",
+        "  -H 'X-VE-Note: Describe the skill update' \\",
+        '  --data-binary @./kit.md',
+        '```',
+        '',
+        `2. Update each affected explainer via \`PUT ${base}/explainers/<id>\` (\`Content-Type: text/html; charset=utf-8\`) with the **mandatory** \`X-VE-Skill-Hash: <expectedSkillHash>\` header (mismatches return \`409 Conflict\` with the required hash; optional \`X-VE-Covers\`, \`X-VE-Title\`, \`X-VE-Summary\`, \`X-VE-Layer\`, \`X-VE-Parent\`, \`X-VE-Note\`):`,
+        '',
+        '```bash',
+        'curl --fail-with-body -X PUT \\',
+        `  ${shellQuote(base + '/explainers/kit')} \\`,
+        '  -H "Authorization: Bearer $VE_SKILL_KEY" \\',
+        "  -H 'Content-Type: text/html; charset=utf-8' \\",
+        '  -H "X-VE-Skill-Hash: <expectedSkillHash>" \\',
+        "  -H 'X-VE-Note: Sync explainer with skill update' \\",
+        '  --data-binary @./kit-explainer.src.html \\',
+        '  --output ./kit-explainer.render.json',
+        '```',
+        '',
+        '- Verify `./kit-explainer.render.json` has zero `✗` diagnostics in `render.structuredContent.report`.',
+        `- Reset a doc to upstream: \`POST ${base}/docs/<id>/reset\`. Version history & rollback: \`GET ${base}/versions\`, \`GET ${base}/versions/<vN>/diff\`, \`POST ${base}/rollback\` \`{"version":"v1"}\`.`,
+        '',
+        '## 3. Live comment listener (default) & closed-loop updates',
+        '',
+        'By default, start a **non-blocking background listener** (using your harness background task / async runner — never block your reply) so Admin sees an active host and clicking **Send** on skill comments wakes you immediately:',
+        `- Background one-shot listener: \`curl -sS -w '\\nHTTP %{http_code}\\n' -H "Authorization: Bearer $VE_SKILL_KEY" ${shellQuote(eventsOnceUrl)}\` (waits up to 300s and exits with a JSON \`comment.dispatch\` event on \`200\`, or \`204\` on timeout).`,
+        '- **When a `comment.dispatch` event arrives (`200` JSON):**',
+        `  1. Read open comments (\`GET ${base}/comments?explainer=<explainerId>&status=open\`) and inspect the target doc (\`GET ${base}/docs/<id>\`) and explainer source (\`GET ${base}/explainers/<id>/source\`).`,
+        `  2. Apply requested edits via \`PUT ${base}/docs/<id>\`, then re-render and publish every affected explainer via \`PUT ${base}/explainers/<id>\` with \`X-VE-Skill-Hash: <expectedSkillHash>\`.`,
+        `  3. Resolve addressed threads via \`POST ${base}/comments/<threadId>/resolve\` with \`{"note":"Updated in vN: ..."}\` (or reply via \`POST ${base}/comments\` with \`{"explainerId":"<id>","replyTo":"<threadId>","body":"..."}\`).`,
+        `  4. **Re-arm** the non-blocking background listener appending \`&after=<eventId>\` from the received event so nothing dispatched while editing is missed.`,
+        `- Persistent SSE stream (daemon alternative): \`GET ${eventsStreamUrl}\` (supports \`Last-Event-ID\` / \`after=<id>\`, optional \`explainer=\`).`,
+      ].join('\n');
+    }
+
+    async function loadSkillKeys() {
+      if (role !== 'admin') return;
+      $('skills-api-error').textContent = '';
+      $('skill-keys-list').textContent = 'Loading…';
+      try {
+        const data = await apiRequest('/api/skills/keys');
+        if (!$('skills-api-dialog').open) return;
+        const frag = document.createDocumentFragment();
+        for (const item of data.keys || []) {
+          const row = document.createElement('div');
+          row.className = 'mgmt-row';
+          row.dataset.keyId = item.id;
+          const copy = document.createElement('div');
+          copy.className = 'row-copy';
+          const line = document.createElement('div');
+          line.className = 'version-title-line';
+          const nameEl = document.createElement('strong');
+          nameEl.textContent = item.name;
+          const pref = document.createElement('span');
+          pref.className = 'ver-pill';
+          pref.textContent = item.prefix + '…';
+          line.append(nameEl, pref);
+          copy.append(line);
+          const meta = document.createElement('small');
+          const used = item.lastUsedAt ? `Last used ${formatDate(item.lastUsedAt)}` : 'Never used';
+          meta.textContent = `Created ${formatDate(item.createdAt)} by ${item.createdBy} · ${used}`;
+          copy.append(meta);
+          const actions = document.createElement('div');
+          actions.className = 'mgmt-actions';
+          const revokeBtn = makeButton('Revoke', async () => {
+            revokeBtn.disabled = true;
+            $('skills-api-error').textContent = '';
+            try {
+              await apiRequest('/api/skills/keys/' + encodeURIComponent(item.id), { method: 'DELETE' });
+              notify('Skill Editor key revoked');
+              await loadSkillKeys();
+              void loadSkillsOverview(true);
+            } catch (error) {
+              $('skills-api-error').textContent = errorMessage(error);
+              revokeBtn.disabled = false;
+            }
+          }, 'btn bordered');
+          actions.append(revokeBtn);
+          row.append(copy, actions);
+          frag.append(row);
+        }
+        if (!(data.keys || []).length) {
+          const empty = document.createElement('p');
+          empty.className = 'subtle';
+          empty.textContent = 'No active Skill Editor keys yet.';
+          frag.append(empty);
+        }
+        $('skill-keys-list').replaceChildren(frag);
+      } catch (error) {
+        $('skill-keys-list').replaceChildren();
+        $('skills-api-error').textContent = errorMessage(error);
+      }
+    }
+
+    function openSkillsApiDialog() {
+      if (role !== 'admin' || !isSkillsEditable()) return;
+      $('skill-key-name').value = '';
+      $('skill-key-secret').value = '';
+      $('skill-editor-prompt').value = '';
+      $('skill-key-created-box').hidden = true;
+      $('skills-api-error').textContent = '';
+      $('skills-api-dialog').showModal();
+      void loadSkillKeys();
+      $('skill-key-name').focus();
+    }
+    $('skills-api-open').addEventListener('click', openSkillsApiDialog);
+    $('skill-key-create-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (role !== 'admin' || !isSkillsEditable()) return;
+      const name = $('skill-key-name').value.trim() || 'Skill Editor';
+      $('skills-api-error').textContent = '';
+      setBusy($('skills-api-dialog'), true);
+      try {
+        const data = await apiRequest('/api/skills/keys', { method: 'POST', body: { name } });
+        $('skill-key-name').value = '';
+        $('skill-key-secret').value = data.secret;
+        $('skill-editor-prompt').value = buildSkillEditorPrompt(data.secret);
+        $('skill-key-created-box').hidden = false;
+        await loadSkillKeys();
+        void loadSkillsOverview(true);
+      } catch (error) {
+        $('skills-api-error').textContent = errorMessage(error);
+      } finally {
+        setBusy($('skills-api-dialog'), false);
+      }
+    });
+    $('skill-key-secret-copy').addEventListener('click', () => void copyFieldText($('skill-key-secret'), $('skill-key-secret-copy')));
+    $('skill-prompt-copy').addEventListener('click', () => void copyFieldText($('skill-editor-prompt'), $('skill-prompt-copy')));
+    $('skills-api-dialog').addEventListener('close', () => {
+      $('skill-key-secret').value = '';
+      $('skill-editor-prompt').value = '';
+      $('skill-key-created-box').hidden = true;
+      $('skills-api-error').textContent = '';
+    });
+
+    /* Unified Diff Renderer (DOM-safe, zero innerHTML) */
+    function renderDiffElement(diffText) {
+      if (!diffText || !diffText.trim()) {
+        const empty = document.createElement('p');
+        empty.className = 'skill-diff-empty';
+        empty.textContent = 'Matches upstream verbatim — no local differences.';
+        return empty;
+      }
+      const pre = document.createElement('pre');
+      pre.className = 'diff-pre';
+      for (const line of diffText.replace(/\n$/, '').split('\n')) {
+        const span = document.createElement('span');
+        let cls = 'diff-line';
+        if (line.startsWith('@@')) cls += ' diff-hunk';
+        else if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('diff ') || line.startsWith('index ')) cls += ' diff-meta';
+        else if (line.startsWith('+')) cls += ' diff-add';
+        else if (line.startsWith('-')) cls += ' diff-del';
+        span.className = cls;
+        span.textContent = line || ' ';
+        pre.append(span);
+      }
+      return pre;
+    }
+
+    /* Skill Markdown / Diff / Conflict Inspector Modal (#skill-doc-dialog) */
+    function renderSkillDocDialog() {
+      const st = skillDocDialogState;
+      if (!st?.doc) return;
+      const doc = st.doc;
+      $('skill-doc-title').textContent = doc.id;
+
+      const select = $('skill-doc-select');
+      if (st.docIds.length > 1) {
+        select.replaceChildren(...st.docIds.map(id => {
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = id;
+          return opt;
+        }));
+        select.value = doc.id;
+        select.hidden = false;
+      } else {
+        select.hidden = true;
+      }
+
+      const meta = $('skill-doc-meta');
+      const statusBadge = document.createElement('span');
+      statusBadge.className = 'skills-status-pill' + (doc.status === 'conflict' ? ' conflict' : doc.status === 'overridden' ? ' overridden' : '');
+      statusBadge.textContent = doc.status === 'conflict' ? 'Conflict' : doc.status === 'overridden' ? 'Overridden' : 'Upstream';
+
+      const effHash = document.createElement('span');
+      effHash.className = 'skill-meta-hash';
+      effHash.textContent = `effective ${doc.sha256.slice(0, 8)}`;
+      effHash.title = `Effective SHA-256: ${doc.sha256}`;
+
+      const upHash = document.createElement('span');
+      upHash.className = 'skill-meta-hash';
+      upHash.textContent = `upstream ${doc.upstreamSha256.slice(0, 8)}`;
+      upHash.title = `Upstream SHA-256: ${doc.upstreamSha256}`;
+
+      const expBadge = document.createElement('span');
+      if (doc.explainerId) {
+        expBadge.className = 'skills-status-pill ' + (doc.explainerSynced ? 'synced' : 'stale');
+        expBadge.textContent = `${doc.explainerId} · ${doc.explainerSynced ? 'Synced' : 'Out of sync'}`;
+      } else {
+        expBadge.className = 'skills-status-pill';
+        expBadge.textContent = 'No dedicated explainer';
+      }
+
+      const sizeSpan = document.createElement('span');
+      sizeSpan.textContent = formatBytes(doc.bytes);
+
+      meta.replaceChildren(statusBadge, effHash, upHash, expBadge, sizeSpan);
+
+      const hasConflict = Boolean(doc.conflict);
+      $('skill-tab-conflict').hidden = !hasConflict;
+      if (st.tab === 'conflict' && !hasConflict) st.tab = 'content';
+      for (const tabBtn of $('skill-doc-dialog').querySelectorAll('.skill-tab')) {
+        tabBtn.setAttribute('aria-selected', String(tabBtn.dataset.tab === st.tab));
+      }
+
+      const body = $('skill-doc-body');
+      if (st.tab === 'content') {
+        const pre = document.createElement('pre');
+        pre.className = 'skill-md-pre';
+        pre.textContent = doc.content ?? '';
+        body.replaceChildren(pre);
+      } else if (st.tab === 'diff') {
+        body.replaceChildren(renderDiffElement(doc.diff));
+      } else if (st.tab === 'conflict' && doc.conflict) {
+        const wrap = document.createElement('div');
+        wrap.className = 'conflict-wrap';
+        const info = document.createElement('p');
+        info.className = 'conflict-summary';
+        info.textContent = `Upstream ${doc.conflict.upstreamVersion || ''} diverged from active override (${formatDate(doc.conflict.detectedAt)}). Active content stays live until resolved.`;
+        const panes = document.createElement('div');
+        panes.className = 'conflict-panes';
+        for (const [label, text] of [
+          ['Active (ours)', doc.conflict.ours],
+          ['Upstream (theirs)', doc.conflict.theirs],
+          ['Common Base', doc.conflict.base],
+        ]) {
+          const pane = document.createElement('div');
+          pane.className = 'conflict-pane';
+          const head = document.createElement('div');
+          head.className = 'conflict-pane-head';
+          head.textContent = label;
+          const pre = document.createElement('pre');
+          pre.textContent = text ?? '';
+          pane.append(head, pre);
+          panes.append(pane);
+        }
+        wrap.append(info, panes);
+        if (doc.conflict.mergedMarkers) {
+          const markersHead = document.createElement('div');
+          markersHead.className = 'conflict-pane-head';
+          markersHead.textContent = '3-Way Merge Markers';
+          const markersPre = document.createElement('pre');
+          markersPre.className = 'skill-md-pre';
+          markersPre.textContent = doc.conflict.mergedMarkers;
+          const markersBox = document.createElement('div');
+          markersBox.className = 'conflict-pane';
+          markersBox.append(markersHead, markersPre);
+          wrap.append(markersBox);
+        }
+        body.replaceChildren(wrap);
+      }
+
+      $('skill-doc-open-explainer').hidden = !doc.explainerId;
+      $('skill-doc-reset').hidden = !(isSkillsEditable() && (doc.status === 'overridden' || doc.status === 'conflict'));
+    }
+
+    async function openSkillDocDialog(docId, { tab = 'content', docIds = null } = {}) {
+      if (role !== 'admin' || !docId) return;
+      const allIds = docIds && docIds.length ? docIds : (skillsData?.docs || []).map(d => d.id);
+      skillDocDialogState = { docId, doc: null, tab, docIds: allIds };
+      $('skill-doc-title').textContent = docId;
+      $('skill-doc-meta').replaceChildren();
+      $('skill-doc-body').replaceChildren(Object.assign(document.createElement('p'), { className: 'skill-diff-empty', textContent: 'Loading…' }));
+      $('skill-doc-error').textContent = '';
+      $('skill-doc-open-explainer').hidden = true;
+      $('skill-doc-reset').hidden = true;
+      if (!$('skill-doc-dialog').open) $('skill-doc-dialog').showModal();
+      try {
+        const doc = await apiRequest(skillDocRoute(docId));
+        if (!skillDocDialogState || skillDocDialogState.docId !== docId || !$('skill-doc-dialog').open) return;
+        skillDocDialogState.doc = doc;
+        renderSkillDocDialog();
+      } catch (error) {
+        if (skillDocDialogState?.docId !== docId) return;
+        $('skill-doc-body').replaceChildren();
+        $('skill-doc-error').textContent = errorMessage(error);
+      }
+    }
+
+    for (const tabBtn of $('skill-doc-dialog').querySelectorAll('.skill-tab')) {
+      tabBtn.addEventListener('click', () => {
+        if (!skillDocDialogState?.doc) return;
+        skillDocDialogState.tab = tabBtn.dataset.tab;
+        renderSkillDocDialog();
+      });
+    }
+    $('skill-doc-select').addEventListener('change', () => {
+      if (!skillDocDialogState) return;
+      const nextId = $('skill-doc-select').value;
+      if (nextId) void openSkillDocDialog(nextId, { tab: skillDocDialogState.tab, docIds: skillDocDialogState.docIds });
+    });
+    $('skill-doc-open-explainer').addEventListener('click', () => {
+      const expId = skillDocDialogState?.doc?.explainerId;
+      if (!expId) return;
+      const exp = (skillsData?.explainers || []).find(item => item.id === expId);
+      $('skill-doc-dialog').close();
+      if (exp) selectSkillExplainer(exp, true);
+    });
+    $('skill-doc-reset').addEventListener('click', () => {
+      const doc = skillDocDialogState?.doc;
+      if (!doc || !isSkillsEditable()) return;
+      $('skill-doc-dialog').close();
+      askConfirmation(
+        `Reset ${doc.id} to upstream?`,
+        'Restores the upstream Markdown content (and its built-in explainer if matched) in a new version commit.',
+        async () => {
+          await apiRequest(skillDocRoute(doc.id) + '/reset', { method: 'POST', body: {} });
+          if (doc.id === 'webui/bootstrap-prompt.md') await loadBootstrapPrompt();
+          await loadSkillsOverview(false, { forceReloadPreview: true });
+          notify(`Reset ${doc.id} to upstream`);
+        },
+        'Reset to upstream',
+      );
+    });
+    $('skill-doc-dialog').addEventListener('close', () => {
+      skillDocDialogState = null;
+      $('skill-doc-error').textContent = '';
+    });
+
+    function openSourceForActiveExplainer(preferDiff = false) {
+      if (!isSkillsMode()) return;
+      const exp = selectedSkillExplainer();
+      const covered = coveredDocsForExplainer(exp);
+      const preferred = covered.find(d => d.hasConflict) || covered.find(d => d.status === 'overridden') || covered[0];
+      const docId = preferred?.id || 'SKILL.md';
+      const tab = preferred?.hasConflict ? 'conflict' : (preferDiff && preferred?.status === 'overridden' ? 'diff' : 'content');
+      void openSkillDocDialog(docId, { tab, docIds: covered.map(d => d.id) });
+    }
+    $('skills-source-open').addEventListener('click', () => openSourceForActiveExplainer(false));
+    $('skills-hash-inspect').addEventListener('click', () => openSourceForActiveExplainer(true));
+
+    /* Skill Version History Dialog (#skills-history-dialog) */
+    async function loadSkillVersionDiff(label) {
+      $('skills-version-diff-title').textContent = `Loading diff for ${label}…`;
+      $('skills-version-diff-body').replaceChildren();
+      $('skills-version-diff-box').hidden = false;
+      try {
+        const data = await apiRequest('/api/skills/versions/' + encodeURIComponent(label) + '/diff');
+        if (!$('skills-history-dialog').open) return;
+        $('skills-version-diff-title').textContent = `${data.label} · ${data.message}`;
+        $('skills-version-diff-body').replaceChildren(renderDiffElement(data.diff));
+      } catch (error) {
+        $('skills-version-diff-title').textContent = `Diff for ${label}`;
+        $('skills-version-diff-body').replaceChildren(Object.assign(document.createElement('p'), {
+          className: 'skill-diff-empty',
+          textContent: errorMessage(error),
+        }));
+      }
+    }
+
+    async function loadSkillsVersionsList(previewVersion = null) {
+      if (role !== 'admin') return;
+      $('skills-history-error').textContent = '';
+      $('skills-versions-list').textContent = 'Loading…';
+      $('skills-history-subtitle').textContent = isSkillsEditable()
+        ? 'Markdown docs and hash-bound explainers are versioned together in lockstep.'
+        : 'Read-only view. Unlock Skill Editing to roll back to an earlier version.';
+      try {
+        const data = await apiRequest('/api/skills/versions');
+        if (!$('skills-history-dialog').open) return;
+        const versions = data.versions || [];
+        const frag = document.createDocumentFragment();
+        for (const [idx, ver] of versions.entries()) {
+          const row = document.createElement('div');
+          row.className = 'version-row';
+          row.dataset.versionLabel = ver.label;
+          row.dataset.revision = ver.revision;
+
+          const copy = document.createElement('div');
+          copy.className = 'row-copy';
+          const line = document.createElement('div');
+          line.className = 'version-title-line';
+          const pill = document.createElement('span');
+          pill.className = 'ver-pill';
+          pill.textContent = ver.label;
+          line.append(pill);
+          if (idx === 0) {
+            const cur = document.createElement('span');
+            cur.className = 'version-current-tag';
+            cur.textContent = 'Current';
+            line.append(cur);
+          }
+          const when = document.createElement('span');
+          when.textContent = formatDate(ver.date);
+          line.append(when);
+          copy.append(line);
+
+          const msg = document.createElement('small');
+          msg.textContent = ver.message || ver.revision.slice(0, 8);
+          copy.append(msg);
+
+          if (ver.files?.length) {
+            const filesEl = document.createElement('span');
+            filesEl.className = 'skill-ver-files';
+            const shown = ver.files.slice(0, 4).join(', ');
+            filesEl.textContent = ver.files.length > 4 ? `${shown} (+${ver.files.length - 4} more)` : shown;
+            filesEl.title = ver.files.join('\n');
+            copy.append(filesEl);
+          }
+
+          const actions = document.createElement('div');
+          actions.className = 'version-actions';
+          actions.append(makeButton('Diff', () => void loadSkillVersionDiff(ver.label), 'btn bordered'));
+          if (idx > 0 && isSkillsEditable()) {
+            actions.append(makeButton(`Rollback to ${ver.label}`, () => {
+              $('skills-history-dialog').close();
+              askConfirmation(
+                `Rollback skills to ${ver.label}?`,
+                `${ver.label} · ${formatDate(ver.date)} · ${ver.message}. Restores both skill Markdown and bound explainers in lockstep.`,
+                async () => {
+                  await apiRequest('/api/skills/rollback', { method: 'POST', body: { version: ver.label } });
+                  await loadBootstrapPrompt();
+                  await loadSkillsOverview(false, { forceReloadPreview: true });
+                  notify(`Rolled back skills to ${ver.label}`);
+                },
+                `Rollback to ${ver.label}`,
+              );
+            }, 'btn bordered'));
+          }
+
+          row.append(copy, actions);
+          frag.append(row);
+        }
+        if (!versions.length) {
+          const empty = document.createElement('p');
+          empty.className = 'subtle';
+          empty.textContent = 'No skill versions recorded yet.';
+          frag.append(empty);
+        }
+        $('skills-versions-list').replaceChildren(frag);
+        if (previewVersion && versions.some(v => v.label === previewVersion)) {
+          void loadSkillVersionDiff(previewVersion);
+        }
+      } catch (error) {
+        $('skills-versions-list').replaceChildren();
+        $('skills-history-error').textContent = errorMessage(error);
+      }
+    }
+
+    async function openSkillsHistoryDialog({ previewVersion = null } = {}) {
+      if (role !== 'admin') return;
+      $('skills-version-diff-box').hidden = true;
+      $('skills-version-diff-body').replaceChildren();
+      $('skills-history-error').textContent = '';
+      if (!$('skills-history-dialog').open) $('skills-history-dialog').showModal();
+      await loadSkillsVersionsList(previewVersion);
+    }
+    $('skills-history-open').addEventListener('click', () => void openSkillsHistoryDialog());
+    $('skills-version-diff-close').addEventListener('click', () => {
+      $('skills-version-diff-box').hidden = true;
+      $('skills-version-diff-body').replaceChildren();
+    });
+    $('skills-history-dialog').addEventListener('close', () => {
+      $('skills-version-diff-box').hidden = true;
+      $('skills-version-diff-body').replaceChildren();
+      $('skills-history-error').textContent = '';
     });
 
     applyTheme(currentThemeMode(), false);

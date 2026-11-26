@@ -15,9 +15,10 @@ import {
 import { parse } from 'node-html-parser';
 import { ApiError, canonicalFilename, createCatalog, logicalPath, pageFilename, sourceFilename, sourcePairs } from './catalog.mjs';
 import { createAccounts, createShares } from './accounts.mjs';
-import { createComments, formatCommentsSummary, normalizeAuthor } from './comments.mjs';
+import { createComments, createCommentsStore, formatCommentsSummary, normalizeAuthor } from './comments.mjs';
 import { createEventHub } from './events.mjs';
 import { createHistory } from './history.mjs';
+import { createSkills, docIdFromUri, validateExplainerId } from './skills.mjs';
 import { createTokens } from './tokens.mjs';
 
 const publicUrl = new URL(process.env.PUBLIC_URL);
@@ -36,9 +37,14 @@ const sessionLifetime = 7 * 24 * 60 * 60;
 const catalog = await createCatalog(outputDir);
 const tokens = await createTokens(outputDir, catalog);
 const comments = await createComments(outputDir);
+const skillComments = await createCommentsStore(outputDir, {
+  storeFile: '.skills-comments.json',
+  validateKey: validateExplainerId,
+});
 const accounts = await createAccounts(outputDir);
 const shares = await createShares(outputDir);
 const events = createEventHub();
+const skillEvents = createEventHub();
 const history = await createHistory(outputDir, catalog);
 await catalog.run(() => history.snapshot('Snapshot existing pages'));
 
@@ -99,6 +105,8 @@ function identity(req) {
     if (match) {
       const acct = accounts.authenticate(match[1]);
       if (acct) return { role: acct.role, accountId: acct.id, name: acct.name, builtIn: false, bearer: true };
+      const skillEditor = skills.authenticateKey(match[1]);
+      if (skillEditor) return skillEditor;
       const agent = tokens.authenticate(match[1]);
       if (agent) return agent;
     }
@@ -798,7 +806,7 @@ async function closeThumbBrowser() {
     await browser.close();
   } catch {}
 }
-async function captureThumbnails(renderedHtml, filename) {
+async function renderThumbnailBuffers(renderedHtml) {
   let context = null;
   try {
     const browser = await getThumbBrowser();
@@ -838,13 +846,28 @@ async function captureThumbnails(renderedHtml, filename) {
       new Promise(resolve => setTimeout(resolve, 250)),
     ]);
     const darkPng = await page.screenshot({ type: 'png', animations: 'disabled', timeout: 10000 });
+    return { lightPng, darkPng };
+  } finally {
+    await context?.close().catch(() => {});
+  }
+}
+async function captureThumbnails(renderedHtml, filename) {
+  try {
+    const { lightPng, darkPng } = await renderThumbnailBuffers(renderedHtml);
     await saveThumb(filename, lightPng, 'light');
     await saveThumb(filename, darkPng, 'dark');
   } catch (error) {
     console.error('Thumbnail capture failed', { filename, message: error?.message });
     await removeThumbs(filename);
-  } finally {
-    await context?.close().catch(() => {});
+  }
+}
+async function captureSkillThumbnails(renderedHtml, explainerId) {
+  try {
+    const { lightPng, darkPng } = await renderThumbnailBuffers(renderedHtml);
+    await skills.saveThumbs(explainerId, lightPng, darkPng);
+  } catch (error) {
+    console.error('Skill explainer thumbnail capture failed', { explainerId, message: error?.message });
+    await skills.removeThumbs(explainerId);
   }
 }
 async function saveSource(filename, bytes) {
@@ -981,7 +1004,7 @@ async function deletePage(filename) {
 async function listPages() {
   const pages = [];
   for (const entry of await readdir(outputDir, { withFileTypes: true })) {
-    if (!entry.isFile() || !/\.html?$/i.test(entry.name) || /\.src\.html?$/i.test(entry.name)) continue;
+    if (!entry.isFile() || entry.name.startsWith('__skill-render-') || !/\.html?$/i.test(entry.name) || /\.src\.html?$/i.test(entry.name)) continue;
     const page = await readPage(entry.name);
     if (page) pages.push(page);
   }
@@ -1105,6 +1128,25 @@ const originalPromptNames = new Set(originalPrompts.prompts.map(prompt => prompt
 const originalSource = bridgePackage.dependencies['visual-explainer'];
 const originalRevision = originalSource.match(/\/([a-f0-9]{40})$/)?.[1];
 if (!originalRevision || !originalDocuments.has('/SKILL.md')) throw new Error('Expected pinned official visual-explainer resources');
+const upstreamSkillDocs = new Map();
+for (const resource of originalResources.resources) {
+  const docId = docIdFromUri(resource.uri);
+  if (!docId) continue;
+  const loaded = await upstream.readResource({ uri: resource.uri });
+  if (loaded.contents.length !== 1 || typeof loaded.contents[0].text !== 'string') {
+    throw new Error(`Official upstream resource ${resource.uri} did not return one text document`);
+  }
+  upstreamSkillDocs.set(docId, loaded.contents[0].text);
+}
+const builtinSkillsDir = fileURLToPath(new URL('./builtin-skills', import.meta.url));
+const skills = await createSkills(outputDir, {
+  upstreamDocs: upstreamSkillDocs,
+  upstreamMeta: {
+    version: upstream.getServerVersion().version,
+    revision: originalRevision,
+  },
+  builtinDir: builtinSkillsDir,
+});
 const originalIndex = {
   package: { name: 'visual-explainer', version: upstream.getServerVersion().version, revision: originalRevision, source: originalSource },
   resources: [...originalDocuments].map(([path, resource]) => ({ ...resource, url: new URL(originalPrefix + path, publicUrl).href })),
@@ -1123,6 +1165,14 @@ async function originalRequest(call) {
 }
 async function serveOriginal(req, res, parts, url) {
   if (parts.length === 1 && req.method === 'GET') return json(res, 200, originalIndex);
+  if (parts.length === 2 && parts[1] === 'bootstrap-prompt' && req.method === 'GET') {
+    const content = skills.getEffectiveDoc('webui/bootstrap-prompt.md');
+    return json(res, 200, {
+      id: 'webui/bootstrap-prompt.md',
+      sha256: skills.expectedSkillHash(['webui/bootstrap-prompt.md']),
+      content,
+    });
+  }
   if (parts.length === 2 && parts[1] === 'bundle' && req.method === 'GET') {
     const skillRes = originalDocuments.get('/SKILL.md');
     const styleRes = originalDocuments.get('/references/style-guide.md');
@@ -1147,6 +1197,8 @@ async function serveOriginal(req, res, parts, url) {
       }
     }
     const docs = await Promise.all(requested.map(async ([docPath, resource]) => {
+      const docId = docPath.slice(1);
+      if (skills.hasDoc(docId)) return [docPath, skills.getEffectiveDoc(docId)];
       const result = await originalRequest(() => upstream.readResource({ uri: resource.uri }));
       if (result.contents.length !== 1 || typeof result.contents[0].text !== 'string') {
         throw new ApiError(502, 'Official resource did not return one text document');
@@ -1160,8 +1212,12 @@ async function serveOriginal(req, res, parts, url) {
     return send(res, 200, sections.join('\n\n') + '\n', 'text/plain; charset=utf-8');
   }
   if (req.method === 'GET') {
-    const resource = originalDocuments.get('/' + parts.slice(1).join('/'));
+    const relPath = parts.slice(1).join('/');
+    const resource = originalDocuments.get('/' + relPath);
     if (resource) {
+      if (skills.hasDoc(relPath)) {
+        return send(res, 200, skills.getEffectiveDoc(relPath), `${resource.mimeType}; charset=utf-8`);
+      }
       const result = await originalRequest(() => upstream.readResource({ uri: resource.uri }));
       if (result.contents.length !== 1 || typeof result.contents[0].text !== 'string') throw new ApiError(502, 'Official resource did not return one text document');
       return send(res, 200, result.contents[0].text, `${resource.mimeType}; charset=utf-8`);
@@ -1177,6 +1233,66 @@ async function serveOriginal(req, res, parts, url) {
     return json(res, 200, await originalRequest(() => upstream.getPrompt({ name: parts[2], arguments: args })));
   }
   throw new ApiError(404, 'Official resource or endpoint not found');
+}
+
+function encodeExplainerPath(id) {
+  return id.split('/').map(encodeURIComponent).join('/');
+}
+function exposeSkillExplainer(entry) {
+  const counts = skillComments.counts(entry.id);
+  const encoded = encodeExplainerPath(entry.id);
+  return {
+    ...entry,
+    htmlUrl: `/api/skills/explainers/${encoded}/html`,
+    sourceUrl: `/api/skills/explainers/${encoded}/source`,
+    thumbUrl: `/api/skills/explainers/${encoded}/thumb?v=${encodeURIComponent(entry.updatedAt || entry.skillHash || '1')}`,
+    openComments: counts.open,
+    totalComments: counts.total,
+  };
+}
+function requireSkillsEditEnabled() {
+  if (!skills.isEditEnabled()) {
+    throw new ApiError(423, 'Skill editing is locked. Enable Skill Editing in Admin Skills first.');
+  }
+}
+async function renderSkillExplainerLocked(explainerId, sourceHtml) {
+  const renderId = randomUUID();
+  const prefix = `__skill-render-${renderId}`;
+  const transientFilename = `${prefix}.html`;
+  try {
+    const result = await upstream.callTool(
+      { name: 'visual_explainer_render_html', arguments: { filename: transientFilename, html: sourceHtml, open: false } },
+      undefined,
+      { timeout: 180000 },
+    );
+    if (result.isError) {
+      throw new ApiError(400, result.content.filter(item => item.type === 'text').map(item => item.text).join('\n') || 'Rendering failed');
+    }
+    const renderedPath = result.structuredContent?.path;
+    if (typeof renderedPath !== 'string' || resolve(renderedPath) !== join(outputDir, transientFilename)) {
+      throw new Error('Upstream returned an unexpected path for skill explainer render');
+    }
+    const renderedBytes = await regularBytes(transientFilename);
+    if (!renderedBytes) throw new ApiError(502, 'Upstream renderer did not produce rendered HTML');
+    const renderedHtml = renderedBytes.toString('utf8');
+    const doc = parse(renderedHtml);
+    const parsedTitle = doc.querySelector('title')?.textContent.trim() || '';
+    const parsedSummary = extractSummary(doc);
+    await captureSkillThumbnails(renderedHtml, explainerId);
+    result.structuredContent = {
+      ...result.structuredContent,
+      explainerId,
+      url: new URL(`/api/skills/explainers/${encodeExplainerPath(explainerId)}/html`, publicUrl).href,
+    };
+    return { renderedHtml, render: result, parsedTitle, parsedSummary };
+  } finally {
+    const names = await readdir(outputDir).catch(() => []);
+    for (const name of names) {
+      if (name.startsWith(prefix)) {
+        await rm(join(outputDir, name), { force: true }).catch(() => console.error('Skill render transient cleanup failed', { name }));
+      }
+    }
+  }
 }
 
 async function renderLocked(args, apiFilename = false, params = { name: 'visual_explainer_render_html' }, location = null, sourceBytes = null, note = '') {
@@ -1275,7 +1391,16 @@ function proxyServer() {
     return result;
   });
   server.setRequestHandler(ListResourcesRequestSchema, (request) => upstream.listResources(request.params));
-  server.setRequestHandler(ReadResourceRequestSchema, (request) => upstream.readResource(request.params));
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const uri = request.params?.uri;
+    const docId = typeof uri === 'string' ? skills.docIdFromUri(uri) : null;
+    if (docId && skills.hasDoc(docId)) {
+      return {
+        contents: [{ uri, mimeType: 'text/markdown', text: skills.getEffectiveDoc(docId) }],
+      };
+    }
+    return upstream.readResource(request.params);
+  });
   server.setRequestHandler(ListPromptsRequestSchema, (request) => upstream.listPrompts(request.params));
   server.setRequestHandler(GetPromptRequestSchema, (request) => upstream.getPrompt(request.params));
   return server;
@@ -1394,6 +1519,29 @@ const http = createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/')) {
       const apiParts = url.pathname.split('/').slice(2).map(decodeSegment);
+      if (apiParts.length === 2 && apiParts[0] === 'skills' && apiParts[1] === 'events' && req.method === 'GET') {
+        if (req.headers.origin && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
+        const auth = identity(req);
+        if (auth.role !== 'admin' && auth.role !== 'skill-editor') {
+          throw new ApiError(403, 'Admin or skill editor access required');
+        }
+        const rawExplainer = url.searchParams.get('explainer');
+        const explainerId = rawExplainer ? validateExplainerId(rawExplainer) : null;
+        const onceRaw = (url.searchParams.get('once') ?? '').trim().toLowerCase();
+        const once = onceRaw === '1' || onceRaw === 'true';
+        skillEvents.subscribe(req, res, {
+          entityId: '__skills__',
+          filename: explainerId,
+          path: explainerId ?? '',
+          events: url.searchParams.get('events'),
+          once,
+          timeoutSec: url.searchParams.get('timeout'),
+          after: url.searchParams.get('after'),
+          client: url.searchParams.get('client') ?? '',
+          ip: req.socket?.remoteAddress,
+        });
+        return;
+      }
       if (apiParts.length === 3 && apiParts[0] === 'entities' && apiParts[2] === 'events' && req.method === 'GET') {
         if (req.headers.origin && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
         const id = apiParts[1];
@@ -1436,16 +1584,336 @@ const http = createServer(async (req, res) => {
         const originalRead = originalReadonly(parts, req.method);
         const mutation = !['GET', 'HEAD'].includes(req.method) && !originalRead;
         if (req.headers.origin && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
+        const [resource, id, action] = parts;
+        if (resource === 'skills' && auth.role !== 'admin' && auth.role !== 'skill-editor') {
+          throw new ApiError(403, 'Admin or skill editor access required');
+        }
         if (mutation && auth.role === 'viewer') throw new ApiError(401, 'Admin authentication required');
         if (mutation && isWorkspaceMember && !auth.bearer && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Same-origin Origin required');
-        const [resource, id, action] = parts;
         if (resource === 'session' && parts.length === 1 && req.method === 'GET') {
           if (auth.legacy) setSession(res, 'admin');
           return json(res, 200, {
             role: auth.role,
             ...(auth.accountId ? { accountId: auth.accountId, name: auth.name, builtIn: auth.builtIn } : {}),
             ...(auth.entityId ? { entityId: auth.entityId } : {}),
+            ...(auth.keyId ? { keyId: auth.keyId, name: auth.name } : {}),
           });
+        }
+        if (auth.role === 'skill-editor') {
+          if (resource !== 'skills' && !originalRead) {
+            throw new ApiError(403, 'Skill-scoped access only');
+          }
+        }
+        if (resource === 'skills') {
+          if (parts.length === 1 && req.method === 'GET') {
+            const overview = skills.overview();
+            return json(res, 200, {
+              ...overview,
+              explainers: overview.explainers.map(exposeSkillExplainer),
+              listeners: skillEvents.hostSummary({ entityId: '__skills__' }),
+            });
+          }
+          if (parts.length === 2 && id === 'settings' && req.method === 'PATCH') {
+            if (auth.role !== 'admin') throw new ApiError(403, 'Admin session required to change skill edit lock');
+            const body = await readJson(req, 4096);
+            fields(body, ['editEnabled'], ['editEnabled']);
+            const editEnabled = await skills.setEditEnabled(body.editEnabled);
+            return json(res, 200, { editEnabled });
+          }
+          if (id === 'keys') {
+            if (auth.role !== 'admin') throw new ApiError(403, 'Admin session required to manage skill editor keys');
+            if (parts.length === 2 && req.method === 'GET') {
+              return json(res, 200, { keys: skills.listKeys() });
+            }
+            if (parts.length === 2 && req.method === 'POST') {
+              requireSkillsEditEnabled();
+              const body = await readOptionalJson(req, 4096);
+              fields(body, ['name'], []);
+              return json(res, 201, await skills.createKey({ name: body.name, createdBy: auth.name || 'Owner' }));
+            }
+            if (parts.length === 3 && req.method === 'DELETE') {
+              await skills.revokeKey(parts[2]);
+              return send(res, 204, '');
+            }
+          }
+          if (id === 'docs' && parts.length >= 3) {
+            if (parts.length >= 4 && parts.at(-1) === 'reset' && req.method === 'POST') {
+              requireSkillsEditEnabled();
+              const docId = parts.slice(2, -1).join('/');
+              const body = await readOptionalJson(req, 4096);
+              fields(body, ['note'], []);
+              const result = await skills.resetDoc(docId, { note: cleanNote(body.note), actor: auth.name || 'Owner' });
+              return json(res, 200, result);
+            }
+            const docId = parts.slice(2).join('/');
+            if (req.method === 'GET') {
+              return json(res, 200, await skills.getDoc(docId));
+            }
+            if (req.method === 'PUT') {
+              requireSkillsEditEnabled();
+              const rawContentType = (req.headers['content-type'] ?? '').trim();
+              const mediaType = rawContentType.split(';')[0].trim().toLowerCase();
+              let content, note;
+              if (mediaType === 'application/json' || mediaType === '') {
+                const body = await readJson(req, 2 * 1024 * 1024);
+                fields(body, ['content', 'note'], ['content']);
+                content = body.content;
+                note = cleanNote(body.note ?? url.searchParams.get('note') ?? req.headers['x-ve-note']);
+              } else if (mediaType === 'text/markdown' || mediaType === 'text/plain') {
+                const bytes = await readBody(req, 2 * 1024 * 1024, true);
+                try { content = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); }
+                catch { throw new ApiError(400, 'Skill document must be valid UTF-8'); }
+                note = cleanNote(url.searchParams.get('note') ?? req.headers['x-ve-note']);
+              } else {
+                throw new ApiError(415, 'Use Content-Type: application/json, text/markdown, or text/plain');
+              }
+              return json(res, 200, await skills.updateDoc(docId, content, { note, actor: auth.name || 'Owner' }));
+            }
+          }
+          if (id === 'explainers' && parts.length >= 3) {
+            const tail = parts.at(-1);
+            if (parts.length >= 4 && tail === 'source' && req.method === 'GET') {
+              const explainerId = parts.slice(2, -1).join('/');
+              const sourceHtml = skills.getExplainerSource(explainerId);
+              res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; frame-ancestors 'none'");
+              res.setHeader('Referrer-Policy', 'no-referrer');
+              return send(res, 200, sourceHtml, 'text/html; charset=utf-8');
+            }
+            if (parts.length >= 4 && tail === 'html' && ['GET', 'HEAD'].includes(req.method)) {
+              const explainerId = parts.slice(2, -1).join('/');
+              const renderedHtml = skills.getExplainerHtml(explainerId);
+              const body = req.method === 'HEAD' ? '' : (url.searchParams.get('embed') === '1' ? injectEmbedBridge(renderedHtml) : renderedHtml);
+              res.setHeader('Content-Security-Policy', "sandbox allow-scripts; frame-ancestors 'self'");
+              res.setHeader('Referrer-Policy', 'no-referrer');
+              return send(res, 200, body, 'text/html; charset=utf-8');
+            }
+            if (parts.length >= 4 && tail === 'thumb' && ['GET', 'HEAD'].includes(req.method)) {
+              const explainerId = parts.slice(2, -1).join('/');
+              const theme = url.searchParams.get('theme') === 'dark' ? 'dark' : 'light';
+              const renderedHtml = skills.getExplainerHtml(explainerId);
+              let bytes = await skills.readThumb(explainerId, theme);
+              if (bytes === null) {
+                await captureSkillThumbnails(renderedHtml, explainerId);
+                bytes = await skills.readThumb(explainerId, theme);
+                if (bytes === null && theme === 'dark') bytes = await skills.readThumb(explainerId, 'light');
+              }
+              if (bytes === null) throw new ApiError(404, 'Explainer thumbnail not found');
+              res.writeHead(200, {
+                'Content-Type': 'image/png',
+                'Cache-Control': 'private, max-age=60',
+                'X-Content-Type-Options': 'nosniff',
+              });
+              return res.end(req.method === 'HEAD' ? '' : bytes);
+            }
+            const explainerId = parts.slice(2).join('/');
+            if (req.method === 'GET') {
+              return json(res, 200, exposeSkillExplainer(skills.getExplainer(explainerId)));
+            }
+            if (req.method === 'PUT') {
+              requireSkillsEditEnabled();
+              if (!/^text\/html(?:\s*;\s*charset\s*=\s*(?:"utf-8"|utf-8))?\s*$/i.test(req.headers['content-type'] ?? '')) {
+                throw new ApiError(415, 'Use Content-Type: text/html; charset=utf-8');
+              }
+              const bytes = await readBody(req, 12 * 1024 * 1024, true);
+              let sourceHtml;
+              try { sourceHtml = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); }
+              catch { throw new ApiError(400, 'HTML must be valid UTF-8'); }
+              const skillHash = req.headers['x-ve-skill-hash'] ?? url.searchParams.get('skillHash');
+              const coversInput = req.headers['x-ve-covers'] ?? url.searchParams.get('covers');
+              const note = cleanNote(url.searchParams.get('note') ?? req.headers['x-ve-note']);
+              const verified = skills.verifyExplainerHash(explainerId, { covers: coversInput, skillHash });
+              const rendered = await renderSkillExplainerLocked(explainerId, sourceHtml);
+              const titleInput = req.headers['x-ve-title'] ?? url.searchParams.get('title') ?? (rendered.parsedTitle || undefined);
+              const summaryInput = req.headers['x-ve-summary'] ?? url.searchParams.get('summary') ?? (rendered.parsedSummary || undefined);
+              const layerInput = req.headers['x-ve-layer'] ?? url.searchParams.get('layer');
+              const parentInput = req.headers['x-ve-parent'] ?? url.searchParams.get('parentId');
+              const saved = await skills.updateExplainer(explainerId, {
+                html: rendered.renderedHtml,
+                sourceHtml,
+                title: titleInput,
+                summary: summaryInput,
+                layer: layerInput,
+                parentId: parentInput !== null && parentInput !== undefined ? parentInput : undefined,
+                covers: verified.covers,
+                skillHash: verified.expectedSkillHash,
+                note,
+                actor: auth.name || 'Owner',
+              });
+              return json(res, 200, {
+                explainer: exposeSkillExplainer(saved.explainer),
+                render: rendered.render,
+                version: saved.version,
+                synced: true,
+              });
+            }
+          }
+          if (id === 'versions') {
+            if (parts.length === 2 && req.method === 'GET') {
+              const docFilter = url.searchParams.get('doc') || null;
+              return json(res, 200, { versions: skills.versions(docFilter) });
+            }
+            if (parts.length === 4 && parts[3] === 'diff' && req.method === 'GET') {
+              return json(res, 200, await skills.versionDiff(parts[2]));
+            }
+          }
+          if (id === 'rollback' && parts.length === 2 && req.method === 'POST') {
+            requireSkillsEditEnabled();
+            const body = await readJson(req, 4096);
+            fields(body, ['version', 'revision', 'note'], []);
+            const targetRef = body.revision ?? body.version;
+            if (targetRef === undefined || targetRef === null || targetRef === '') {
+              throw new ApiError(400, 'Expected version or revision');
+            }
+            const result = await skills.rollback(targetRef, { note: cleanNote(body.note), actor: auth.name || 'Owner' });
+            return json(res, 200, {
+              ...result,
+              explainers: result.explainers.map(exposeSkillExplainer),
+            });
+          }
+          if (id === 'comments') {
+            if (parts.length === 2 && req.method === 'GET') {
+              const filter = url.searchParams.get('status') || 'all';
+              const rawExplainer = url.searchParams.get('explainer');
+              const explainerId = rawExplainer ? validateExplainerId(rawExplainer) : null;
+              const { threads, counts } = skillComments.list(explainerId, { status: filter });
+              const summary = formatCommentsSummary(threads, explainerId ? { filename: explainerId, path: explainerId, title: explainerId } : null);
+              const listeners = skillEvents.hostSummary({ entityId: '__skills__', filename: explainerId });
+              return json(res, 200, { explainerId, counts, threads, summary, listeners });
+            }
+            if (parts.length === 2 && req.method === 'POST') {
+              requireSkillsEditEnabled();
+              const body = await readJson(req, 32768);
+              fields(body, ['explainerId', 'explainer', 'body', 'where', 'replyTo', 'version', 'revision', 'authorName'], ['body']);
+              const actor = commentActor(body.authorName, auth);
+              if (body.replyTo !== undefined) {
+                const explicitExplainer = body.explainerId ?? body.explainer ?? null;
+                const result = await skillComments.reply({ filename: explicitExplainer, threadId: body.replyTo, author: actor, body: body.body });
+                if (auth.role === 'admin') {
+                  skillEvents.emit({
+                    type: 'comment.replied',
+                    entityId: '__skills__',
+                    filename: result.thread.filename,
+                    path: result.thread.filename,
+                    payload: { threadId: result.thread.id, explainerId: result.thread.filename, reply: result.reply, reopened: result.reopened, thread: result.thread, author: actor },
+                  });
+                }
+                return json(res, 201, result);
+              }
+              const targetExplainer = body.explainerId ?? body.explainer;
+              if (!targetExplainer) throw new ApiError(400, 'explainerId is required');
+              validateExplainerId(targetExplainer);
+              const latest = skills.overview().latestVersion;
+              const verNum = body.version !== undefined ? parseVersionQuery(body.version) : (latest?.version ?? null);
+              const rev = body.revision ?? latest?.revision ?? null;
+              const result = await skillComments.create({ filename: targetExplainer, version: verNum, revision: rev, where: body.where, author: actor, body: body.body });
+              if (auth.role === 'admin') {
+                skillEvents.emit({
+                  type: 'comment.created',
+                  entityId: '__skills__',
+                  filename: targetExplainer,
+                  path: targetExplainer,
+                  payload: { threadId: result.thread.id, explainerId: targetExplainer, thread: result.thread, author: actor },
+                });
+              }
+              return json(res, 201, result);
+            }
+            if (parts.length === 3 && parts[2] === 'dispatch' && req.method === 'POST') {
+              requireSkillsEditEnabled();
+              const body = await readOptionalJson(req, 8192);
+              fields(body, ['explainerId', 'explainer', 'note'], []);
+              const note = cleanNote(body.note);
+              const rawExplainer = body.explainerId ?? body.explainer ?? null;
+              const explainerId = rawExplainer ? validateExplainerId(rawExplainer) : null;
+              const { threads, counts } = skillComments.list(explainerId, { status: 'open' });
+              const summary = formatCommentsSummary(threads, explainerId ? { filename: explainerId, path: explainerId, title: explainerId } : null);
+              const delivered = skillEvents.emit({
+                type: 'comment.dispatch',
+                entityId: '__skills__',
+                filename: explainerId,
+                path: explainerId ?? '',
+                payload: { explainerId, note, openCount: counts.open, threads, summary, dispatchedBy: auth.name || 'Owner' },
+              });
+              const listeners = skillEvents.hostSummary({ entityId: '__skills__', filename: explainerId });
+              return json(res, 200, {
+                ok: true,
+                eventId: delivered.event.id,
+                explainerId,
+                openCount: counts.open,
+                deliveredHosts: delivered.deliveredHosts,
+                deliveredConnections: delivered.deliveredConnections,
+                listeners,
+              });
+            }
+            if (parts.length === 4 && parts[3] === 'dispatch' && req.method === 'POST') {
+              requireSkillsEditEnabled();
+              const body = await readOptionalJson(req, 8192);
+              fields(body, ['note'], []);
+              const note = cleanNote(body.note);
+              const thread = skillComments.getThread(parts[2]);
+              const explainerId = thread.filename;
+              const { threads, counts } = skillComments.list(explainerId, { status: 'open' });
+              const summary = formatCommentsSummary(threads.length ? threads : [thread], { filename: explainerId, path: explainerId, title: explainerId });
+              const delivered = skillEvents.emit({
+                type: 'comment.dispatch',
+                entityId: '__skills__',
+                filename: explainerId,
+                path: explainerId,
+                payload: {
+                  threadId: thread.id,
+                  thread,
+                  explainerId,
+                  note,
+                  openCount: counts.open,
+                  threads,
+                  summary,
+                  dispatchedBy: auth.name || 'Owner',
+                },
+              });
+              const listeners = skillEvents.hostSummary({ entityId: '__skills__', filename: explainerId });
+              return json(res, 200, {
+                ok: true,
+                eventId: delivered.event.id,
+                threadId: thread.id,
+                explainerId,
+                openCount: counts.open,
+                deliveredHosts: delivered.deliveredHosts,
+                deliveredConnections: delivered.deliveredConnections,
+                listeners,
+              });
+            }
+            if (parts.length === 4 && ['resolve', 'reopen'].includes(parts[3]) && req.method === 'POST') {
+              requireSkillsEditEnabled();
+              const threadId = parts[2];
+              const body = await readOptionalJson(req, 16384);
+              fields(body, parts[3] === 'resolve' ? ['note', 'authorName'] : [], []);
+              if (parts[3] === 'resolve') {
+                const actor = commentActor(body.authorName, auth);
+                return json(res, 200, await skillComments.resolve({ threadId, actor, note: body.note ?? '' }));
+              }
+              const result = await skillComments.reopen({ threadId });
+              if (auth.role === 'admin' && result.changed) {
+                skillEvents.emit({
+                  type: 'comment.reopened',
+                  entityId: '__skills__',
+                  filename: result.thread.filename,
+                  path: result.thread.filename,
+                  payload: { threadId: result.thread.id, explainerId: result.thread.filename, thread: result.thread },
+                });
+              }
+              return json(res, 200, result);
+            }
+            if (parts.length === 3 && req.method === 'PATCH') {
+              requireSkillsEditEnabled();
+              const body = await readJson(req, 32768);
+              fields(body, ['body'], ['body']);
+              return json(res, 200, await skillComments.edit({ commentId: parts[2], body: body.body }));
+            }
+            if (parts.length === 3 && req.method === 'DELETE') {
+              requireSkillsEditEnabled();
+              return json(res, 200, await skillComments.remove({ commentId: parts[2] }));
+            }
+          }
+          throw new ApiError(404, 'Skill endpoint not found');
         }
         if (resource === 'session' && id === 'name' && parts.length === 2 && req.method === 'PATCH') {
           if (!isWorkspaceMember) throw new ApiError(403, 'Account authentication required');
@@ -1929,7 +2397,7 @@ const http = createServer(async (req, res) => {
     if (url.pathname !== '/mcp') return send(res, 404, 'Not found');
     if (!equal(req.headers.authorization ?? '', `Bearer ${token}`)) {
       const match = req.headers.authorization?.match(/^Bearer (.+)$/);
-      throw new ApiError(match && (tokens.authenticate(match[1]) || accounts.authenticate(match[1])) ? 403 : 401, 'Service Bearer token required');
+      throw new ApiError(match && (tokens.authenticate(match[1]) || accounts.authenticate(match[1]) || skills.authenticateKey(match[1])) ? 403 : 401, 'Service Bearer token required');
     }
     if (req.headers.origin && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
     if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); throw new ApiError(405, 'Use stateless MCP POST'); }
@@ -1944,7 +2412,9 @@ const http = createServer(async (req, res) => {
     if (!res.headersSent) {
       const status = error instanceof ApiError ? error.status : 500;
       const message = error instanceof ApiError ? error.message : 'Internal server error';
-      if (req.url?.startsWith('/api/') || req.url?.startsWith('/mcp')) json(res, status, { error: message });
+      if (req.url?.startsWith('/api/') || req.url?.startsWith('/mcp')) {
+        json(res, status, error instanceof ApiError && error.details ? { error: message, ...error.details } : { error: message });
+      }
       else send(res, status, message);
     }
     else res.end();
@@ -1955,6 +2425,7 @@ http.listen(Number(process.env.PORT ?? 8080), '0.0.0.0', () => console.log(`Visu
 for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, async () => {
   stopping = true;
   events.closeAll();
+  skillEvents.closeAll();
   http.close();
   await closeThumbBrowser();
   await upstream.close();

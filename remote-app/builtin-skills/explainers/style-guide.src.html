@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN" data-register="blueprint">
+<head>
+<title>视觉设计规范（references/style-guide.md）</title>
+<meta name="description" content="解析 4 套视觉语域（Instrument / Blueprint / Paper / Editorial）、90% 中性色配 10% 信号色法则、四层线宽对比度、网格排版与反 AI 塑料感约束。">
+<link rel="stylesheet" href="kit.css" data-ve-kit>
+<style>
+.reg-svg text { font-size: 15px; }
+.reg-svg text.sub { font-size: 14px; }
+.reg-svg text.ve-bnd-t { font-size: 14px; }
+.reg-svg text.ve-tag { font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">SKILL WIKI · L1 · VISUAL DESIGN SYSTEM</p>
+    <h1>九成中性底色配一成信号色：四种语域定调页面气质</h1>
+    <p class="lead"><code>references/style-guide.md</code> 用 <b>Register 语域、Token 阶梯与 Data-ink 减法</b> 替代模板装饰，让每一根线条都承载结构或数据。</p>
+    <p class="meta">covers: references/style-guide.md · 4 Registers · 90/10 Ink Budget</p>
+  </header>
+
+  <figure>
+    <div class="frame">
+      <svg class="ve-svg reg-svg" viewBox="0 0 860 310" aria-label="四种官方 Register 语域的结构特征对照图">
+        <rect class="ve-bnd" x="16" y="16" width="196" height="278" rx="6"/>
+        <text class="ve-bnd-t" x="28" y="38">INSTRUMENT · 默认</text>
+        <g class="ve-n">
+          <rect class="sh" x="28" y="54" width="80" height="50" rx="4"/>
+          <text x="68" y="76">94%</text>
+          <text class="sub" x="68" y="96">KPI</text>
+        </g>
+        <g class="ve-n">
+          <rect class="sh" x="118" y="54" width="82" height="50" rx="4"/>
+          <text x="159" y="76">1 ms</text>
+          <text class="sub" x="159" y="96">等宽数</text>
+        </g>
+        <path class="ve-axis" d="M28 124 H200 M28 156 H200 M28 188 H200"/>
+        <text class="ve-tag" x="28" y="147">细线分格非浮卡</text>
+        <text class="ve-tag" x="28" y="179">形态+词标状态</text>
+        <text class="ve-tag key" x="28" y="236">适用：评审 · 审计</text>
+        <text class="ve-tag" x="28" y="264">Diff · 指标面板</text>
+
+        <rect class="ve-bnd" x="226" y="16" width="196" height="278" rx="6"/>
+        <text class="ve-bnd-t" x="238" y="38">BLUEPRINT · 本页</text>
+        <rect class="ve-bnd" x="238" y="54" width="172" height="114" rx="4"/>
+        <text class="ve-bnd-t" x="248" y="74">ZONE</text>
+        <path class="ve-e is-hot" d="M278 126 H368"/>
+        <g class="ve-n is-key">
+          <rect class="sh" x="248" y="102" width="64" height="46" rx="4"/>
+          <text x="280" y="130">API</text>
+        </g>
+        <g class="ve-n">
+          <rect class="sh" x="336" y="102" width="64" height="46" rx="4"/>
+          <text x="368" y="130">DB</text>
+        </g>
+        <g class="ve-co" transform="translate(324 80)"><circle r="12"/><text>1</text></g>
+        <text class="ve-tag" x="238" y="196">24px 网格+尺寸线</text>
+        <text class="ve-tag key" x="238" y="236">适用：架构 · 数据</text>
+        <text class="ve-tag" x="238" y="264">系统原理 · 计划</text>
+
+        <rect class="ve-bnd" x="436" y="16" width="196" height="278" rx="6"/>
+        <text class="ve-bnd-t" x="448" y="38">PAPER · 阅读</text>
+        <text class="ve-tag key" x="448" y="78">衬线主标题</text>
+        <path class="ve-axis" d="M448 94 H552 M448 112 H552 M448 130 H536"/>
+        <text class="ve-tag" x="562" y="114">边注</text>
+        <g class="ve-n">
+          <rect class="sh" x="448" y="148" width="172" height="54" rx="4"/>
+          <text x="534" y="172">宽图 · Fig. 1</text>
+          <text class="sub" x="534" y="192">65ch 窄栏正文</text>
+        </g>
+        <text class="ve-tag key" x="448" y="236">适用：概念 · 核查</text>
+        <text class="ve-tag" x="448" y="264">深度长文 · 原理</text>
+
+        <rect class="ve-bnd" x="646" y="16" width="198" height="278" rx="6"/>
+        <text class="ve-bnd-t" x="658" y="38">EDITORIAL · 叙事</text>
+        <text class="ve-tag key" x="658" y="84">5.6k</text>
+        <text class="ve-tag" x="720" y="84">单屏锚点</text>
+        <g class="ve-n">
+          <rect class="sh" x="658" y="114" width="174" height="78" rx="4"/>
+          <text x="745" y="148">非对称大留白</text>
+          <text class="sub" x="745" y="170">大尺度展示标题</text>
+        </g>
+        <text class="ve-tag key" x="658" y="236">适用：回顾 · 展示</text>
+        <text class="ve-tag" x="658" y="264">叙事页 · 幻灯片</text>
+      </svg>
+    </div>
+    <figcaption><span class="fig-n"></span>通过 <code>&lt;html data-register="…"&gt;</code> 一键切换四套字体、边框与肌理，仅幻灯片或视频页需手动复制对应样式块。</figcaption>
+  </figure>
+
+  <section id="hierarchy">
+    <div class="sec-head"><p class="ve-label caps">Ink &amp; Type</p><h2>颜色与线宽严格分层，所有尺寸只走 Kit Token 阶梯</h2></div>
+    <div class="frame">
+      <ve-stack unit="%" label="屏幕色彩配比：最多 10% 单主信号色，90% 中性色底与文字">
+        <ve-bar value="10" hot>信号色</ve-bar>
+        <ve-bar value="90">中性底与文字</ve-bar>
+      </ve-stack>
+    </div>
+    <div class="ve-table">
+      <table>
+        <thead>
+          <tr>
+            <th>设计维度</th>
+            <th>强制标准</th>
+            <th>细节要求</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>色彩语义与对比</td>
+            <td>一主色占屏 ≤ 10%；状态色专职专用</td>
+            <td><code>ok / warn / risk / info</code> 仅表状态；弱化文字用 <code>--text-dim</code> 禁调 <code>opacity</code>；语义框用 <code>--border-bright</code>（3:1），装饰线用 <code>--border</code></td>
+          </tr>
+          <tr>
+            <td>线宽与视觉层级</td>
+            <td><code>ground &lt; structure &lt; data &lt; signal</code></td>
+            <td>结构线 <code>1px</code>，数据/轮廓 <code>1.5–1.75px</code>，唯一热路径 <code>2.5–3px</code>；每图只设一个 <code>.is-key</code> 光环与一条 <code>.is-hot</code> 路径</td>
+          </tr>
+          <tr>
+            <td>排版与数值格式</td>
+            <td>正文宽 <code>65ch</code>，边注 <code>40–50ch</code>，左对齐不两端对齐</td>
+            <td>表/KPI 用 <code>tabular-nums</code> 且右对齐；标清单位与基准；规范用弯引号、<code>–</code>、<code>—</code>、<code>−</code>、<code>×</code> 与 <code>&amp;nbsp;</code></td>
+          </tr>
+          <tr>
+            <td>网格与留白节律</td>
+            <td>12 栏对齐同一左边线；标题上距为下距 2–3×</td>
+            <td>宽图→指标条→小多图→短文交替，禁连续三个同构块；先用留白、再细线、最后才加框；间距只用 <code>--s-1…--s-8</code>，圆角仅 <code>--r-1 / --r-2</code></td>
+          </tr>
+          <tr>
+            <td>主题微调（Motif）</td>
+            <td>最多 2–3 处克制行业辨识度</td>
+            <td>主题主色校准至双主题 4.5:1（若撞红/绿状态色则保留原语域色）；背景纹 ≤ 15% 对比度；删掉不影响可读性的全砍</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="antislop">
+    <div class="sec-head"><p class="ve-label caps">Anti-Slop</p><h2>封杀 AI 塑料感：克制装饰、拒绝模板堆叠</h2></div>
+    <div class="cases">
+      <div class="case" data-st="risk">
+        <span class="chip risk">禁卡片套娃</span>
+        <h3>无“卡中卡”与彩色侧边条</h3>
+        <p>Callout 直接用 <code>--surface</code>、<code>--r-2</code> 与状态芯片作标题，严禁圆角卡片配彩色左竖条；阴影 <code>--lift</code> 仅用于浮起节点与弹层。</p>
+      </div>
+      <div class="case" data-st="risk">
+        <span class="chip risk">禁无信息墨水</span>
+        <h3>砍掉图框、厚网格与 3D 柱</h3>
+        <p>数据标签直接贴在图形旁，少于 5 组不画图例；柱状图必须从零起算且按值排序；折线图宽高比约 2:1–3:1；标签跨线加 <code>--bg</code> 描边护底。</p>
+      </div>
+      <div class="case" data-st="ok">
+        <span class="chip ok">优先链</span>
+        <h3>样式决策的四级覆盖顺序</h3>
+        <p><code>用户要求 &gt; 项目设计系统 &gt; style-guide.md &gt; themes.md 预设</code>；每张 SVG 必带 <code>viewBox</code>、图片必写宽高，确保加载零抖动。</p>
+      </div>
+    </div>
+    <p>选定语域后，通过 <span data-ve-child="kit">kit</span> 装配组件，用 <span data-ve-child="diagrams">diagrams</span> 落实图形几何，或在 <span data-ve-child="commands-and-extras">commands-and-extras</span> 查阅 <code>themes.md</code> 多配色方案。</p>
+  </section>
+
+  <section class="sources" aria-label="Sources">
+    <p class="ve-label caps">Sources</p>
+    <p><code>references/style-guide.md</code> · <code>SKILL.md</code></p>
+  </section>
+</main>
+</body>
+</html>

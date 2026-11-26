@@ -23,9 +23,10 @@ trap cleanup EXIT
 
 docker run --rm --mount "type=bind,src=$fixture/remote,dst=/history-remote" "$image" git init --bare --initial-branch=main /history-remote/repo.git >/dev/null
 mounts=()
-for file in server.mjs catalog.mjs comments.mjs events.mjs accounts.mjs history.mjs tokens.mjs index.html; do
+for file in server.mjs catalog.mjs comments.mjs events.mjs accounts.mjs history.mjs skills.mjs tokens.mjs index.html; do
   mounts+=(--mount "type=bind,src=$(pwd)/remote-app/$file,dst=/opt/bridge/$file,readonly")
 done
+mounts+=(--mount "type=bind,src=$(pwd)/remote-app/builtin-skills,dst=/opt/bridge/builtin-skills,readonly")
 docker run --detach --name "$name" \
   --env PUBLIC_URL=http://127.0.0.1:8080 --env PORT=8080 \
   --env VISUAL_EXPLAINER_OUTPUT_DIR=/data --env TOKEN_FILE=/run/secrets/api_token \

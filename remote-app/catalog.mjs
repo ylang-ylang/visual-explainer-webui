@@ -3,7 +3,11 @@ import { lstat, mkdir, readFile, readdir, realpath, rename, rm, writeFile } from
 import { basename, dirname, join, relative } from 'node:path';
 
 export class ApiError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, details = null) {
+    super(message);
+    this.status = status;
+    if (details && typeof details === 'object') this.details = details;
+  }
 }
 
 export function pageFilename(filename) {
@@ -218,7 +222,7 @@ export async function createCatalog(outputDir) {
   // Include existing unassigned serving files in collision checks, while keeping
   // their physical identities and legacy basenames unchanged.
   for (const entry of await readdir(outputDir, { withFileTypes: true })) {
-    if (entry.isFile() && /\.html?$/i.test(entry.name) && !/\.src\.html?$/i.test(entry.name) && !pages.has(entry.name)) {
+    if (entry.isFile() && !entry.name.startsWith('__skill-render-') && /\.html?$/i.test(entry.name) && !/\.src\.html?$/i.test(entry.name) && !pages.has(entry.name)) {
       pageFilename(entry.name);
       pages.set(entry.name, { entityId: null, path: entry.name });
     }

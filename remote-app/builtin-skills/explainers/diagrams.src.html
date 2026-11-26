@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN" data-register="blueprint">
+<head>
+<title>图表与 SVG 布局规范（references/diagrams.md）</title>
+<meta name="description" content="明确 <ve-flow>、手绘 SVG 与 Mermaid 的选型边界，掌握网格规划、正交路由、双视口 12px 字号底线、尺寸线与防遮挡排错要点。">
+<link rel="stylesheet" href="kit.css" data-ve-kit>
+<style>
+.anat-svg text { font-size: 15px; }
+.anat-svg text.sub { font-size: 14px; }
+.anat-svg text.ve-el { font-size: 14px; }
+.anat-svg text.ve-bnd-t { font-size: 14px; }
+.anat-svg text.ve-tag { font-size: 14px; }
+.anat-svg .ve-dim text { font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">SKILL WIKI · L1 · SVG &amp; DIAGRAM GEOMETRY</p>
+    <h1>先画 ASCII 网格再落坐标：保底 14 单位字号与 40 单位盒距</h1>
+    <p class="lead"><code>references/diagrams.md</code> 划清 <b>&lt;ve-flow&gt;、手绘 SVG 与 Mermaid</b> 的使用边界，并用硬性几何尺度杜绝移动端字小与连线遮挡。</p>
+    <p class="meta">covers: references/diagrams.md · 1280px &amp; 390px Viewports · Smallest Label ≥ 12px</p>
+  </header>
+
+  <figure>
+    <div class="frame">
+      <svg class="ve-svg anat-svg" viewBox="0 0 860 352" aria-label="手绘 Blueprint SVG 几何规范解剖图：边界框、盒间距、正交边、圆柱存储与尺寸线">
+        <rect class="ve-bnd" x="24" y="20" width="538" height="214" rx="6"/>
+        <text class="ve-bnd-t" x="40" y="42">TRUST ZONE · 虚线分组框</text>
+
+        <path class="ve-e is-hot" d="M236 116 H368"/>
+        <text class="ve-el" x="302" y="102">reads · 线上 9u</text>
+
+        <path class="ve-e is-async" d="M518 116 H648"/>
+        <text class="ve-el" x="583" y="102">sync · 虚线</text>
+
+        <g class="ve-n is-key" data-ref="service">
+          <rect class="sh" x="46" y="76" width="190" height="80" rx="6"/>
+          <text x="141" y="109">API Service</text>
+          <text class="sub" x="141" y="133">矩形服务 · 字 ≥ 14u</text>
+        </g>
+
+        <g class="ve-n" data-ref="queue">
+          <rect class="sh" x="372" y="76" width="146" height="80" rx="6"/>
+          <path class="ve-axis" d="M408 76 V89 M445 76 V89 M482 76 V89"/>
+          <text x="445" y="112">Queue</text>
+          <text class="sub" x="445" y="135">顶部短分隔 = 队列</text>
+        </g>
+
+        <g class="ve-n" data-ref="store">
+          <path class="sh" d="M652 92 V146 A76 15 0 0 0 804 146 V92 Z"/>
+          <ellipse class="sh lid" cx="728" cy="92" rx="76" ry="15"/>
+          <text x="728" y="123">Postgres</text>
+          <text class="sub" x="728" y="144">圆柱 = 存储</text>
+        </g>
+
+        <g class="ve-dim">
+          <path class="ext" d="M236 164 V216 M372 164 V216"/>
+          <path class="ln" d="M236 208 H372 M232 212 l8-8 M368 212 l8-8"/>
+          <text x="304" y="198">盒距 ≥ 40 u</text>
+        </g>
+
+        <g class="ve-dim is-key">
+          <path class="ext" d="M46 248 V292 M804 248 V292"/>
+          <path class="ln" d="M46 284 H804 M42 288 l8-8 M800 288 l8-8"/>
+          <text x="425" y="274">标签 ≥ 14 u → 390px 窄屏保底 ≥ 12px</text>
+        </g>
+
+        <path class="ann" d="M141 156 V186"/>
+        <g class="ve-co" transform="translate(141 198)"><circle r="12"/><text>1</text></g>
+        <path class="ann" d="M302 124 V152"/>
+        <g class="ve-co" transform="translate(302 164)"><circle r="12"/><text>2</text></g>
+        <path class="ann" d="M728 54 V76"/>
+        <g class="ve-co" transform="translate(728 42)"><circle r="12"/><text>3</text></g>
+
+        <text class="ve-tag" x="46" y="328">① 单行 ≤ 18 字，多行 tspan   ② 边先于节点绘制   ③ 形状直接表语义</text>
+      </svg>
+    </div>
+    <figcaption><span class="fig-n"></span>用尺寸线标出跨度、用形态区分 <span class="ve-ref" data-ref="service" tabindex="0">服务</span> / <span class="ve-ref" data-ref="queue" tabindex="0">队列</span> / <span class="ve-ref" data-ref="store" tabindex="0">存储</span>，在写 SVG 坐标前先用 ASCII 定好行列。</figcaption>
+  </figure>
+
+  <section id="choice">
+    <div class="sec-head"><p class="ve-label caps">Pick the Tool</p><h2>常规框线交给 <code>&lt;ve-flow&gt;</code>，精确几何用手绘 SVG，Mermaid 仅按需</h2></div>
+    <div class="cases">
+      <div class="case" data-st="ok">
+        <span class="chip ok">默认首选</span>
+        <h3><code>&lt;ve-flow&gt;</code> 网格自动排版</h3>
+        <p>适合标准框线流、状态机与架构图：零手算坐标、自带 <code>.frame</code> 和回放令牌，但箭头标签须控制在约 12 字符以内，且不可硬塞不支持的图形。</p>
+      </div>
+      <div class="case" data-st="warn">
+        <span class="chip warn">精确表达</span>
+        <h3>手绘 Inline SVG</h3>
+        <p>当需要流动点 <code>data-flow</code>、时序生命线、表结构 Schema、同坐标 Before/After 切换、<code>.ve-dim</code> 尺寸线或定制分组结构时，直接手绘 SVG。</p>
+      </div>
+      <div class="case" data-st="risk">
+        <span class="chip risk">仅显式要求</span>
+        <h3>Mermaid <code>pre.mermaid</code></h3>
+        <p>仅在用户要求或直接提供 Mermaid 源码时使用；编译为静态 SVG 并自动配色，不支持步进或回放，且严禁附带脚本或主题配置。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="geometry">
+    <div class="sec-head"><p class="ve-label caps">Layout Rules</p><h2>双视口（1280px / 390px）防截断、防重叠的七条几何清单</h2></div>
+    <div class="ve-table">
+      <table>
+        <thead>
+          <tr>
+            <th>检查项</th>
+            <th>硬指标 / 规范</th>
+            <th>常见翻车与解法</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>节点规模上限</td>
+            <td>单图超过 ~12 节点立即拆分</td>
+            <td>保留 5–8 节点总览图，把细部下沉到卡片、第二张图或 <code>data-ve-child</code> 子页</td>
+          </tr>
+          <tr>
+            <td>双视口字号底线</td>
+            <td>SVG 标注 ≥ 14 单位；390px 窄屏最小字 ≥ 12px</td>
+            <td>宽 <code>viewBox</code> 配合小字号会被压糊；控制总宽在 760–860 并保持字号 ≥ 14u</td>
+          </tr>
+          <tr>
+            <td>连线与文字防压</td>
+            <td>正交路径 <code>M x y H x V y</code>；标签在边上方 9u</td>
+            <td>必须先写 <code>.ve-e</code> 再写 <code>.ve-n</code>；两线过近会产生干扰第三形状，加大间距或合并</td>
+          </tr>
+          <tr>
+            <td>手动折行与配色</td>
+            <td>SVG 文本不自动换行；单行约 ≤ 18 字符</td>
+            <td>用 <code>&lt;tspan x="…" dy="1.2em"&gt;</code> 折行；所有文字用 Kit 类上色避免变黑报错</td>
+          </tr>
+          <tr>
+            <td>尺寸线 <code>.ve-dim</code></td>
+            <td>45° 端线，数字居中在线上 6u，每图仅一条 <code>.is-key</code></td>
+            <td>多段连续跨度排在同一导轨，总跨度排在外侧导轨；数值绝不压在线上</td>
+          </tr>
+          <tr>
+            <td>流动点与对比</td>
+            <td><code>data-flow</code> + <code>data-every</code> 比例反映真实流量</td>
+            <td>全页只保留一层流动点，路径经节点中心穿过；Before/After 用同坐标 <code>--ok</code> 增 / <code>--risk</code> 虚线删</td>
+          </tr>
+          <tr>
+            <td>联动与小多图</td>
+            <td>每图用 <code>data-ref</code> 绑定 2–4 个关键术语</td>
+            <td>小多图 <code>.ve-mini</code> 共享同一坐标系且文字 ≥ 14u，只把变化部件标 <code>.is-st</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>若图形需要分步展开、回放事件或实时调参，继续查看 <span data-ve-child="motion">motion</span>；基础组件契约见 <span data-ve-child="kit">kit</span>。</p>
+  </section>
+
+  <section class="sources" aria-label="Sources">
+    <p class="ve-label caps">Sources</p>
+    <p><code>references/diagrams.md</code> · <code>references/extras.md</code></p>
+  </section>
+</main>
+</body>
+</html>

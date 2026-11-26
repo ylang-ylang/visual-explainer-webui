@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN" data-register="blueprint">
+<head>
+<title>动效与交互克制规范（references/motion.md）</title>
+<meta name="description" content="阐述动效只解释过程与变化的克制原则：.ve-steps 步进与回放、Live 实时控件、.js-motion 轻入场、prefers-reduced-motion 退化，以及 Checksheet 与缩略图为何禁用动效。">
+<link rel="stylesheet" href="kit.css" data-ve-kit>
+<style>
+.mot-svg text { font-size: 15px; }
+.mot-svg text.sub { font-size: 14px; }
+.mot-svg text.ve-kind { font-size: 14px; }
+.mot-svg text.ve-bnd-t { font-size: 14px; }
+.mot-svg text.ve-tag { font-size: 14px; }
+.ring-live rect { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-dasharray: 5 3; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">SKILL WIKI · L1 · MOTION &amp; RESTRAINT</p>
+    <h1>动效只解释流动与状态变化，静态结构静止，降级直达终态</h1>
+    <p class="lead"><code>references/motion.md</code> 定义四种信息型动态机制，并与 <b><code>.js-motion</code> 轻入场</b>、<b><code>prefers-reduced-motion</code></b> 共同保证无障碍与离线截图稳定。</p>
+    <p class="meta">covers: references/motion.md · .ve-steps · prefers-reduced-motion · Headless Capture</p>
+  </header>
+
+  <figure class="ve-steps">
+    <div class="frame">
+      <svg class="ve-svg mot-svg" viewBox="0 0 860 272" aria-label="Visual Explainer 动效从加载、步进回放到无障碍退化与静态截图的四阶段生命周期">
+        <rect class="ve-bnd" x="18" y="18" width="824" height="236" rx="6"/>
+        <text class="ve-bnd-t" x="36" y="42">MOTION LIFECYCLE · 默认打开即呈终态，绝不自动播放</text>
+
+        <path class="ve-e" data-s="0 2" d="M204 128 H248"/>
+        <path class="ve-e is-hot" data-s="0 3" d="M416 128 H460"/>
+        <path class="ve-e is-async" data-s="0 4" d="M628 128 H672"/>
+
+        <circle class="ve-tok" data-s="2" r="5" style="offset-path: path('M120 128 H332'); --dur: 900ms"/>
+        <circle class="ve-tok" data-s="3" r="5" style="offset-path: path('M332 128 H544'); --dur: 900ms"/>
+        <circle class="ve-tok" data-s="4" r="5" style="offset-path: path('M544 128 H750'); --dur: 900ms"/>
+
+        <g class="ve-n" data-s="0 1">
+          <rect class="sh" x="36" y="88" width="168" height="80" rx="6"/>
+          <text class="ve-kind" x="120" y="109">LOAD</text>
+          <text x="120" y="131">.js-motion</text>
+          <text class="sub" x="120" y="153">块级一次轻入场</text>
+        </g>
+
+        <g class="ve-n is-key" data-s="0 2">
+          <rect class="sh" x="248" y="88" width="168" height="80" rx="6"/>
+          <text class="ve-kind" x="332" y="109">INTERACT</text>
+          <text x="332" y="131">.ve-steps</text>
+          <text class="sub" x="332" y="153">按步点亮与令牌</text>
+        </g>
+
+        <g class="ve-n" data-s="0 3">
+          <rect class="sh" x="460" y="88" width="168" height="80" rx="6"/>
+          <text class="ve-kind" x="544" y="109">A11Y</text>
+          <text x="544" y="131">reduced-motion</text>
+          <text class="sub" x="544" y="153">跳过过渡呈终态</text>
+        </g>
+
+        <g class="ve-n" data-s="0 4">
+          <rect class="sh" x="672" y="88" width="152" height="80" rx="6"/>
+          <text class="ve-kind" x="748" y="109">SNAPSHOT</text>
+          <text x="748" y="131">Checksheet</text>
+          <text class="sub" x="748" y="153">禁动画稳态截图</text>
+        </g>
+
+        <g class="ve-at ring-live" data-s="1"><rect x="30" y="82" width="180" height="92" rx="8"/></g>
+        <g class="ve-at ring-live" data-s="2"><rect x="242" y="82" width="180" height="92" rx="8"/></g>
+        <g class="ve-at ring-live" data-s="3"><rect x="454" y="82" width="180" height="92" rx="8"/></g>
+        <g class="ve-at ring-live" data-s="4"><rect x="666" y="82" width="164" height="92" rx="8"/></g>
+
+        <g class="ve-at" data-s="1"><text class="ve-tag key" x="36" y="224">阶段 1/4 · 首次加载：.js-motion 让主块轻抬一次即静止</text></g>
+        <g class="ve-at" data-s="2"><text class="ve-tag key" x="36" y="224">阶段 2/4 · 主动回放：点击 Play 逐拍驱动令牌与高亮</text></g>
+        <g class="ve-at" data-s="3"><text class="ve-tag key" x="36" y="224">阶段 3/4 · 减弱动态：prefers-reduced-motion 直出终态</text></g>
+        <g class="ve-at" data-s="4"><text class="ve-tag key" x="36" y="224">阶段 4/4 · 自动截图：Checksheet 与缩略图禁动画防半透明</text></g>
+      </svg>
+    </div>
+    <div class="ve-player">
+      <ol class="ve-cap">
+        <li data-n="1/4">正常加载时 <code>.js-motion</code> 以克制位移淡入一次，不循环不干扰阅读。</li>
+        <li data-n="2/4">步进器通过 <code>data-s</code>、<code>.ve-tok</code> 与 <code>.ve-at</code> 逐拍展示因果，点击 Play 才回放。</li>
+        <li data-n="3/4">系统启用 <code>prefers-reduced-motion: reduce</code> 时直接停在最终完整画面。</li>
+        <li data-n="4/4">官方 Checksheet 与 WebUI 缩略图强制禁用动画并覆写 <code>.js-motion</code>，避免截到空白过渡帧。</li>
+      </ol>
+      <button type="button" data-go="-1" aria-label="上一步">‹</button>
+      <button type="button" data-play aria-label="播放">▶</button>
+      <input type="range" aria-label="步骤">
+      <button type="button" data-go="1" aria-label="下一步">›</button>
+    </div>
+    <figcaption><span class="fig-n"></span>本图本身就是一个 <code>.ve-steps</code> 回放器：打开即显示完整终态，点击 Play 可按步查看动效与退化链条。</figcaption>
+  </figure>
+
+  <section id="modes">
+    <div class="sec-head"><p class="ve-label caps">Four Patterns</p><h2>四种信息型动态组件与触发条件</h2></div>
+    <div class="ve-table">
+      <table>
+        <thead>
+          <tr>
+            <th>动态机制</th>
+            <th>核心标记 / 结构</th>
+            <th>设计纪律</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>步进与场景播放</td>
+            <td><code>figure.ve-steps</code> + <code>.ve-player</code> + <code>data-s="N"</code></td>
+            <td>步数等于 <code>ol.ve-cap &gt; li</code> 数量；每步必须有可见变化与一句主张；永不自动播放</td>
+          </tr>
+          <tr>
+            <td>状态机 / 事件回放</td>
+            <td><code>data-s="0 3 5"</code> · <code>.ve-tok</code> · <code>.ve-at</code> · <code>.ve-vals</code> · <code>rect.ve-slot</code></td>
+            <td><code>0</code> 常驻底图；<code>--dur</code> 控时长（默认 900 ms），<code>--d</code> 做突发间隔；解说必须写清 <code>because</code> 触发条件；代码状态机优先交由 <code>machines.md</code> 自动遍历</td>
+          </tr>
+          <tr>
+            <td>Live 实时图</td>
+            <td>1–3 个 <code>input[type=range]</code> 或 <code>button[aria-pressed]</code></td>
+            <td>单一纯函数 <code>model(settings)</code> 同步刷新图形、数字与结论句；默认停在真实值；JS 注入控件且打印隐藏</td>
+          </tr>
+          <tr>
+            <td>3D（three.js）</td>
+            <td><code>importmap</code> + 固定纵横比 <code>.frame</code> + <code>CSS2DRenderer</code></td>
+            <td>仅在深度本身承载数据（空间布局/嵌入/高度量）时使用；框线图严禁 3D；限 <code>DPR ≤ 2</code>，可见才渲染，禁 bloom/雾/粒子</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="restraint">
+    <div class="sec-head"><p class="ve-label caps">Allow vs Forbid</p><h2>只动画合成层属性，彻底禁止装饰性循环与滚动劫持</h2></div>
+    <div class="cases">
+      <div class="case" data-st="ok">
+        <span class="chip ok">允许 · 信息型</span>
+        <h3>低开销、有因果、可停在终态</h3>
+        <p>仅对 <code>transform</code>、<code>opacity</code> 与 <code>stroke-dashoffset</code> 做过渡，走 Kit 节拍 <code>--fast</code>（悬停）、<code>--med</code>（切态）、<code>--slow</code>（步进）；允许单层 <code>data-flow</code> 按真实比例派发流动点与 <code>data-ref</code> 联动高亮。</p>
+      </div>
+      <div class="case" data-st="risk">
+        <span class="chip risk">禁止 · 装饰型</span>
+        <h3>绝不为了“炫”而动</h3>
+        <p>禁止任何 autoplay 自动播、视差滚动（parallax）、滚动劫持（scroll-jacking）、无意义的呼吸灯/脉冲/弹跳循环，以及触发布局重排的 <code>width/height/top</code> 动画。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="capture">
+    <div class="sec-head"><p class="ve-label caps">Reduced Motion &amp; Capture</p><h2>为什么 Checksheet 与 WebUI 缩略图采集必须关闭动效</h2></div>
+    <p>页面加载时，Kit 会给文档挂上 <code>.js-motion</code> 让 <code>&lt;main&gt;</code> 下各区块轻抬淡入一次。若无头浏览器在加载瞬间直接截屏，首屏区块可能停在 <code>opacity: 0</code> 或半透明位移状态，描边与步进令牌也可能停在半途。</p>
+    <p>因此官方 Checksheet 体检与 WebUI 的 <code>renderThumbnailBuffers()</code> 都强制以 <code>prefers-reduced-motion: reduce</code> 和 <code>animations: 'disabled'</code> 采样，并注入 <code>.js-motion main &gt; * { opacity: 1; transform: none; transition: none; }</code>。这样无论 Light/Dark 缩略图还是 1280px/390px 校验图，看到的永远是 100% 确定、完整清晰的终态画面。详见 <span data-ve-child="style-guide">style-guide</span> 与 <span data-ve-child="kit">kit</span>。</p>
+  </section>
+
+  <section class="sources" aria-label="Sources">
+    <p class="ve-label caps">Sources</p>
+    <p><code>references/motion.md</code> · <code>references/style-guide.md</code> · <code>remote-app/server.mjs</code></p>
+  </section>
+</main>
+</body>
+</html>
