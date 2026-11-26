@@ -138,7 +138,7 @@ async function unchanged(label, action, rendered = false) {
 }
 async function authChecks() {
   await request('/api/session', { auth: null, status: 401 });
-  assert.deepEqual(await api('/api/session'), { role: 'admin' });
+  assert.deepEqual(await api('/api/session'), { role: 'admin', accountId: 'owner', name: 'Owner', builtIn: true });
   const login = await request('/api/login', {
     method: 'POST', auth: null, raw: new URLSearchParams({ key: token }).toString(),
     headers: { Origin: base.origin, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -149,7 +149,7 @@ async function authChecks() {
   assert.match(admin, /HttpOnly/i);
   assert.match(admin, /SameSite=Strict/i);
   const cookie = admin.split(';')[0];
-  assert.deepEqual(await api('/api/session', { auth: null, cookie }), { role: 'admin' });
+  assert.deepEqual(await api('/api/session', { auth: null, cookie }), { role: 'admin', accountId: 'owner', name: 'Owner', builtIn: true });
   const path = `${entity(a)}/folders`;
   await request(path, { method: 'POST', auth: null, cookie, body: { path: 'cookie-no-origin' }, status: 403 });
   await request(path, { method: 'POST', auth: null, cookie, headers: { Origin: 'https://invalid.example' }, body: { path: 'cookie-cross-origin' }, status: 403 });
@@ -160,7 +160,7 @@ async function authChecks() {
   const legacySignature = createHmac('sha256', token).update(`viewer-session:${expires}`).digest('hex');
   const legacyCookie = `ve_viewer=${expires}.${legacySignature}`;
   const migrated = await request('/api/session', { auth: null, cookie: legacyCookie });
-  assert.deepEqual(migrated.data, { role: 'admin' });
+  assert.deepEqual(migrated.data, { role: 'admin', accountId: 'owner', name: 'Owner', builtIn: true });
   assert.ok(migrated.headers['set-cookie'].some(value => value.startsWith('ve_admin=') && !value.includes('Max-Age=0')));
   assert.ok(migrated.headers['set-cookie'].some(value => value.startsWith('ve_viewer=') && value.includes('Max-Age=0')));
   await request(path, { method: 'POST', auth: null, cookie: legacyCookie, body: { path: 'legacy-no-origin' }, status: 403 });
@@ -174,9 +174,9 @@ async function authChecks() {
   await request('/api/session', { auth: null, cookie: viewerCookie.replace('ve_reader=', 've_viewer='), status: 401 });
   const ownerAccess = await request(`/?access=${viewerKey}`, { auth: null, cookie, status: 303 });
   const ownerCookie = ownerAccess.headers['set-cookie'].find(value => value.startsWith('ve_admin=')).split(';')[0];
-  assert.deepEqual(await api('/api/session', { auth: null, cookie: ownerCookie }), { role: 'admin' }, 'Opening a share link must not downgrade a logged-in owner');
+  assert.deepEqual(await api('/api/session', { auth: null, cookie: ownerCookie }), { role: 'admin', accountId: 'owner', name: 'Owner', builtIn: true }, 'Opening a share link must not downgrade a logged-in owner');
   const loggedOut = await request('/api/logout', { method: 'POST', auth: null, cookie: `${cookie}; ${viewerCookie}`, headers: { Origin: base.origin } });
-  for (const name of ['ve_admin', 've_reader', 've_viewer']) assert.ok(loggedOut.headers['set-cookie'].some(value => value.startsWith(`${name}=`) && /Max-Age=0/i.test(value)), 'Logout must expire current and legacy cookies');
+  for (const name of ['ve_admin', 've_acct', 've_reader', 've_viewer']) assert.ok(loggedOut.headers['set-cookie'].some(value => value.startsWith(`${name}=`) && /Max-Age=0/i.test(value)), 'Logout must expire current and legacy cookies');
   return { cookie, viewerCookie };
 }
 async function denials(agent, foreign, foreignPage) {

@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
-import { lstat, mkdtemp, open, readdir, realpath, rm } from 'node:fs/promises';
+import { chmod, lstat, mkdtemp, open, readdir, realpath, rm } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
@@ -105,6 +106,13 @@ export async function createHistory(outputDir, catalog) {
     }
   }
 
+  let sshControlDir = null;
+  let objectFormat = 'sha1';
+  let emptyHash = null;
+  let emptyBlobWritten = false;
+  let pushedHead = null;
+  const knownBlobs = new Set();
+
   try {
     if (Boolean(key) !== Boolean(knownHosts)) throw new Error('Both SSH credential paths are required');
     if (remote && !isAbsolute(remote) && !/^git@[a-zA-Z0-9.-]+:[^\s]+$/.test(remote) && !/^ssh:\/\/git@[a-zA-Z0-9.-]+(?::\d+)?\/[^\s]+$/.test(remote)) {
@@ -112,7 +120,10 @@ export async function createHistory(outputDir, catalog) {
     }
     if (remote && !isAbsolute(remote) && !key) throw new Error('SSH history requires a dedicated key and known hosts file');
     // Set this even for local-only history, so repository config cannot supply an SSH command.
-    env.GIT_SSH_COMMAND = 'ssh -F /dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o IdentityAgent=none -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ConnectionAttempts=1';
+    sshControlDir = await mkdtemp(join(tmpdir(), 've-ssh-'));
+    await chmod(sshControlDir, 0o700);
+    const controlPath = join(sshControlDir, 've-ssh-%C');
+    env.GIT_SSH_COMMAND = `ssh -F /dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o IdentityAgent=none -o StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ConnectionAttempts=1 -o ControlMaster=auto -o ControlPersist=60 -o ${quote(`ControlPath=${controlPath}`)}`;
     env.GIT_SSH_VARIANT = 'ssh';
     if (key) {
       const identity = await credentialPath(key);
@@ -143,12 +154,16 @@ export async function createHistory(outputDir, catalog) {
     if ((await git(['symbolic-ref', 'HEAD'])).stdout.trimEnd() !== 'refs/heads/main') {
       throw new Error('Page Git history must use the main branch');
     }
+    objectFormat = (await git(['rev-parse', '--show-object-format'])).stdout.trim();
+    emptyHash = (await git(['hash-object', '--stdin'], { input: '' })).stdout.trim();
     const current = await git(['rev-parse', '--verify', '--quiet', 'refs/heads/main'], { allowed: [0, 1] });
     if (current.code === 0) {
       const tracked = (await git(['ls-tree', '-rz', '--full-tree', current.stdout.trim()])).stdout;
       for (const entry of tracked.split('\0').filter(Boolean)) {
         const tab = entry.indexOf('\t'), header = entry.slice(0, tab), name = entry.slice(tab + 1);
-        if (!/^100(?:644|755) blob [0-9a-f]+$/.test(header)) throw new Error('Existing page history must contain only regular files');
+        const blobMatch = /^100(?:644|755) blob ([0-9a-f]+)$/.exec(header);
+        if (!blobMatch) throw new Error('Existing page history must contain only regular files');
+        knownBlobs.add(blobMatch[1]);
         if (name === '.entities.json' || managed(name)) continue;
         const [root, ...parts] = name.split('/');
         if (root !== '_unassigned') entityId(root);
@@ -156,8 +171,8 @@ export async function createHistory(outputDir, catalog) {
         const leaf = parts.at(-1);
         if (leaf === '.gitkeep') {
           if (parts.length > 1) logicalPath(parts.slice(0, -1).join('/'));
-          const empty = (await git(['hash-object', '--stdin'], { input: '' })).stdout.trim();
-          if (header !== `100644 blob ${empty}`) throw new Error('Directory markers must be empty regular files');
+          if (header !== `100644 blob ${emptyHash}`) throw new Error('Directory markers must be empty regular files');
+          emptyBlobWritten = true;
         } else if (parts.length !== 1 || !managed(leaf)) {
           const logical = parts.join('/').replace(/\.src(\.html?)$/i, '$1');
           logicalPath(logical, true);
@@ -169,6 +184,7 @@ export async function createHistory(outputDir, catalog) {
     await git(['config', 'core.bare', 'true']);
     if (worktree.code === 0) await git(['config', '--unset-all', 'core.worktree']);
   } catch (error) {
+    if (sshControlDir) await rm(sshControlDir, { recursive: true, force: true }).catch(() => {});
     throw unavailable(error);
   }
 
@@ -330,7 +346,7 @@ export async function createHistory(outputDir, catalog) {
         };
       } catch (error) { if (error instanceof ApiError) throw error; throw unavailable(error); }
     },
-    async snapshot(message) {
+    async snapshot(message, { push = true } = {}) {
       let temporary;
       try {
         phase = 'snapshot';
@@ -368,12 +384,25 @@ export async function createHistory(outputDir, catalog) {
             if (!(await file.stat()).isFile()) throw new Error('Page snapshot requires regular files');
             bytes = await file.readFile();
           } finally { await file.close(); }
-          const oid = (await git(['hash-object', '-w', '--stdin'], { input: bytes })).stdout.trim();
+          let oid;
+          if (objectFormat === 'sha1') {
+            const candidate = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+            if (knownBlobs.has(candidate)) oid = candidate;
+          }
+          if (!oid) {
+            oid = (await git(['hash-object', '-w', '--stdin'], { input: bytes })).stdout.trim();
+            knownBlobs.add(oid);
+          }
           entries.push(Buffer.from(`100644 ${oid}\t${path}\0`));
         }
-        const emptyBlob = (await git(['hash-object', '-w', '--stdin'], { input: '' })).stdout.trim();
-        for (const folder of [...folders].sort()) {
-          if (![...paths, ...folders].some(path => path.startsWith(`${folder}/`))) entries.push(Buffer.from(`100644 ${emptyBlob}\t${folder}/.gitkeep\0`));
+        const emptyFolders = [...folders].sort().filter(folder => ![...paths, ...folders].some(path => path.startsWith(`${folder}/`)));
+        if (emptyFolders.length) {
+          if (!emptyBlobWritten) {
+            emptyHash = (await git(['hash-object', '-w', '--stdin'], { input: '' })).stdout.trim();
+            knownBlobs.add(emptyHash);
+            emptyBlobWritten = true;
+          }
+          for (const folder of emptyFolders) entries.push(Buffer.from(`100644 ${emptyHash}\t${folder}/.gitkeep\0`));
         }
         if (entries.length) await git(['update-index', '-z', '--index-info'], { index, input: Buffer.concat(entries) });
         const tree = (await git(['write-tree'], { index })).stdout.trim();
@@ -388,13 +417,21 @@ export async function createHistory(outputDir, catalog) {
           await git(['update-ref', '-m', 'Page history snapshot', 'refs/heads/main', next, head ?? '0'.repeat(next.length)]);
           head = next;
         }
-        if (remote && head) {
+        if (push && remote && head && head !== pushedHead) {
           phase = 'push';
           await git(['-c', 'push.followTags=false', 'push', '--no-verify', '--recurse-submodules=no', '--', remote, 'refs/heads/main:refs/heads/main'], { timeout: 90000 });
+          pushedHead = head;
         }
         return head;
       } catch (error) { throw unavailable(error); }
       finally { if (temporary) await rm(temporary, { recursive: true, force: true }).catch(() => console.error('Page history temporary index cleanup failed')); }
+    },
+    async close() {
+      if (sshControlDir) {
+        const dir = sshControlDir;
+        sshControlDir = null;
+        await rm(dir, { recursive: true, force: true }).catch(() => {});
+      }
     },
   };
 }

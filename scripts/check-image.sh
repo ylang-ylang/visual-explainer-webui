@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-node --test scripts/catalog-test.mjs
+node --test scripts/catalog-test.mjs scripts/events-test.mjs scripts/accounts-test.mjs
 fixture=$(mktemp -d)
 name="ve-wrapper-check-$(node -e 'console.log(require("node:crypto").randomBytes(6).toString("hex"))')"
 image="${VE_CHECK_IMAGE:-${name}:local}"
@@ -135,6 +135,13 @@ docker restart "$name" >/dev/null
 wait_ready
 docker exec --interactive --env VE_COMMENTS_SMOKE=1 --env VE_COMMENTS_PHASE=persistence --workdir /opt/bridge \
   "$name" node --input-type=module < scripts/comments-smoke.mjs
+
+docker exec --interactive --env VE_EVENTS_ACCOUNTS_SMOKE=1 --workdir /opt/bridge \
+  "$name" node --input-type=module < scripts/events-accounts-smoke.mjs
+docker restart "$name" >/dev/null
+wait_ready
+docker exec --interactive --env VE_EVENTS_ACCOUNTS_SMOKE=1 --env VE_EVENTS_ACCOUNTS_PHASE=persistence --workdir /opt/bridge \
+  "$name" node --input-type=module < scripts/events-accounts-smoke.mjs
 
 # Existing bare, already-projected v1 history is a distinct migration path.
 docker rm --force "$name" >/dev/null

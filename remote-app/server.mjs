@@ -14,7 +14,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { parse } from 'node-html-parser';
 import { ApiError, canonicalFilename, createCatalog, logicalPath, pageFilename, sourceFilename, sourcePairs } from './catalog.mjs';
+import { createAccounts, createShares } from './accounts.mjs';
 import { createComments, formatCommentsSummary, normalizeAuthor } from './comments.mjs';
+import { createEventHub } from './events.mjs';
 import { createHistory } from './history.mjs';
 import { createTokens } from './tokens.mjs';
 
@@ -34,45 +36,90 @@ const sessionLifetime = 7 * 24 * 60 * 60;
 const catalog = await createCatalog(outputDir);
 const tokens = await createTokens(outputDir, catalog);
 const comments = await createComments(outputDir);
+const accounts = await createAccounts(outputDir);
+const shares = await createShares(outputDir);
+const events = createEventHub();
 const history = await createHistory(outputDir, catalog);
 await catalog.run(() => history.snapshot('Snapshot existing pages'));
 
 const sessionCookies = {
   admin: { name: 've_admin', context: 'admin-session' },
+  account: { name: 've_acct', context: 'account-session' },
   viewer: { name: 've_reader', context: 'reader-session' },
   legacy: { name: 've_viewer', context: 'viewer-session' },
 };
 function sessionSignature(expires, kind) {
   return createHmac('sha256', token).update(`${sessionCookies[kind].context}:${expires}`).digest('hex');
 }
+function accountSessionSignature(accountId, expires) {
+  return createHmac('sha256', token).update(`${sessionCookies.account.context}:${accountId}:${expires}`).digest('hex');
+}
+function cookieValue(req, name) {
+  const prefix = `${name}=`;
+  return (req.headers.cookie ?? '').split(';').map(value => value.trim()).find(value => value.startsWith(prefix))?.slice(prefix.length) ?? '';
+}
 function hasSession(req, kind) {
-  const prefix = `${sessionCookies[kind].name}=`;
-  const value = (req.headers.cookie ?? '').split(';').map(value => value.trim()).find(value => value.startsWith(prefix))?.slice(prefix.length);
+  const value = cookieValue(req, sessionCookies[kind].name);
   if (!value) return false;
-  const [expires, sig] = value.split('.');
+  const parts = value.split('.');
+  if (parts.length !== 2) return false;
+  const [expires, sig] = parts;
   const remaining = Number(expires) - Math.floor(Date.now() / 1000);
   return remaining > 0 && remaining <= sessionLifetime && equal(sig ?? '', sessionSignature(expires, kind));
 }
-function setSession(res, kind) {
+function readAccountSession(req) {
+  const value = cookieValue(req, sessionCookies.account.name);
+  if (!value) return null;
+  const parts = value.split('.');
+  if (parts.length !== 3) return null;
+  const [accountId, expires, sig] = parts;
+  const remaining = Number(expires) - Math.floor(Date.now() / 1000);
+  if (!(remaining > 0 && remaining <= sessionLifetime) || !equal(sig ?? '', accountSessionSignature(accountId, expires))) return null;
+  const acct = accounts.get(accountId);
+  if (!acct || acct.builtIn) return null;
+  return { role: acct.role, accountId: acct.id, name: acct.name, builtIn: false };
+}
+function setSession(res, kind, accountId = null) {
   const expires = Math.floor(Date.now() / 1000) + sessionLifetime;
   const secure = publicUrl.protocol === 'https:' ? '; Secure' : '';
+  const activeValue = kind === 'account'
+    ? `${accountId}.${expires}.${accountSessionSignature(accountId, expires)}`
+    : `${expires}.${sessionSignature(expires, kind)}`;
   res.setHeader('Set-Cookie', [kind, ...Object.keys(sessionCookies).filter(role => role !== kind)].map(role => {
     const { name } = sessionCookies[role];
-    return `${name}=${role === kind ? `${expires}.${sessionSignature(expires, kind)}` : ''}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${role === kind ? sessionLifetime : 0}${secure}`;
+    return `${name}=${role === kind ? activeValue : ''}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${role === kind ? sessionLifetime : 0}${secure}`;
   }));
 }
 function identity(req) {
   if (req.headers.authorization) {
-    if (equal(req.headers.authorization, `Bearer ${token}`)) return { role: 'admin', bearer: true };
+    if (equal(req.headers.authorization, `Bearer ${token}`)) {
+      return { role: 'admin', accountId: 'owner', name: accounts.ownerName(), builtIn: true, bearer: true };
+    }
     const match = req.headers.authorization.match(/^Bearer (.+)$/);
-    const agent = match && tokens.authenticate(match[1]);
-    if (agent) return agent;
+    if (match) {
+      const acct = accounts.authenticate(match[1]);
+      if (acct) return { role: acct.role, accountId: acct.id, name: acct.name, builtIn: false, bearer: true };
+      const agent = tokens.authenticate(match[1]);
+      if (agent) return agent;
+    }
     throw new ApiError(401, 'Authentication required');
   }
-  if (hasSession(req, 'admin')) return { role: 'admin' };
+  if (hasSession(req, 'admin')) return { role: 'admin', accountId: 'owner', name: accounts.ownerName(), builtIn: true };
+  const acct = readAccountSession(req);
+  if (acct) return acct;
   if (hasSession(req, 'viewer')) return { role: 'viewer' };
-  if (hasSession(req, 'legacy')) return { role: 'admin', legacy: true };
+  if (hasSession(req, 'legacy')) return { role: 'admin', accountId: 'owner', name: accounts.ownerName(), builtIn: true, legacy: true };
   throw new ApiError(401, 'Authentication required');
+}
+function commentActor(authorName, auth) {
+  const explicit = (authorName !== undefined && authorName !== null && authorName !== '')
+    ? authorName
+    : (auth.role !== 'agent' && auth.name ? auth.name : undefined);
+  return normalizeAuthor(explicit, auth.role);
+}
+function guestErrorHtml(title, message) {
+  const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f7f7f8;color:#111318;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}@media(prefers-color-scheme:dark){body{background:#0e1014;color:#f0f2f6}main{background:#14171d;border-color:#242934}p{color:#9ba3b4}}main{max-width:420px;width:100%;padding:28px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;text-align:center}h1{margin:0 0 8px;font-size:17px;font-weight:600}p{margin:0;color:#4b5563}</style></head><body><main><h1>${esc(title)}</h1><p>${esc(message)}</p></main></body></html>`;
 }
 function versionSignature(filename, revision) {
   return createHmac('sha256', token).update(`version:${filename}:${revision}`).digest('hex');
@@ -574,7 +621,7 @@ async function deletePage(filename) {
   }
   // Direct filesystem edits may not yet be in Git. Preserve the exact old HTML
   // and source before removing anything; identical snapshots make no new commit.
-  await history.snapshot(`Snapshot before deleting page ${filename}`);
+  await history.snapshot(`Snapshot before deleting page ${filename}`, { push: false });
   const currentNames = await readdir(outputDir);
   if (JSON.stringify(companions) !== JSON.stringify(sourcePairs(currentNames).get(filename) ?? []) ||
       JSON.stringify(sheets) !== JSON.stringify(currentNames.filter(name => sheetPattern.test(name))) ||
@@ -584,6 +631,7 @@ async function deletePage(filename) {
   const staging = await mkdtemp(join(outputDir, '.delete-'));
   const moved = [];
   let removedComments = [];
+  let removedShares = [];
   try {
     for (const { name, info } of files) {
       const current = await lstat(join(outputDir, name));
@@ -596,10 +644,12 @@ async function deletePage(filename) {
     }
     await catalog.forgetPage(filename);
     removedComments = await comments.forgetPage(filename);
+    removedShares = await shares.forgetPage(filename);
   } catch (error) {
     // A filesystem/catalog failure restores staged originals. A Git failure below
     // follows the existing local-first contract instead of rolling back content.
     try {
+      await shares.restorePage(removedShares);
       await comments.restorePage(removedComments);
       for (const name of moved.reverse()) {
         const occupied = await lstat(join(outputDir, name)).catch(failure => {
@@ -938,6 +988,30 @@ const http = createServer(async (req, res) => {
         return send(res, 200, body, 'text/html; charset=utf-8');
       });
     }
+    if (url.pathname.startsWith('/s/') && ['GET', 'HEAD'].includes(req.method)) {
+      const parts = url.pathname.split('/');
+      const head = req.method === 'HEAD';
+      if (parts.length !== 3 || !parts[2]) {
+        return send(res, 404, head ? '' : guestErrorHtml('Share link not found', 'Share link not found or revoked.'), 'text/html; charset=utf-8');
+      }
+      const resolved = shares.resolve(parts[2]);
+      if (resolved.status === 'not_found') {
+        return send(res, 404, head ? '' : guestErrorHtml('Share link not found', 'Share link not found or revoked.'), 'text/html; charset=utf-8');
+      }
+      if (resolved.status === 'expired') {
+        return send(res, 410, head ? '' : guestErrorHtml('Share link expired', 'This share link has expired.'), 'text/html; charset=utf-8');
+      }
+      const bytes = await regularBytes(resolved.share.filename).catch(error => {
+        if (error instanceof ApiError && error.status === 409) return null;
+        throw error;
+      });
+      if (bytes === null) {
+        return send(res, 404, head ? '' : guestErrorHtml('Share link not found', 'Share link not found or revoked.'), 'text/html; charset=utf-8');
+      }
+      res.setHeader('Content-Security-Policy', 'sandbox allow-scripts; frame-ancestors \'self\'');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      return send(res, 200, head ? '' : bytes, 'text/html; charset=utf-8');
+    }
     if (['/assets/cjk.woff2', '/assets/cjk-license'].includes(url.pathname) && ['GET', 'HEAD'].includes(req.method)) {
       const font = url.pathname.endsWith('.woff2');
       res.writeHead(200, {
@@ -951,7 +1025,12 @@ const http = createServer(async (req, res) => {
     if (url.pathname === '/' && req.method === 'GET') {
       if (url.searchParams.has('access')) {
         if (!equal(url.searchParams.get('access'), viewerKey)) return send(res, 403, 'Invalid viewer access link');
-        setSession(res, hasSession(req, 'admin') || hasSession(req, 'legacy') ? 'admin' : 'viewer');
+        if (hasSession(req, 'admin') || hasSession(req, 'legacy')) setSession(res, 'admin');
+        else {
+          const acct = readAccountSession(req);
+          if (acct) setSession(res, 'account', acct.accountId);
+          else setSession(res, 'viewer');
+        }
         res.writeHead(303, { Location: '/', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
         return res.end();
       }
@@ -962,9 +1041,16 @@ const http = createServer(async (req, res) => {
     if (url.pathname === '/api/login' && req.method === 'POST') {
       if (req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
       const key = new URLSearchParams(await readBody(req, 1024)).get('key') ?? '';
-      if (!equal(key, token)) throw new ApiError(401, 'Invalid access key');
-      setSession(res, 'admin');
-      return send(res, 200, 'ok');
+      if (equal(key, token)) {
+        setSession(res, 'admin');
+        return send(res, 200, 'ok');
+      }
+      const acct = accounts.authenticate(key);
+      if (acct) {
+        setSession(res, 'account', acct.id);
+        return send(res, 200, 'ok');
+      }
+      throw new ApiError(401, 'Invalid access key');
     }
     if (url.pathname === '/api/logout' && req.method === 'POST') {
       if (req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
@@ -972,18 +1058,84 @@ const http = createServer(async (req, res) => {
       return send(res, 200, 'ok');
     }
     if (url.pathname.startsWith('/api/')) {
+      const apiParts = url.pathname.split('/').slice(2).map(decodeSegment);
+      if (apiParts.length === 3 && apiParts[0] === 'entities' && apiParts[2] === 'events' && req.method === 'GET') {
+        if (req.headers.origin && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
+        const id = apiParts[1];
+        const subTarget = await catalog.run(async () => {
+          const auth = identity(req);
+          const allowed = (auth.role === 'agent' && id === auth.entityId) || auth.role === 'admin' || auth.role === 'user';
+          if (!allowed) throw new ApiError(403, 'Entity-scoped access only');
+          catalog.entity(id);
+          const rawPath = url.searchParams.get('path');
+          let filename = null;
+          let path = '';
+          if (rawPath) {
+            path = logicalPath(rawPath, true);
+            filename = catalog.find(id, path);
+            if (!filename) throw new ApiError(404, 'File not found');
+            await requirePage(filename);
+          }
+          return { entityId: id, filename, path };
+        });
+        const onceRaw = (url.searchParams.get('once') ?? '').trim().toLowerCase();
+        const once = onceRaw === '1' || onceRaw === 'true';
+        events.subscribe(req, res, {
+          entityId: subTarget.entityId,
+          filename: subTarget.filename,
+          path: subTarget.path,
+          events: url.searchParams.get('events'),
+          once,
+          timeoutSec: url.searchParams.get('timeout'),
+          after: url.searchParams.get('after'),
+          client: url.searchParams.get('client') ?? '',
+          ip: req.socket?.remoteAddress,
+          inScope: catalog.inScope,
+        });
+        return;
+      }
       return await catalog.run(async () => {
         const auth = identity(req);
-        const parts = url.pathname.split('/').slice(2).map(decodeSegment);
+        const parts = apiParts;
+        const isWorkspaceMember = auth.role === 'admin' || auth.role === 'user';
         const originalRead = originalReadonly(parts, req.method);
         const mutation = !['GET', 'HEAD'].includes(req.method) && !originalRead;
         if (req.headers.origin && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
         if (mutation && auth.role === 'viewer') throw new ApiError(401, 'Admin authentication required');
-        if (mutation && auth.role === 'admin' && !auth.bearer && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Same-origin Origin required');
+        if (mutation && isWorkspaceMember && !auth.bearer && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Same-origin Origin required');
         const [resource, id, action] = parts;
         if (resource === 'session' && parts.length === 1 && req.method === 'GET') {
           if (auth.legacy) setSession(res, 'admin');
-          return json(res, 200, { role: auth.role, ...(auth.entityId ? { entityId: auth.entityId } : {}) });
+          return json(res, 200, {
+            role: auth.role,
+            ...(auth.accountId ? { accountId: auth.accountId, name: auth.name, builtIn: auth.builtIn } : {}),
+            ...(auth.entityId ? { entityId: auth.entityId } : {}),
+          });
+        }
+        if (resource === 'session' && id === 'name' && parts.length === 2 && req.method === 'PATCH') {
+          if (!isWorkspaceMember) throw new ApiError(403, 'Account authentication required');
+          const body = await readJson(req, 4096);
+          fields(body, ['name'], ['name']);
+          const account = await accounts.rename(auth.accountId, body.name);
+          return json(res, 200, { account });
+        }
+        if (resource === 'accounts') {
+          if (auth.role !== 'admin') throw new ApiError(403, 'Admin authentication required');
+          if (parts.length === 1 && req.method === 'GET') return json(res, 200, accounts.list());
+          if (parts.length === 1 && req.method === 'POST') {
+            const body = await readJson(req, 4096);
+            fields(body, ['name', 'role'], ['name']);
+            return json(res, 201, await accounts.create({ name: body.name, role: body.role ?? 'user' }));
+          }
+          if (parts.length === 2 && req.method === 'PATCH') {
+            const body = await readJson(req, 4096);
+            fields(body, ['name'], ['name']);
+            return json(res, 200, { account: await accounts.rename(id, body.name) });
+          }
+          if (parts.length === 2 && req.method === 'DELETE') {
+            await accounts.remove(id);
+            return send(res, 204, '');
+          }
         }
         if (auth.role === 'agent') {
           const scoped = resource === 'entities' && id === auth.entityId &&
@@ -1083,7 +1235,7 @@ const http = createServer(async (req, res) => {
           }
         }
         if (resource === 'entities' && action === 'tokens') {
-          if (auth.role !== 'admin') throw new ApiError(auth.role === 'viewer' && mutation ? 401 : 403, 'Admin authentication required');
+          if (!isWorkspaceMember) throw new ApiError(auth.role === 'viewer' && mutation ? 401 : 403, 'Admin authentication required');
           if (parts.length === 3 && req.method === 'GET') return json(res, 200, { tokens: tokens.list(id) });
           if (parts.length === 3 && req.method === 'POST') {
             const body = await readJson(req, 4096); fields(body, ['name', 'expiresIn'], []);
@@ -1110,6 +1262,7 @@ const http = createServer(async (req, res) => {
             return send(res, 200, bytes, 'text/html; charset=utf-8');
           }
           if (req.method === 'PUT') {
+            if (req.headers['if-none-match'] === '*' && filename) throw new ApiError(409, 'A page with this name already exists');
             if (!/^text\/html(?:\s*;\s*charset\s*=\s*(?:"utf-8"|utf-8))?\s*$/i.test(req.headers['content-type'] ?? '')) throw new ApiError(415, 'Use Content-Type: text/html; charset=utf-8');
             const bytes = await readBody(req, 12 * 1024 * 1024, true);
             let html;
@@ -1187,16 +1340,34 @@ const http = createServer(async (req, res) => {
             const path = logicalPath(body.path, true);
             const filename = catalog.find(id, path);
             if (!filename) throw new ApiError(404, 'File not found');
-            await requirePage(filename);
-            const actor = normalizeAuthor(body.authorName, auth.role);
+            const page = await requirePage(filename);
+            const actor = commentActor(body.authorName, auth);
             if (body.replyTo !== undefined) {
               const result = await comments.reply({ filename, threadId: body.replyTo, author: actor, body: body.body });
+              if (auth.role !== 'agent') {
+                events.emit({
+                  type: 'comment.replied',
+                  entityId: page.entityId ?? null,
+                  filename,
+                  path: page.path || filename,
+                  payload: { threadId: result.thread.id, reply: result.reply, reopened: result.reopened, thread: result.thread, author: actor },
+                });
+              }
               return json(res, 201, result);
             }
             const latest = await history.latestVersion(filename);
             const verNum = body.version !== undefined ? parseVersionQuery(body.version) : (latest?.version ?? null);
             const rev = body.revision ?? latest?.revision ?? null;
             const result = await comments.create({ filename, version: verNum, revision: rev, where: body.where, author: actor, body: body.body });
+            if (auth.role !== 'agent') {
+              events.emit({
+                type: 'comment.created',
+                entityId: page.entityId ?? null,
+                filename,
+                path: page.path || filename,
+                payload: { threadId: result.thread.id, thread: result.thread, author: actor },
+              });
+            }
             return json(res, 201, result);
           }
           if (parts.length === 5 && ['resolve', 'reopen'].includes(parts[4]) && req.method === 'POST') {
@@ -1212,12 +1383,22 @@ const http = createServer(async (req, res) => {
               filename = existing.filename;
               if (!catalog.inScope(id, catalog.assignment(filename))) throw new ApiError(403, 'Comment is outside folder scope');
             }
-            await requirePage(filename);
+            const page = await requirePage(filename);
             if (parts[4] === 'resolve') {
-              const actor = normalizeAuthor(body.authorName, auth.role);
+              const actor = commentActor(body.authorName, auth);
               return json(res, 200, await comments.resolve({ filename, threadId, actor, note: body.note ?? '' }));
             }
-            return json(res, 200, await comments.reopen({ filename, threadId }));
+            const result = await comments.reopen({ filename, threadId });
+            if (auth.role !== 'agent' && result.changed) {
+              events.emit({
+                type: 'comment.reopened',
+                entityId: page.entityId ?? null,
+                filename,
+                path: page.path || filename,
+                payload: { threadId: result.thread.id, thread: result.thread },
+              });
+            }
+            return json(res, 200, result);
           }
         }
         if (resource === 'pages' && parts.length === 1 && req.method === 'GET') {
@@ -1225,6 +1406,31 @@ const http = createServer(async (req, res) => {
           if (filter !== null && filter !== '') catalog.entity(filter);
           const pages = await listPages();
           return json(res, 200, { pages: filter === null ? pages : pages.filter(page => filter ? catalog.inScope(filter, page.entityId) : page.entityId === null) });
+        }
+        if (resource === 'pages' && action === 'listeners' && parts.length === 3 && req.method === 'GET') {
+          if (!isWorkspaceMember) throw new ApiError(403, 'Authentication required');
+          const page = await requirePage(id);
+          return json(res, 200, { listeners: events.hostSummary({ entityId: page.entityId ?? null, filename: id, inScope: catalog.inScope }) });
+        }
+        if (resource === 'pages' && action === 'shares') {
+          if (!isWorkspaceMember) throw new ApiError(auth.role === 'viewer' && mutation ? 401 : 403, 'Authentication required');
+          await requirePage(id);
+          if (parts.length === 3 && req.method === 'GET') return json(res, 200, { shares: shares.list(id) });
+          if (parts.length === 3 && req.method === 'POST') {
+            const body = await readJson(req, 4096);
+            fields(body, ['expiresIn', 'label'], ['expiresIn']);
+            const created = await shares.create({
+              filename: id,
+              expiresIn: body.expiresIn,
+              label: body.label ?? '',
+              createdBy: auth.name || 'Owner',
+            });
+            return json(res, 201, { share: created.share, url: new URL(`/s/${created.token}`, publicUrl).href });
+          }
+          if (parts.length === 4 && req.method === 'DELETE') {
+            await shares.revoke(parts[3], id);
+            return send(res, 204, '');
+          }
         }
         if (resource === 'pages' && action === 'comments') {
           const page = await requirePage(id);
@@ -1234,20 +1440,65 @@ const http = createServer(async (req, res) => {
             const latest = await history.latestVersion(id);
             const currentVersion = latest ? { number: latest.version, label: latest.label, revision: latest.revision, note: latest.note } : null;
             const { threads, counts } = comments.list(id, { status: filter, version: versionFilter });
-            return json(res, 200, { page, currentVersion, counts, threads, summary: formatCommentsSummary(threads, page, currentVersion) });
+            const listeners = events.hostSummary({ entityId: page.entityId ?? null, filename: id, inScope: catalog.inScope });
+            return json(res, 200, { page, currentVersion, counts, threads, summary: formatCommentsSummary(threads, page, currentVersion), listeners });
+          }
+          if (parts.length === 4 && parts[3] === 'dispatch' && req.method === 'POST') {
+            if (!isWorkspaceMember) throw new ApiError(403, 'Authentication required');
+            const body = await readOptionalJson(req, 8192);
+            fields(body, ['note'], []);
+            const note = cleanNote(body.note);
+            const latest = await history.latestVersion(id);
+            const currentVersion = latest ? { number: latest.version, label: latest.label, revision: latest.revision, note: latest.note } : null;
+            const { threads, counts } = comments.list(id, { status: 'open' });
+            const summary = formatCommentsSummary(threads, page, currentVersion);
+            const delivered = events.emit({
+              type: 'comment.dispatch',
+              entityId: page.entityId ?? null,
+              filename: id,
+              path: page.path || id,
+              payload: { note, openCount: counts.open, currentVersion, threads, summary, dispatchedBy: auth.name || 'Owner' },
+            });
+            const listeners = events.hostSummary({ entityId: page.entityId ?? null, filename: id, inScope: catalog.inScope });
+            return json(res, 200, {
+              ok: true,
+              eventId: delivered.event.id,
+              openCount: counts.open,
+              deliveredHosts: delivered.deliveredHosts,
+              deliveredConnections: delivered.deliveredConnections,
+              listeners,
+            });
           }
           if (parts.length === 3 && req.method === 'POST') {
             const body = await readJson(req, 32768);
             fields(body, ['body', 'where', 'replyTo', 'version', 'revision', 'authorName'], ['body']);
-            const actor = normalizeAuthor(body.authorName, auth.role);
+            const actor = commentActor(body.authorName, auth);
             if (body.replyTo !== undefined) {
               const result = await comments.reply({ filename: id, threadId: body.replyTo, author: actor, body: body.body });
+              if (auth.role !== 'agent') {
+                events.emit({
+                  type: 'comment.replied',
+                  entityId: page.entityId ?? null,
+                  filename: id,
+                  path: page.path || id,
+                  payload: { threadId: result.thread.id, reply: result.reply, reopened: result.reopened, thread: result.thread, author: actor },
+                });
+              }
               return json(res, 201, result);
             }
             const latest = await history.latestVersion(id);
             const verNum = body.version !== undefined ? parseVersionQuery(body.version) : (latest?.version ?? null);
             const rev = body.revision ?? latest?.revision ?? null;
             const result = await comments.create({ filename: id, version: verNum, revision: rev, where: body.where, author: actor, body: body.body });
+            if (auth.role !== 'agent') {
+              events.emit({
+                type: 'comment.created',
+                entityId: page.entityId ?? null,
+                filename: id,
+                path: page.path || id,
+                payload: { threadId: result.thread.id, thread: result.thread, author: actor },
+              });
+            }
             return json(res, 201, result);
           }
           if (parts.length === 5 && ['resolve', 'reopen'].includes(parts[4]) && req.method === 'POST') {
@@ -1255,18 +1506,28 @@ const http = createServer(async (req, res) => {
             const body = await readOptionalJson(req, 16384);
             fields(body, parts[4] === 'resolve' ? ['note', 'authorName'] : [], []);
             if (parts[4] === 'resolve') {
-              const actor = normalizeAuthor(body.authorName, auth.role);
+              const actor = commentActor(body.authorName, auth);
               return json(res, 200, await comments.resolve({ filename: id, threadId, actor, note: body.note ?? '' }));
             }
-            return json(res, 200, await comments.reopen({ filename: id, threadId }));
+            const result = await comments.reopen({ filename: id, threadId });
+            if (auth.role !== 'agent' && result.changed) {
+              events.emit({
+                type: 'comment.reopened',
+                entityId: page.entityId ?? null,
+                filename: id,
+                path: page.path || id,
+                payload: { threadId: result.thread.id, thread: result.thread },
+              });
+            }
+            return json(res, 200, result);
           }
           if (parts.length === 4 && req.method === 'PATCH') {
-            if (auth.role !== 'admin') throw new ApiError(403, 'Admin authentication required');
+            if (!isWorkspaceMember) throw new ApiError(403, 'Admin authentication required');
             const body = await readJson(req, 32768); fields(body, ['body'], ['body']);
             return json(res, 200, await comments.edit({ filename: id, commentId: parts[3], body: body.body }));
           }
           if (parts.length === 4 && req.method === 'DELETE') {
-            if (auth.role !== 'admin') throw new ApiError(403, 'Admin authentication required');
+            if (!isWorkspaceMember) throw new ApiError(403, 'Admin authentication required');
             return json(res, 200, await comments.remove({ filename: id, commentId: parts[3] }));
           }
         }
@@ -1289,7 +1550,7 @@ const http = createServer(async (req, res) => {
         }
         if (resource === 'pages' && parts.length === 2 && req.method === 'GET') return json(res, 200, { page: await requirePage(id) });
         if (resource === 'pages' && parts.length === 2 && req.method === 'DELETE') {
-          if (auth.role !== 'admin') throw new ApiError(403, 'Admin authentication required');
+          if (!isWorkspaceMember) throw new ApiError(403, 'Admin authentication required');
           await deletePage(id);
           return send(res, 204, '');
         }
@@ -1305,6 +1566,7 @@ const http = createServer(async (req, res) => {
         }
         if (resource === 'pages' && parts.length === 2 && req.method === 'PUT') {
           canonicalFilename(id);
+          if (req.headers['if-none-match'] === '*' && await readPage(id)) throw new ApiError(409, 'A page with this name already exists');
           const body = await readJson(req, 12 * 1024 * 1024); fields(body, ['html', 'entityId', 'note'], ['html']);
           const result = requireRender(await renderLocked({ ...body, filename: id }, true));
           return json(res, result.created ? 201 : 200, {
@@ -1318,7 +1580,7 @@ const http = createServer(async (req, res) => {
     if (url.pathname !== '/mcp') return send(res, 404, 'Not found');
     if (!equal(req.headers.authorization ?? '', `Bearer ${token}`)) {
       const match = req.headers.authorization?.match(/^Bearer (.+)$/);
-      throw new ApiError(match && tokens.authenticate(match[1]) ? 403 : 401, 'Service Bearer token required');
+      throw new ApiError(match && (tokens.authenticate(match[1]) || accounts.authenticate(match[1])) ? 403 : 401, 'Service Bearer token required');
     }
     if (req.headers.origin && req.headers.origin !== publicUrl.origin) throw new ApiError(403, 'Unexpected Origin');
     if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); throw new ApiError(405, 'Use stateless MCP POST'); }
@@ -1343,7 +1605,9 @@ http.requestTimeout = 180000;
 http.listen(Number(process.env.PORT ?? 8080), '0.0.0.0', () => console.log(`Visual Explainer ready: ${publicUrl.origin}/mcp`));
 for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, async () => {
   stopping = true;
+  events.closeAll();
   http.close();
   await upstream.close();
+  await history.close?.();
   process.exit(0);
 });

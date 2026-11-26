@@ -265,9 +265,18 @@
       border-top: 1px solid var(--border);
       display: flex;
       align-items: center;
+      gap: 4px;
+      min-width: 0;
     }
-    .library-account .btn { width: 100%; justify-content: flex-start; height: 32px; color: var(--ink-3); font-size: 12.5px; }
-    .library-account .btn:hover { color: var(--ink); }
+    #admin-unlock { width: 100%; justify-content: flex-start; height: 32px; color: var(--ink-3); font-size: 12.5px; }
+    #admin-unlock:hover { color: var(--ink); }
+    #account-self { flex: 1; min-width: 0; justify-content: flex-start; height: 30px; padding: 0 8px; color: var(--ink-2); font-size: 12.5px; }
+    #account-self:hover { color: var(--ink); }
+    #account-self-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    #accounts-open { flex: none; height: 30px; padding: 0 8px; font-size: 12px; color: var(--ink-3); }
+    #accounts-open:hover { color: var(--ink); }
+    #logout { flex: none; width: 30px; height: 30px; padding: 0; color: var(--ink-3); }
+    #logout:hover { color: var(--ink); }
 
     .list-message { padding: 40px 14px; text-align: center; }
     .list-message strong { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
@@ -403,6 +412,30 @@
       background: var(--surface);
     }
     .comments-head h2 { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+    .comments-dispatch-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .hosts-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11.5px;
+      color: var(--ink-3);
+    }
+    .hosts-pill.online { color: var(--ink-2); }
+    .hosts-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-strong); flex: none; }
+    .hosts-pill.online .hosts-dot { background: #16a34a; }
+    #comments-dispatch { height: 26px; padding: 0 10px; font-size: 12px; }
 
     .comment-composer {
       padding: 14px;
@@ -699,6 +732,10 @@
       overflow-wrap: anywhere;
     }
     textarea.code-field { resize: vertical; min-height: 110px; white-space: pre-wrap; }
+    .field-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 6px; }
+    .field-row label { margin: 0; }
+    .field-row .btn { height: 26px; padding: 0 9px; font-size: 11.5px; }
+    #new-page-html { margin-top: 0; }
     #api-secret { font-family: var(--font-mono); font-size: 12px; }
     #api-unlock { margin-top: 10px; }
 
@@ -710,6 +747,53 @@
     .version-title-line { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
     .version-current-tag { padding: 1px 6px; border-radius: 4px; background: var(--primary); color: var(--primary-fg); font-size: 10.5px; font-weight: 600; }
     .version-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+    .inline-form-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .inline-form-row input { flex: 1; min-width: 0; }
+    .inline-form-row select { width: 96px; flex: none; }
+    .inline-form-row .btn { height: 36px; flex: none; }
+    .secret-reveal {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--accent-border);
+      border-radius: 8px;
+      background: var(--accent-soft);
+      display: grid;
+      gap: 6px;
+    }
+    .secret-reveal-label { font-size: 11.5px; font-weight: 600; color: var(--accent); }
+    .secret-reveal-row { display: flex; align-items: center; gap: 6px; }
+    .secret-reveal-row input {
+      flex: 1;
+      min-width: 0;
+      height: 32px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      background: var(--surface);
+    }
+    .secret-reveal-row .btn { height: 32px; flex: none; }
+    .mgmt-list { margin-top: 12px; }
+    .mgmt-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .mgmt-row:last-child { border-bottom: 0; }
+    .mgmt-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+    .mgmt-inline-edit { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+    .mgmt-inline-edit input { height: 30px; flex: 1; min-width: 0; }
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--surface-2);
+      color: var(--ink-2);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .role-badge.admin { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }
+    .share-form-grid { display: grid; grid-template-columns: 120px 1fr auto; gap: 8px; margin-top: 12px; align-items: center; }
+    .share-form-grid .btn { height: 36px; }
+    @media (max-width: 520px) {
+      .share-form-grid { grid-template-columns: 1fr; }
+    }
 
     #notice {
       position: fixed;
@@ -786,9 +870,13 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-5-4 5-5-5-5m5 5H3"/></svg>
           <span>Sign in</span>
         </button>
-        <button id="logout" class="btn" type="button" hidden>
+        <button id="account-self" class="btn" type="button" title="Rename display name" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
+          <span id="account-self-name">Owner</span>
+        </button>
+        <button id="accounts-open" class="btn" type="button" title="Manage users" hidden>Users</button>
+        <button id="logout" class="btn icon-only" type="button" aria-label="Sign out" title="Sign out" hidden>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9"/></svg>
-          <span>Sign out</span>
         </button>
       </div>
     </aside>
@@ -815,6 +903,9 @@
           </button>
           <button id="viewer-api" class="btn icon-only" type="button" aria-label="File API" title="File API" hidden>
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9m-4 4 2 2m1-5 2 2"/></svg>
+          </button>
+          <button id="viewer-share" class="btn icon-only" type="button" aria-label="Share guest link" title="Share guest link" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4m0-11-6.8 4"/></svg>
           </button>
           <button id="theme-toggle" class="btn icon-only" type="button" aria-label="Theme: Auto" title="Theme: Auto">
             <svg class="icon icon-auto" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>
@@ -856,6 +947,13 @@
               <span id="pick-element-label">Pick</span>
             </button>
             <button id="comments-close" class="btn icon-only" type="button" aria-label="Close comments" title="Close">×</button>
+          </div>
+          <div id="comments-dispatch-bar" class="comments-dispatch-bar" hidden>
+            <span id="comments-hosts" class="hosts-pill" title="No connected hosts">
+              <span class="hosts-dot" aria-hidden="true"></span>
+              <span id="comments-hosts-text">0 hosts</span>
+            </span>
+            <button id="comments-dispatch" class="btn primary" type="button" hidden>Send</button>
           </div>
           <form id="comment-composer" class="comment-composer" hidden>
             <div id="comment-anchor" class="anchor-chip" hidden>
@@ -921,6 +1019,29 @@
     </form>
   </dialog>
 
+  <dialog id="new-page-dialog" class="panel" aria-labelledby="new-page-title">
+    <form id="new-page-form">
+      <div class="dialog-heading">
+        <h2 id="new-page-title">New page</h2>
+        <button class="btn icon-only" type="button" data-close="new-page-dialog" aria-label="Close">×</button>
+      </div>
+      <p id="new-page-location" class="subtle"></p>
+      <label for="new-page-name">Name</label>
+      <input id="new-page-name" autocomplete="off" maxlength="120" placeholder="architecture-overview" required>
+      <div class="field-row">
+        <label for="new-page-html">HTML (optional)</label>
+        <button id="new-page-upload" class="btn bordered" type="button">Upload .html</button>
+        <input id="new-page-file" type="file" accept=".html,.htm,text/html" hidden>
+      </div>
+      <textarea id="new-page-html" class="code-field" rows="5" spellcheck="false" placeholder="Leave blank for a starter page, or paste / upload HTML…"></textarea>
+      <p id="new-page-error" class="dialog-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn bordered" type="button" data-close="new-page-dialog">Cancel</button>
+        <button id="new-page-submit" class="btn primary" type="submit">Create</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="api-dialog" class="panel" aria-labelledby="api-title">
     <div class="dialog-heading">
       <h2 id="api-title">Folder API</h2>
@@ -974,6 +1095,75 @@
     </form>
   </dialog>
 
+  <dialog id="rename-self-dialog" class="panel" aria-labelledby="rename-self-title">
+    <form id="rename-self-form">
+      <div class="dialog-heading">
+        <h2 id="rename-self-title">Display name</h2>
+        <button class="btn icon-only" type="button" data-close="rename-self-dialog" aria-label="Close">×</button>
+      </div>
+      <label for="rename-self-input">Name</label>
+      <input id="rename-self-input" autocomplete="off" maxlength="64" required>
+      <p class="subtle">Shown on new comments and share links.</p>
+      <p id="rename-self-error" class="dialog-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn bordered" type="button" data-close="rename-self-dialog">Cancel</button>
+        <button id="rename-self-submit" class="btn primary" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="accounts-dialog" class="panel" aria-labelledby="accounts-title">
+    <div class="dialog-heading">
+      <h2 id="accounts-title">Users</h2>
+      <button class="btn icon-only" type="button" data-close="accounts-dialog" aria-label="Close">×</button>
+    </div>
+    <p class="subtle">Users share the workspace. Only admins can manage accounts.</p>
+    <form id="account-create-form" class="inline-form-row">
+      <input id="account-new-name" autocomplete="off" maxlength="64" placeholder="Name" aria-label="Account name" required>
+      <select id="account-new-role" aria-label="Account role">
+        <option value="user" selected>User</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button id="account-create-submit" class="btn primary" type="submit">Create</button>
+    </form>
+    <div id="account-created-box" class="secret-reveal" hidden>
+      <span class="secret-reveal-label">Access key (shown once)</span>
+      <div class="secret-reveal-row">
+        <input id="account-created-secret" readonly autocomplete="off" spellcheck="false" aria-label="Generated access key">
+        <button id="account-created-copy" class="btn bordered" type="button">Copy</button>
+      </div>
+    </div>
+    <div id="accounts-list" class="mgmt-list"></div>
+    <p id="accounts-error" class="dialog-error" role="alert"></p>
+  </dialog>
+
+  <dialog id="share-dialog" class="panel" aria-labelledby="share-title">
+    <div class="dialog-heading">
+      <h2 id="share-title">Share</h2>
+      <button class="btn icon-only" type="button" data-close="share-dialog" aria-label="Close">×</button>
+    </div>
+    <p id="share-page-path" class="subtle"></p>
+    <form id="share-create-form" class="share-form-grid">
+      <select id="share-expires" aria-label="Expiration">
+        <option value="3600">1 hour</option>
+        <option value="86400">1 day</option>
+        <option value="604800" selected>7 days</option>
+        <option value="2592000">30 days</option>
+      </select>
+      <input id="share-label" autocomplete="off" maxlength="80" placeholder="Label (optional)" aria-label="Share label">
+      <button id="share-create-submit" class="btn primary" type="submit">Create guest link</button>
+    </form>
+    <div id="share-created-box" class="secret-reveal" hidden>
+      <span class="secret-reveal-label">Guest link (single page, read-only)</span>
+      <div class="secret-reveal-row">
+        <input id="share-created-url" readonly autocomplete="off" spellcheck="false" aria-label="Generated guest link">
+        <button id="share-created-copy" class="btn bordered" type="button">Copy link</button>
+      </div>
+    </div>
+    <div id="share-list" class="mgmt-list"></div>
+    <p id="share-error" class="dialog-error" role="alert"></p>
+  </dialog>
+
   <div id="context-menu" class="context-menu" role="menu" aria-label="Actions" hidden></div>
   <div id="notice" role="status" hidden></div>
 
@@ -1002,12 +1192,15 @@
     let desktopNavOpen = true;
     let mobileNavOpen = false;
     let role = 'viewer';
+    let currentAccount = null;
+    const canEdit = () => role === 'admin' || role === 'user';
     let unlocking = false;
     let afterUnlock = null;
     let treeFolders = [];
     const folderExpansion = new Map();
     let historical = null;
     let editContext = null;
+    let newPageContext = null;
     let confirmation = null;
     let apiContext = null;
     const apiKeys = new Map();
@@ -1030,6 +1223,10 @@
     let openReplyBoxId = null;
     let openEditBoxId = null;
     let resolvedExpanded = false;
+    let commentListeners = null;
+    let listenersPollTimer = null;
+    let sharePage = null;
+    let editingAccountId = null;
 
     /* Theme (Auto / Light / Dark) */
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1136,6 +1333,7 @@
       $('fullscreen').disabled = true;
       $('viewer-version').hidden = true;
       $('viewer-api').hidden = true;
+      $('viewer-share').hidden = true;
       $('pick-element').hidden = true;
       $('comments-toggle').hidden = true;
       setPickMode(false);
@@ -1144,6 +1342,7 @@
       commentsRequest = null;
       commentThreads = [];
       commentCounts = { open: 0, resolved: 0, total: 0 };
+      commentListeners = null;
       currentPageVersion = null;
       commentAnchor = null;
       openReplyBoxId = null;
@@ -1154,6 +1353,7 @@
     function showLogin() {
       apiKeys.clear();
       role = 'viewer';
+      currentAccount = null;
       unlocking = false;
       afterUnlock = null;
       treeFolders = [];
@@ -1168,6 +1368,8 @@
       listState = 'locked';
       document.documentElement.dataset.sync = 'locked';
       $('library-account').hidden = true;
+      $('account-self').hidden = true;
+      $('accounts-open').hidden = true;
       $('logout').hidden = true;
       clearPreview();
       renderList();
@@ -1243,7 +1445,7 @@
           }
         }, 'report');
         button.dataset.filename = page.filename;
-        button.draggable = authenticated && role === 'admin';
+        button.draggable = authenticated && canEdit();
         button.dataset.dragKind = 'page';
         button.dataset.focusKey = 'page:' + page.filename;
         button.dataset.contextKind = 'page';
@@ -1307,7 +1509,7 @@
           summary.dataset.focusKey = 'folder:' + key;
           summary.dataset.contextKind = 'folder';
           summary.setAttribute('aria-keyshortcuts', 'Shift+F10');
-          summary.draggable = authenticated && role === 'admin';
+          summary.draggable = authenticated && canEdit();
           summary.dataset.dragKind = 'folder';
           summary.dataset.entityId = child.entityId;
           summary.dataset.path = child.path;
@@ -1437,12 +1639,14 @@
       $('fullscreen').disabled = false;
       $('viewer-version').hidden = false;
       $('viewer-api').hidden = false;
+      $('viewer-share').hidden = !canEdit();
       $('comments-toggle').hidden = false;
-      $('pick-element').hidden = role !== 'admin';
+      $('pick-element').hidden = !canEdit();
       if (prevFilename !== page.filename) {
         clearCommentAnchor();
         openReplyBoxId = null;
         openEditBoxId = null;
+        commentListeners = null;
         setPickMode(false);
       }
       updateCommentToolbar(page);
@@ -1496,6 +1700,7 @@
         libraryLoaded = true;
         authenticated = true;
         role = session.role;
+        currentAccount = session.accountId ? { id: session.accountId, name: session.name || 'Owner', role: session.role, builtIn: Boolean(session.builtIn) } : null;
         listState = 'ready';
         document.documentElement.dataset.sync = 'ready';
         updateControls();
@@ -1552,9 +1757,10 @@
         }
         const session = await apiRequest('/api/session');
         role = session.role;
+        currentAccount = session.accountId ? { id: session.accountId, name: session.name || 'Owner', role: session.role, builtIn: Boolean(session.builtIn) } : null;
         authenticated = true;
         updateControls();
-        if (unlocking && role !== 'admin') throw new Error('Admin access key required.');
+        if (unlocking && !canEdit()) throw new Error('Account access key required.');
         const resume = afterUnlock;
         afterUnlock = null;
         $('login').close();
@@ -1695,7 +1901,7 @@
     }
     $('library').addEventListener('dragstart', event => {
       const row = event.target.closest('[data-drag-kind]');
-      if (!row || role !== 'admin' || !authenticated || movePending ||
+      if (!row || !canEdit() || !authenticated || movePending ||
           (row.tagName === 'SUMMARY' && event.target.closest('button'))) {
         event.preventDefault();
         return;
@@ -1709,7 +1915,7 @@
       dragMessage('Drop on a folder or Root');
     });
     function updateDropTarget(event) {
-      if (!dragging || role !== 'admin') return;
+      if (!dragging || !canEdit()) return;
       const target = event.target.closest('[data-drop-entity-id]');
       if (target !== dropTarget) {
         clearDropTarget();
@@ -1734,7 +1940,7 @@
     for (const event of ['dragenter', 'dragover']) $('library').addEventListener(event, updateDropTarget);
     $('library').addEventListener('dragleave', event => { if (!$('library').contains(event.relatedTarget)) clearDropTarget(); });
     $('library').addEventListener('drop', event => {
-      if (!dragging || role !== 'admin') return;
+      if (!dragging || !canEdit()) return;
       event.preventDefault();
       const target = event.target.closest('[data-drop-entity-id]');
       const source = dragging;
@@ -1888,7 +2094,8 @@
         item('Open in new tab', null, { href: page.url });
         item('Version history', () => openVersions(page));
         item('File API', () => openFileApi(page));
-        if (role === 'admin') {
+        if (canEdit()) {
+          item('Share', () => openShare(page));
           separator();
           item('Rename', () => requireAdmin(() => openEditor('page', { page, operation: 'rename' })));
           item('Move to…', () => requireAdmin(() => openEditor('page', { page, operation: 'move' })));
@@ -1897,17 +2104,21 @@
         }
       } else {
         const parent = { entityId: target.entityId || null, path: target.path || '' };
-        if (role === 'admin') item('New folder', () => requireAdmin(() => openEditor('new-folder', parent)));
-        else if (target.kind === 'root') item('Read-only', null, { disabled: true });
+        if (canEdit()) {
+          item('New page', () => requireAdmin(() => openNewPage(parent)));
+          item('New folder', () => requireAdmin(() => openEditor('new-folder', parent)));
+        } else if (target.kind === 'root') {
+          item('Read-only', null, { disabled: true });
+        }
         if (target.kind === 'folder') {
-          if (role === 'admin') {
+          if (canEdit()) {
             separator();
             item('Rename', () => requireAdmin(() => openEditor('folder', { ...parent, operation: 'rename' })));
             item('Move to…', () => requireAdmin(() => openEditor('folder', { ...parent, operation: 'move' })));
             separator();
           }
           item('Folder API', () => openApi(parent));
-          if (role === 'admin') {
+          if (canEdit()) {
             separator();
             item('Delete empty folder', () => requireAdmin(() => deleteFolder(parent)), { danger: true });
           }
@@ -2005,19 +2216,25 @@
       return data;
     }
     function updateControls() {
+      const editable = canEdit();
       $('library-account').hidden = !authenticated;
-      $('admin-unlock').hidden = !authenticated || role === 'admin';
-      $('logout').hidden = !authenticated || role !== 'admin';
+      $('admin-unlock').hidden = !authenticated || editable;
+      $('account-self').hidden = !authenticated || !editable;
+      $('account-self-name').textContent = currentAccount?.name || 'Owner';
+      $('accounts-open').hidden = !authenticated || role !== 'admin';
+      $('logout').hidden = !authenticated || !editable;
       $('folder-root').disabled = !authenticated;
       $('folder-root').setAttribute('aria-current', currentFolder.entityId ? 'false' : 'location');
       $('folder-location').textContent = folderLabel(currentFolder.entityId, currentFolder.path);
-      $('history-restore').textContent = role === 'admin' ? 'Restore' : 'Sign in to restore';
+      $('history-restore').textContent = editable ? 'Restore' : 'Sign in to restore';
       const hasScopedEntity = !apiContext || Boolean(apiContext.entityId);
-      $('api-admin').hidden = role !== 'admin' || !hasScopedEntity;
-      $('api-unlock').hidden = role === 'admin' || !hasScopedEntity;
-      $('pick-element').hidden = !selected || role !== 'admin';
-      $('comment-composer').hidden = !selected || role !== 'admin';
-      if (role !== 'admin') {
+      $('api-admin').hidden = !editable || !hasScopedEntity;
+      $('api-unlock').hidden = editable || !hasScopedEntity;
+      $('viewer-share').hidden = !selected || !editable;
+      $('pick-element').hidden = !selected || !editable;
+      $('comment-composer').hidden = !selected || !editable;
+      updateDispatchBar();
+      if (!editable) {
         setPickMode(false);
         apiKeys.clear();
         $('api-secret').value = '';
@@ -2035,7 +2252,7 @@
       $('key').removeAttribute('aria-invalid');
     }
     function requireAdmin(action) {
-      if (role === 'admin') return action();
+      if (canEdit()) return action();
       if (!authenticated) return showLogin();
       configureLogin(true);
       afterUnlock = action;
@@ -2107,7 +2324,7 @@
     $('edit-entity').addEventListener('change', updateMoveDestination);
     $('edit-form').addEventListener('submit', async event => {
       event.preventDefault();
-      if (role !== 'admin' || !editContext) return;
+      if (!canEdit() || !editContext) return;
       const context = editContext;
       let path = $('edit-path').value.trim();
       const name = $('edit-name').value.trim();
@@ -2177,6 +2394,138 @@
       }
     });
     $('edit-dialog').addEventListener('close', () => { editContext = null; });
+
+    /* New Page Dialog */
+    function starterPageHtml(title) {
+      const esc = s => s.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+      const safe = esc(title);
+      return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${safe}</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #ffffff; --ink: #111318; --muted: #6b7280; --border: #e5e7eb; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0e1014; --ink: #f0f2f6; --muted: #9ba3b4; --border: #242934; } }
+    :root[data-theme="light"] { --bg: #ffffff; --ink: #111318; --muted: #6b7280; --border: #e5e7eb; }
+    :root[data-theme="dark"] { --bg: #0e1014; --ink: #f0f2f6; --muted: #9ba3b4; --border: #242934; }
+    * { box-sizing: border-box; margin: 0; }
+    body { min-height: 100vh; display: grid; place-items: center; padding: 48px 24px; background: var(--bg); color: var(--ink); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 520px; width: 100%; padding: 32px; border: 1px dashed var(--border); border-radius: 12px; }
+    h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 10px; }
+    p { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>${safe}</h1>
+    <p>Blank starter page. Open File API to copy this page's prompt and key for an agent, or upload HTML to replace it.</p>
+  </main>
+</body>
+</html>
+`;
+    }
+    function openNewPage(context = {}) {
+      newPageContext = { entityId: context.entityId || null, path: context.path || '' };
+      $('new-page-location').textContent = 'Location: ' + (folderLabel(newPageContext.entityId, newPageContext.path) || 'Root');
+      $('new-page-name').value = '';
+      $('new-page-html').value = '';
+      $('new-page-file').value = '';
+      $('new-page-error').textContent = '';
+      $('new-page-submit').textContent = 'Create';
+      $('new-page-dialog').showModal();
+      $('new-page-name').focus();
+    }
+    $('new-page-upload').addEventListener('click', () => $('new-page-file').click());
+    $('new-page-file').addEventListener('change', async () => {
+      const file = $('new-page-file').files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        $('new-page-html').value = text;
+        if (!$('new-page-name').value.trim()) $('new-page-name').value = stripHtmlExt(file.name);
+        $('new-page-error').textContent = '';
+      } catch (error) {
+        $('new-page-error').textContent = 'Failed to read file: ' + errorMessage(error);
+      } finally {
+        $('new-page-file').value = '';
+      }
+    });
+    $('new-page-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!canEdit() || !newPageContext) return;
+      const context = newPageContext;
+      const rawName = $('new-page-name').value.trim();
+      $('new-page-error').textContent = '';
+      setBusy($('new-page-dialog'), true);
+      $('new-page-submit').textContent = 'Creating…';
+      try {
+        if (!rawName || rawName.startsWith('.') || rawName.startsWith('@') || /[/\\\p{Cc}]/u.test(rawName) || /\.src\.html?$/i.test(rawName)) {
+          throw new Error('Enter a valid name without /, \\, or a leading dot.');
+        }
+        const finalName = /\.html?$/i.test(rawName) ? rawName : rawName + '.html';
+        const displayName = stripHtmlExt(finalName);
+        const customHtml = $('new-page-html').value;
+        const isStarter = !customHtml.trim();
+        const html = isStarter ? starterPageHtml(displayName) : customHtml;
+        const note = isStarter ? 'Created starter page' : 'Created via Web UI';
+        let response;
+        if (context.entityId) {
+          const relPath = [context.path, finalName].filter(Boolean).join('/');
+          let targetEntityId = context.entityId;
+          let targetPath = relPath;
+          const visited = new Set([targetEntityId]);
+          while (targetPath) {
+            const child = entityCatalog.entities.find(entry => {
+              if (entry.parent?.entityId !== targetEntityId || visited.has(entry.id)) return false;
+              const anchorPath = [entry.parent.path, entry.name].filter(Boolean).join('/');
+              return targetPath === anchorPath || targetPath.startsWith(anchorPath + '/');
+            });
+            if (!child) break;
+            visited.add(child.id);
+            const anchorPath = [child.parent.path, child.name].filter(Boolean).join('/');
+            targetPath = targetPath.slice(anchorPath.length).replace(/^\//, '');
+            targetEntityId = child.id;
+          }
+          if (!targetPath
+              || pages.some(page => page.entityId === targetEntityId && pagePath(page) === targetPath)
+              || treeFolders.some(folder => folder.entityId === targetEntityId && folder.path === targetPath)) {
+            throw new Error('A page with this name already exists.');
+          }
+          response = await fetch(fileRoute(context.entityId, relPath) + '?note=' + encodeURIComponent(note), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'text/html; charset=utf-8', 'If-None-Match': '*' },
+            body: html,
+            signal: AbortSignal.timeout(180000),
+          });
+        } else {
+          if (pages.some(page => page.filename === finalName || (page.entityId === null && pagePath(page) === finalName))
+              || entityCatalog.entities.some(entry => !entry.parent && entry.name === finalName)) {
+            throw new Error('A page with this name already exists.');
+          }
+          response = await fetch('/api/pages/' + encodeURIComponent(finalName), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'If-None-Match': '*' },
+            body: JSON.stringify({ html, entityId: null, note }),
+            signal: AbortSignal.timeout(180000),
+          });
+        }
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || `Create failed (${response.status}).`);
+        $('new-page-dialog').close();
+        $('search').value = '';
+        if (context.entityId) expandPath(context.entityId, context.path);
+        pendingFilename = data.page.filename;
+        await reloadPages();
+      } catch (error) {
+        $('new-page-error').textContent = errorMessage(error);
+      } finally {
+        setBusy($('new-page-dialog'), false);
+        $('new-page-submit').textContent = 'Create';
+      }
+    });
+    $('new-page-dialog').addEventListener('close', () => { newPageContext = null; });
     function expandPath(entityId, path) {
       const entity = entityCatalog.entities.find(entry => entry.id === entityId);
       if (entity?.parent) expandPath(entity.parent.entityId, entity.parent.path);
@@ -2199,7 +2548,7 @@
     }
     $('confirm-form').addEventListener('submit', async event => {
       event.preventDefault();
-      if (!confirmation || role !== 'admin') return;
+      if (!confirmation || !canEdit()) return;
       $('confirm-error').textContent = '';
       setBusy($('confirm-dialog'), true);
       try { await confirmation(); $('confirm-dialog').close(); }
@@ -2267,7 +2616,7 @@
         return;
       }
       const base = location.origin + entityRoute(context.entityId);
-      const key = role === 'admin' ? apiKeys.get(context.entityId) : null;
+      const key = canEdit() ? apiKeys.get(context.entityId) : null;
       const usable = usableApiKey(key);
       const targetPath = isFile ? context.filePath : [context.path, 'guides/example.html'].filter(Boolean).join('/');
       const targetUrl = location.origin + fileRoute(context.entityId, targetPath);
@@ -2288,6 +2637,12 @@
       const readSourceUrl = isFile ? targetUrl : `${base}/files/<path>`;
       const replyPathArg = isFile ? JSON.stringify(targetPath) : '"<path>"';
       const versionBase = `${location.origin}/api/pages/${encFilename}`;
+      const eventsStreamUrl = isFile
+        ? `${base}/events?path=${encodedTargetPath}&events=comment.dispatch&client=agent`
+        : `${base}/events?events=comment.dispatch&client=agent`;
+      const eventsOnceUrl = isFile
+        ? `${base}/events?path=${encodedTargetPath}&events=comment.dispatch&once=1&timeout=300&client=agent`
+        : `${base}/events?events=comment.dispatch&once=1&timeout=300&client=agent`;
       $('api-payload').value = usable ? [
         isFile
           ? `You have scoped HTTP access to the Visual Explainer diagram "${displayPagePath(context.page)}" (folder "${folderLabel(context.entityId)}"). Use this key directly over HTTP — no MCP, repo clone, local skill install, or admin key is needed. Keep the key private.`
@@ -2345,6 +2700,8 @@
         `- Reply: \`POST ${base}/comments\` with \`{"path":${replyPathArg},"replyTo":"c_1","body":"..."}\` (replying to a resolved thread reopens it automatically).`,
         `- Resolve: \`POST ${base}/comments/<threadId>/resolve\` with \`{"note":"Done in v2: ..."}\` (optional \`note\` is posted as a reply first).`,
         `- Reopen: \`POST ${base}/comments/<threadId>/reopen\`.`,
+        `- Live comment stream (SSE): \`GET ${eventsStreamUrl}\` (supports \`Last-Event-ID\` / \`after=<id>\`, optional \`path=\`, \`events=\`, \`client=\`).`,
+        `- One-shot wait: \`curl -sS -H "Authorization: Bearer $VE_KEY" ${shellQuote(eventsOnceUrl)}\` (blocks until an event arrives as JSON, or \`204\` on timeout).`,
         `- Folder tree & moves: \`GET ${base}/tree\`; \`POST/PATCH/DELETE ${base}/folders\`; \`PATCH ${base}/files/<path>\` \`{"path":"new/name.html"}\`.`,
         `- Version history${isFile ? '' : ' (use `page.filename` from `PUT` or `/tree`)'}: \`GET ${versionBase}/versions\`, \`GET ${versionBase}/versions/v2\`, \`POST ${versionBase}/restore\` \`{"version":"v2"}\`.`,
       ].join('\n') : '';
@@ -2371,7 +2728,7 @@
     });
     $('api-unlock').addEventListener('click', () => requireAdmin(() => {}));
     async function prepareApiKey(context) {
-      if (role !== 'admin' || !context?.entityId || apiContext !== context || !$('api-dialog').open) return;
+      if (!canEdit() || !context?.entityId || apiContext !== context || !$('api-dialog').open) return;
       let key = apiKeys.get(context.entityId);
       if (!key) { key = { secret: '', token: null, expiresIn: 604800, pending: null }; apiKeys.set(context.entityId, key); }
       if (!key.pending) key.pending = (async () => {
@@ -2380,7 +2737,7 @@
           key.token = data.tokens.find(token => token.id === key.token.id);
           if (!key.token || !usableApiKey(key)) key.secret = '';
         }
-        if (!key.secret && apiKeys.get(context.entityId) === key && role === 'admin') {
+        if (!key.secret && apiKeys.get(context.entityId) === key && canEdit()) {
           const data = await apiRequest(entityRoute(context.entityId) + '/tokens', {
             method: 'POST', body: { expiresIn: key.expiresIn },
           });
@@ -2396,7 +2753,7 @@
     $('api-validity').addEventListener('change', async () => {
       const context = apiContext;
       const key = context && apiKeys.get(context.entityId);
-      if (role !== 'admin' || !usableApiKey(key) || key.pending) return;
+      if (!canEdit() || !usableApiKey(key) || key.pending) return;
       const expiresIn = $('api-validity').value === 'none' ? null : Number($('api-validity').value);
       $('api-status').textContent = '';
       key.pending = apiRequest(entityRoute(context.entityId) + '/tokens/' + encodeURIComponent(key.token.id), {
@@ -2409,7 +2766,7 @@
     });
     async function copyApi(field) {
       const context = apiContext;
-      if (!context || role !== 'admin') return;
+      if (!context || !canEdit()) return;
       updateApiExample(context);
       if ($('copy-api').disabled) return;
       $('api-status').textContent = '';
@@ -2489,7 +2846,7 @@
             openHistoricalVersion(page, version);
             $('versions-dialog').close();
           }));
-          if (idx > 0 && role === 'admin') {
+          if (idx > 0 && canEdit()) {
             actions.append(makeButton('Restore', () => {
               $('versions-dialog').close();
               askConfirmation('Restore version?',
@@ -2567,7 +2924,7 @@
       try { $('preview')?.contentWindow?.postMessage(message, '*'); } catch {}
     }
     function setPickMode(active) {
-      pickMode = Boolean(active) && role === 'admin' && Boolean(selected);
+      pickMode = Boolean(active) && canEdit() && Boolean(selected);
       $('pick-element').setAttribute('aria-pressed', String(pickMode));
       $('pick-element-label').textContent = pickMode ? 'Cancel' : 'Pick';
       sendToIframe({ type: 've-comment:pick', active: pickMode });
@@ -2577,18 +2934,56 @@
       renderComposerAnchor();
       sendToIframe({ type: 've-comment:draft-box', selector: '' });
     }
+    function stopListenersPoll() {
+      if (listenersPollTimer !== null) {
+        clearInterval(listenersPollTimer);
+        listenersPollTimer = null;
+      }
+    }
+    async function refreshListeners() {
+      if (!commentsPanelOpen || !selected?.entityId || !canEdit() || !authenticated || document.hidden) return;
+      const filename = selected.filename;
+      try {
+        const data = await apiRequest('/api/pages/' + encodeURIComponent(filename) + '/listeners');
+        if (selected?.filename !== filename) return;
+        commentListeners = data.listeners || null;
+        updateDispatchBar();
+      } catch {}
+    }
+    function syncListenersPoll() {
+      stopListenersPoll();
+      if (commentsPanelOpen && selected?.entityId && canEdit() && authenticated) {
+        listenersPollTimer = setInterval(() => { void refreshListeners(); }, 5000);
+      }
+    }
+    function updateDispatchBar() {
+      const showBar = Boolean(selected?.entityId) && canEdit();
+      $('comments-dispatch-bar').hidden = !showBar;
+      if (!showBar) return;
+      const hostCount = commentListeners?.hostCount ?? 0;
+      const hosts = commentListeners?.hosts ?? [];
+      $('comments-hosts').classList.toggle('online', hostCount > 0);
+      $('comments-hosts-text').textContent = `${hostCount} ${hostCount === 1 ? 'host' : 'hosts'}`;
+      $('comments-hosts').title = hosts.length
+        ? hosts.map(h => h.clients?.length ? `${h.ip} (${h.clients.join(', ')})` : h.ip).join('\n')
+        : 'No connected hosts';
+      $('comments-dispatch').hidden = !(commentCounts.open > 0);
+    }
     function setCommentsPanel(open) {
       commentsPanelOpen = Boolean(open) && Boolean(selected);
       $('comments-panel').hidden = !commentsPanelOpen;
       $('comments-toggle').setAttribute('aria-expanded', String(commentsPanelOpen));
       $('comments-toggle').classList.toggle('active', commentsPanelOpen);
       if (!commentsPanelOpen) {
+        stopListenersPoll();
         if (pickMode) setPickMode(false);
         sendToIframe({ type: 've-comment:draft-box', selector: '' });
         sendToIframe({ type: 've-comment:hover', id: '' });
       }
       if (commentsPanelOpen && selected) {
         renderComposerAnchor();
+        updateDispatchBar();
+        syncListenersPoll();
         void loadComments(selected.filename, true);
       }
     }
@@ -2600,6 +2995,7 @@
       $('viewer-version-label').textContent = verLabel;
       $('comments-version-tag').textContent = historical?.version?.label || currentPageVersion?.label || '';
       $('comments-version-tag').hidden = !$('comments-version-tag').textContent;
+      updateDispatchBar();
     }
     function syncIframeComments() {
       const mode = currentThemeMode();
@@ -2651,12 +3047,14 @@
         if (commentsRequest !== request || selected?.filename !== filename) return;
         commentThreads = data.threads;
         commentCounts = data.counts;
+        commentListeners = data.listeners || null;
         currentPageVersion = data.currentVersion;
         updatePageOpenCount(filename, data.counts);
         updateCommentToolbar(selected);
         renderComposerAnchor();
         renderComments();
         syncIframeComments();
+        syncListenersPoll();
       } catch (error) {
         if (commentsRequest !== request || request.signal.aborted) return;
         if (!quiet) notify('Failed to load comments: ' + errorMessage(error));
@@ -2740,7 +3138,7 @@
           const when = document.createElement('span');
           when.textContent = formatDate(reply.createdAt);
           head.append(who, when);
-          if (role === 'admin') {
+          if (canEdit()) {
             head.append(makeButton('Edit', () => { openEditBoxId = reply.id; openReplyBoxId = null; renderComments(); }, 'link-btn quiet push-right'));
             head.append(makeButton('Delete', () => void deleteCommentItem(reply.id), 'link-btn quiet danger'));
           }
@@ -2764,7 +3162,7 @@
         card.append(info);
       }
 
-      if (role === 'admin') {
+      if (canEdit()) {
         const actions = document.createElement('div');
         actions.className = 'comment-actions';
         actions.append(makeButton('Reply', () => {
@@ -2782,7 +3180,7 @@
         card.append(actions);
       }
 
-      if (openReplyBoxId === thread.id && role === 'admin') {
+      if (openReplyBoxId === thread.id && canEdit()) {
         const form = document.createElement('form');
         form.className = 'reply-box';
         const ta = document.createElement('textarea');
@@ -2854,7 +3252,7 @@
       return form;
     }
     async function resolveThread(threadId) {
-      if (!selected || role !== 'admin') return;
+      if (!selected || !canEdit()) return;
       try {
         await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(threadId) + '/resolve', { method: 'POST', body: {} });
         openReplyBoxId = null;
@@ -2862,14 +3260,14 @@
       } catch (error) { notify('Resolve failed: ' + errorMessage(error)); }
     }
     async function reopenThread(threadId) {
-      if (!selected || role !== 'admin') return;
+      if (!selected || !canEdit()) return;
       try {
         await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(threadId) + '/reopen', { method: 'POST', body: {} });
         await loadComments(selected.filename);
       } catch (error) { notify('Reopen failed: ' + errorMessage(error)); }
     }
     async function deleteCommentItem(commentId) {
-      if (!selected || role !== 'admin') return;
+      if (!selected || !canEdit()) return;
       try {
         await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/' + encodeURIComponent(commentId), { method: 'DELETE' });
         if (openEditBoxId === commentId) openEditBoxId = null;
@@ -2885,7 +3283,7 @@
       if (!openList.length && !resolvedList.length) {
         const empty = document.createElement('p');
         empty.className = 'comments-empty';
-        empty.textContent = role === 'admin' ? 'No comments yet. Select text or click Pick to highlight an area.' : 'No comments yet.';
+        empty.textContent = canEdit() ? 'No comments yet. Select text or click Pick to highlight an area.' : 'No comments yet.';
         fragment.append(empty);
       } else {
         if (!openList.length) {
@@ -2913,6 +3311,315 @@
       container.replaceChildren(fragment);
     }
 
+    async function copyFieldText(input, button) {
+      input.focus();
+      input.select();
+      let copied = false;
+      if (navigator.clipboard?.writeText) {
+        try { await navigator.clipboard.writeText(input.value); copied = true; } catch {}
+      }
+      if (!copied) {
+        try { copied = document.execCommand('copy'); } catch {}
+      }
+      if (copied) {
+        const prev = button.textContent;
+        button.textContent = 'Copied';
+        setTimeout(() => { if (button.textContent === 'Copied') button.textContent = prev; }, 1800);
+      } else {
+        notify('Press Ctrl+C / ⌘C to copy.');
+      }
+    }
+
+    /* Rename Self */
+    $('account-self').addEventListener('click', () => {
+      if (!canEdit()) return;
+      $('rename-self-input').value = currentAccount?.name || 'Owner';
+      $('rename-self-error').textContent = '';
+      $('rename-self-dialog').showModal();
+      $('rename-self-input').focus();
+      $('rename-self-input').select();
+    });
+    $('rename-self-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!canEdit()) return;
+      const name = $('rename-self-input').value.trim();
+      if (!name) return;
+      $('rename-self-error').textContent = '';
+      setBusy($('rename-self-dialog'), true);
+      try {
+        const { account } = await apiRequest('/api/session/name', { method: 'PATCH', body: { name } });
+        currentAccount = { ...(currentAccount || {}), id: account.id, name: account.name, role: account.role, builtIn: Boolean(account.builtIn) };
+        updateControls();
+        $('rename-self-dialog').close();
+        notify('Display name updated');
+      } catch (error) {
+        $('rename-self-error').textContent = errorMessage(error);
+      } finally {
+        setBusy($('rename-self-dialog'), false);
+      }
+    });
+
+    /* Users Management (Admin only) */
+    async function loadAccounts() {
+      if (role !== 'admin') return;
+      $('accounts-error').textContent = '';
+      $('accounts-list').textContent = 'Loading…';
+      try {
+        const data = await apiRequest('/api/accounts');
+        if (!$('accounts-dialog').open) return;
+        renderAccountsList(data);
+      } catch (error) {
+        $('accounts-list').replaceChildren();
+        $('accounts-error').textContent = errorMessage(error);
+      }
+    }
+    function renderAccountsList(data) {
+      const rows = [data.owner, ...(data.accounts || [])];
+      const fragment = document.createDocumentFragment();
+      for (const acct of rows) {
+        const row = document.createElement('div');
+        row.className = 'mgmt-row';
+        row.dataset.accountId = acct.id;
+        if (editingAccountId === acct.id) {
+          const form = document.createElement('form');
+          form.className = 'mgmt-inline-edit';
+          const input = document.createElement('input');
+          input.value = acct.name;
+          input.maxLength = 64;
+          input.required = true;
+          input.setAttribute('aria-label', 'New name');
+          const saveBtn = document.createElement('button');
+          saveBtn.type = 'submit';
+          saveBtn.className = 'btn primary';
+          saveBtn.textContent = 'Save';
+          const cancelBtn = makeButton('Cancel', () => { editingAccountId = null; void loadAccounts(); }, 'btn bordered');
+          form.append(input, saveBtn, cancelBtn);
+          form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const nextName = input.value.trim();
+            if (!nextName) return;
+            saveBtn.disabled = true;
+            $('accounts-error').textContent = '';
+            try {
+              const { account } = await apiRequest('/api/accounts/' + encodeURIComponent(acct.id), { method: 'PATCH', body: { name: nextName } });
+              editingAccountId = null;
+              if (currentAccount?.id === account.id) {
+                currentAccount.name = account.name;
+                updateControls();
+              }
+              await loadAccounts();
+            } catch (error) {
+              $('accounts-error').textContent = errorMessage(error);
+              saveBtn.disabled = false;
+            }
+          });
+          row.append(form);
+          queueMicrotask(() => { input.focus(); input.select(); });
+        } else {
+          const copy = document.createElement('div');
+          copy.className = 'row-copy';
+          const line = document.createElement('div');
+          line.className = 'version-title-line';
+          const strong = document.createElement('strong');
+          strong.textContent = acct.name;
+          const badge = document.createElement('span');
+          badge.className = 'role-badge' + (acct.role === 'admin' ? ' admin' : '');
+          badge.textContent = acct.role === 'admin' ? 'Admin' : 'User';
+          line.append(strong, badge);
+          if (acct.builtIn) {
+            const tag = document.createElement('span');
+            tag.className = 'role-badge';
+            tag.textContent = 'Owner';
+            line.append(tag);
+          }
+          copy.append(line);
+          if (acct.createdAt) {
+            const meta = document.createElement('small');
+            meta.textContent = 'Created ' + formatDate(acct.createdAt);
+            copy.append(meta);
+          }
+          const actions = document.createElement('div');
+          actions.className = 'mgmt-actions';
+          actions.append(makeButton('Rename', () => { editingAccountId = acct.id; renderAccountsList(data); }, 'btn bordered'));
+          if (!acct.builtIn) {
+            const delBtn = makeButton('Delete', async () => {
+              delBtn.disabled = true;
+              $('accounts-error').textContent = '';
+              try {
+                await apiRequest('/api/accounts/' + encodeURIComponent(acct.id), { method: 'DELETE' });
+                notify('Account deleted');
+                await loadAccounts();
+              } catch (error) {
+                $('accounts-error').textContent = errorMessage(error);
+                delBtn.disabled = false;
+              }
+            }, 'btn bordered');
+            actions.append(delBtn);
+          }
+          row.append(copy, actions);
+        }
+        fragment.append(row);
+      }
+      $('accounts-list').replaceChildren(fragment);
+    }
+    $('accounts-open').addEventListener('click', () => {
+      if (role !== 'admin') return;
+      editingAccountId = null;
+      $('account-new-name').value = '';
+      $('account-new-role').value = 'user';
+      $('account-created-secret').value = '';
+      $('account-created-box').hidden = true;
+      $('accounts-error').textContent = '';
+      $('accounts-dialog').showModal();
+      void loadAccounts();
+      $('account-new-name').focus();
+    });
+    $('account-create-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (role !== 'admin') return;
+      const name = $('account-new-name').value.trim();
+      const acctRole = $('account-new-role').value;
+      if (!name) return;
+      $('accounts-error').textContent = '';
+      setBusy($('accounts-dialog'), true);
+      try {
+        const data = await apiRequest('/api/accounts', { method: 'POST', body: { name, role: acctRole } });
+        $('account-new-name').value = '';
+        $('account-created-secret').value = data.secret;
+        $('account-created-box').hidden = false;
+        await loadAccounts();
+      } catch (error) {
+        $('accounts-error').textContent = errorMessage(error);
+      } finally {
+        setBusy($('accounts-dialog'), false);
+      }
+    });
+    $('account-created-copy').addEventListener('click', () => void copyFieldText($('account-created-secret'), $('account-created-copy')));
+    $('accounts-dialog').addEventListener('close', () => {
+      editingAccountId = null;
+      $('account-created-secret').value = '';
+      $('account-created-box').hidden = true;
+      $('accounts-error').textContent = '';
+    });
+
+    /* Single-page Guest Share Links */
+    async function loadShares() {
+      if (!sharePage || !canEdit()) return;
+      const target = sharePage;
+      $('share-error').textContent = '';
+      $('share-list').textContent = 'Loading…';
+      try {
+        const data = await apiRequest('/api/pages/' + encodeURIComponent(target.filename) + '/shares');
+        if (sharePage !== target || !$('share-dialog').open) return;
+        const fragment = document.createDocumentFragment();
+        for (const item of data.shares) {
+          const row = document.createElement('div');
+          row.className = 'mgmt-row';
+          row.dataset.shareId = item.id;
+          const copy = document.createElement('div');
+          copy.className = 'row-copy';
+          const title = document.createElement('strong');
+          title.textContent = item.label || 'Guest link';
+          const meta = document.createElement('small');
+          meta.textContent = `Expires ${formatDate(item.expiresAt)} · by ${item.createdBy}`;
+          copy.append(title, meta);
+          const actions = document.createElement('div');
+          actions.className = 'mgmt-actions';
+          const revokeBtn = makeButton('Revoke', async () => {
+            revokeBtn.disabled = true;
+            $('share-error').textContent = '';
+            try {
+              await apiRequest('/api/pages/' + encodeURIComponent(target.filename) + '/shares/' + encodeURIComponent(item.id), { method: 'DELETE' });
+              notify('Share link revoked');
+              await loadShares();
+            } catch (error) {
+              $('share-error').textContent = errorMessage(error);
+              revokeBtn.disabled = false;
+            }
+          }, 'btn bordered');
+          actions.append(revokeBtn);
+          row.append(copy, actions);
+          fragment.append(row);
+        }
+        if (!data.shares.length) {
+          const empty = document.createElement('p');
+          empty.className = 'subtle';
+          empty.textContent = 'No active guest links.';
+          fragment.append(empty);
+        }
+        $('share-list').replaceChildren(fragment);
+      } catch (error) {
+        if (sharePage !== target) return;
+        $('share-list').replaceChildren();
+        $('share-error').textContent = errorMessage(error);
+      }
+    }
+    function openShare(page) {
+      if (!page || !canEdit()) return;
+      sharePage = page;
+      $('share-page-path').textContent = displayPagePath(page);
+      $('share-label').value = '';
+      $('share-expires').value = '604800';
+      $('share-created-url').value = '';
+      $('share-created-box').hidden = true;
+      $('share-error').textContent = '';
+      $('share-dialog').showModal();
+      void loadShares();
+    }
+    $('viewer-share').addEventListener('click', () => { if (selected && canEdit()) openShare(selected); });
+    $('share-create-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!sharePage || !canEdit()) return;
+      const expiresIn = Number($('share-expires').value);
+      const label = $('share-label').value.trim();
+      $('share-error').textContent = '';
+      setBusy($('share-dialog'), true);
+      try {
+        const data = await apiRequest('/api/pages/' + encodeURIComponent(sharePage.filename) + '/shares', {
+          method: 'POST', body: { expiresIn, ...(label ? { label } : {}) },
+        });
+        $('share-label').value = '';
+        $('share-created-url').value = data.url;
+        $('share-created-box').hidden = false;
+        await loadShares();
+      } catch (error) {
+        $('share-error').textContent = errorMessage(error);
+      } finally {
+        setBusy($('share-dialog'), false);
+      }
+    });
+    $('share-created-copy').addEventListener('click', () => void copyFieldText($('share-created-url'), $('share-created-copy')));
+    $('share-dialog').addEventListener('close', () => {
+      sharePage = null;
+      $('share-created-url').value = '';
+      $('share-created-box').hidden = true;
+      $('share-error').textContent = '';
+    });
+
+    /* Comment Dispatch */
+    $('comments-dispatch').addEventListener('click', async () => {
+      if (!selected || !canEdit()) return;
+      const btn = $('comments-dispatch');
+      btn.disabled = true;
+      try {
+        const data = await apiRequest('/api/pages/' + encodeURIComponent(selected.filename) + '/comments/dispatch', {
+          method: 'POST', body: {},
+        });
+        commentListeners = data.listeners || commentListeners;
+        updateDispatchBar();
+        const noun = data.openCount === 1 ? 'open comment' : 'open comments';
+        if (data.deliveredHosts > 0) {
+          notify(`Sent ${data.openCount} ${noun} to ${data.deliveredHosts} ${data.deliveredHosts === 1 ? 'host' : 'hosts'}`);
+        } else {
+          notify(`Queued ${data.openCount} ${noun} (0 hosts connected)`);
+        }
+      } catch (error) {
+        notify('Send failed: ' + errorMessage(error));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
     $('viewer-version').addEventListener('click', () => { if (selected) openVersions(selected); });
     $('viewer-api').addEventListener('click', () => { if (selected) openFileApi(selected); });
     $('pick-element').addEventListener('click', () => { if (selected) requireAdmin(() => setPickMode(!pickMode)); });
@@ -2922,7 +3629,7 @@
     $('comment-input').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('comment-composer').requestSubmit(); });
     $('comment-composer').addEventListener('submit', async e => {
       e.preventDefault();
-      if (!selected || role !== 'admin') return;
+      if (!selected || !canEdit()) return;
       const body = $('comment-input').value.trim();
       if (!body) return;
       $('comment-submit').disabled = true;
@@ -2958,7 +3665,7 @@
           sendToIframe({ type: 've-comment:draft-box', selector: commentAnchor.selector || '' });
           $('comment-input').focus();
         };
-        if (role === 'admin') openDraft();
+        if (canEdit()) openDraft();
         else requireAdmin(openDraft);
       } else if (event.data.type === 've-comment:select' && selected) {
         setCommentsPanel(true);

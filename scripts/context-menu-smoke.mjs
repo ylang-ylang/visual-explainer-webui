@@ -13,10 +13,11 @@ const dir = process.env.VISUAL_EXPLAINER_OUTPUT_DIR ?? '/data';
 const a = 'context-design', b = 'context-publish', c = 'context-example';
 const folderRoute = id => '/api/entities/' + id;
 const fileRoute = (id, path) => folderRoute(id) + '/files/' + path.split('/').map(encodeURIComponent).join('/');
-async function api(path, { method = 'GET', body, raw, status = 200 } = {}) {
+async function api(path, { method = 'GET', body, raw, headers = {}, status = 200 } = {}) {
   const response = await fetch(new URL(path, base), { method, headers: {
     Authorization: 'Bearer ' + token,
     ...(raw !== undefined ? { 'Content-Type': 'text/html; charset=utf-8' } : body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    ...headers,
   }, body: raw ?? (body === undefined ? undefined : JSON.stringify(body)), signal: AbortSignal.timeout(180000) });
   assert.equal(response.status, status, `${method} ${path}: ${await response.clone().text()}`);
   return status === 204 ? null : response.json();
@@ -208,6 +209,8 @@ try {
   await page.keyboard.press('Shift+F10');
   assert.equal(await menu.isVisible(), true);
   await page.keyboard.press('ArrowDown');
+  assert.equal(await page.evaluate(() => document.activeElement.textContent), 'New folder');
+  await page.keyboard.press('ArrowDown');
   assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Rename');
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('#edit-title').innerText(), 'Rename folder');
@@ -217,10 +220,50 @@ try {
   await page.keyboard.press('End');
   assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Delete empty folder');
   await page.keyboard.press('Home');
-  assert.equal(await page.evaluate(() => document.activeElement.textContent), 'New folder');
+  assert.equal(await page.evaluate(() => document.activeElement.textContent), 'New page');
   await page.keyboard.press('Escape');
   assert.equal(await menu.isVisible(), false);
   assert.equal(await folder(c).evaluate(node => node === document.activeElement), true);
+  // New page creates a starter page inside a folder, rejects duplicates, and supports pasted HTML at Root.
+  await action(folder(c), 'New page');
+  await page.locator('#new-page-name').fill('空白草稿');
+  await page.locator('#new-page-submit').click();
+  await page.locator('#new-page-dialog').waitFor({ state: 'hidden' });
+  await settled();
+  await page.frameLocator('#preview').getByRole('heading', { name: '空白草稿', exact: true }).waitFor();
+  assert.equal(await page.locator('#page-title').innerText(), '空白草稿');
+  await page.locator('#viewer-api').click();
+  await page.waitForFunction(() => !document.querySelector('#copy-api').disabled);
+  assert.ok((await page.locator('#api-payload').inputValue()).includes(encodeURIComponent('空白草稿.html')));
+  await page.locator('[data-close="api-dialog"]').click();
+  await action(folder(c), 'New page');
+  await page.locator('#new-page-name').fill('空白草稿');
+  await page.locator('#new-page-submit').click();
+  await page.locator('#new-page-error').filter({ hasText: 'already exists' }).waitFor();
+  await page.locator('[data-close="new-page-dialog"]').first().click();
+  await blankMenu();
+  await page.getByRole('menuitem', { name: 'New page', exact: true }).click();
+  await page.locator('#new-page-name').fill('自定义根页');
+  await page.locator('#new-page-html').fill(html('自定义根页内容'));
+  await page.locator('#new-page-submit').click();
+  await page.locator('#new-page-dialog').waitFor({ state: 'hidden' });
+  await settled();
+  await page.frameLocator('#preview').getByRole('heading', { name: '自定义根页内容', exact: true }).waitFor();
+  await blankMenu();
+  await page.getByRole('menuitem', { name: 'New page', exact: true }).click();
+  await page.locator('#new-page-name').fill('自定义根页');
+  await page.locator('#new-page-submit').click();
+  await page.locator('#new-page-error').filter({ hasText: 'already exists' }).waitFor();
+  await page.locator('[data-close="new-page-dialog"]').first().click();
+  // Verify server-side If-None-Match: * race guards directly via Node fetch (no browser console 409).
+  const folderConflict = await api(fileRoute(c, '空白草稿.html'), {
+    method: 'PUT', raw: html('不应覆盖'), headers: { 'If-None-Match': '*' }, status: 409,
+  });
+  assert.ok(folderConflict.error.includes('already exists'));
+  const rootConflict = await api('/api/pages/' + encodeURIComponent('自定义根页.html'), {
+    method: 'PUT', body: { html: html('不应覆盖'), entityId: null }, headers: { 'If-None-Match': '*' }, status: 409,
+  });
+  assert.ok(rootConflict.error.includes('already exists'));
   await folder(c).click({ button: 'right' });
   await page.locator('.brand').click();
   assert.equal(await menu.isVisible(), false);
