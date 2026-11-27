@@ -11,13 +11,13 @@
       ],
       "htmlFile": "explainers/overview.html",
       "sourceFile": "explainers/overview.src.html",
-      "skillHash": "21a7a59ce7013d4c21e37c40abefcc3c2760c183e7ec104f5422ce7815292df7",
-      "updatedAt": "2026-11-26T18:22:00.000Z"
+      "skillHash": "874cacf8c9d517c8b74430cc7b42ef652adc1daba83ce0eb35d8fde6b18c96f5",
+      "updatedAt": "2026-11-27T03:00:00.000Z"
     },
     {
       "id": "bootstrap-prompt",
       "title": "WebUI 入口提示词（bootstrap-prompt）",
-      "summary": "拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle、编写渲染与 Checksheet 自查、非阻塞挂 SSE 监听后汇报链接、收到 Send 后拉评改图并续挂。",
+      "summary": "拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle、编写渲染与 Checksheet 自查、通过 watch.sh 零空闲 Token 后台监听并按 Key 生命周期自动停止。",
       "layer": 1,
       "parentId": "overview",
       "covers": [
@@ -25,8 +25,8 @@
       ],
       "htmlFile": "explainers/bootstrap-prompt.html",
       "sourceFile": "explainers/bootstrap-prompt.src.html",
-      "skillHash": "002658240cf3d9fa845a22295d7ea3fa1f4fe20d419fd221cb2e53cf12a4ff77",
-      "updatedAt": "2026-11-26T18:22:00.000Z"
+      "skillHash": "e2630b5156ecfc631fa331f322ccd04b4cb5f44d5ea21eed20a955560ab3da4c",
+      "updatedAt": "2026-11-27T03:00:00.000Z"
     },
     {
       "id": "SKILL",

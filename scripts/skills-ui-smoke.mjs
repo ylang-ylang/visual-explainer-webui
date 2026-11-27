@@ -202,8 +202,9 @@ try {
   assert.ok(promptText.includes('/api/skills/explainers/'), 'Skill Editor Prompt must reference /api/skills/explainers/<id>');
   assert.ok(promptText.includes('X-VE-Skill-Hash'), 'Skill Editor Prompt must document mandatory X-VE-Skill-Hash header');
   assert.ok(promptText.includes('/api/skills/comments'), 'Skill Editor Prompt must reference /api/skills/comments');
-  assert.ok(promptText.includes('/api/skills/events?events=comment.dispatch&once=1&timeout=300&client=agent'), 'Skill Editor Prompt must include default non-blocking background SSE listener URL');
-  assert.ok(promptText.includes('after='), 'Skill Editor Prompt must document &after=<eventId> re-arming');
+  assert.ok(promptText.includes('/api/visual-explainer/watch.sh'), 'Skill Editor Prompt must reference /api/visual-explainer/watch.sh');
+  assert.ok(promptText.includes(`./ve-watch.sh --url '${base.origin}/api/skills/events'`), 'Skill Editor Prompt must include zero-idle-token watch.sh command for /api/skills/events');
+  assert.ok(promptText.includes('key_expired') && promptText.includes('--after <eventId>'), 'Skill Editor Prompt must document key_expired stop rule and --after <eventId> re-arming');
 
   // Capture API modal screenshot before closing.
   await page.screenshot({ path: '/tmp/ve-skills-api-light.png' });

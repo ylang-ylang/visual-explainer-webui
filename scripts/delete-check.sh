@@ -27,6 +27,7 @@ for file in server.mjs catalog.mjs comments.mjs events.mjs accounts.mjs history.
   mounts+=(--mount "type=bind,src=$(pwd)/remote-app/$file,dst=/opt/bridge/$file,readonly")
 done
 mounts+=(--mount "type=bind,src=$(pwd)/remote-app/builtin-skills,dst=/opt/bridge/builtin-skills,readonly")
+mounts+=(--mount "type=bind,src=$(pwd)/remote-app/static,dst=/opt/bridge/static,readonly")
 docker run --detach --name "$name" \
   --env PUBLIC_URL=http://127.0.0.1:8080 --env PORT=8080 \
   --env VISUAL_EXPLAINER_OUTPUT_DIR=/data --env TOKEN_FILE=/run/secrets/api_token \

@@ -32,6 +32,7 @@ const instructions = 'Remote Visual Explainer; no LLM is called. Read visual-exp
 const galleryHtml = await readFile(new URL('./index.html', import.meta.url));
 const cjkFont = await readFile(new URL('./static/cjk.woff2', import.meta.url));
 const cjkLicense = await readFile(new URL('./static/LICENSE.fonts-wqy-zenhei', import.meta.url));
+const watchScript = await readFile(new URL('./static/watch.sh', import.meta.url));
 const viewerKey = createHmac('sha256', token).update('viewer-access').digest('hex');
 const sessionLifetime = 7 * 24 * 60 * 60;
 const catalog = await createCatalog(outputDir);
@@ -43,8 +44,8 @@ const skillComments = await createCommentsStore(outputDir, {
 });
 const accounts = await createAccounts(outputDir);
 const shares = await createShares(outputDir);
-const events = createEventHub();
-const skillEvents = createEventHub();
+const events = createEventHub({ initialEventId: Date.now() * 1000 });
+const skillEvents = createEventHub({ initialEventId: Date.now() * 1000 });
 const history = await createHistory(outputDir, catalog);
 await catalog.run(() => history.snapshot('Snapshot existing pages'));
 
@@ -1153,6 +1154,7 @@ const originalIndex = {
   prompts: originalPrompts.prompts.map(prompt => ({ ...prompt, url: new URL(`${originalPrefix}/prompts/${encodeURIComponent(prompt.name)}`, publicUrl).href })),
   tools: originalTools.tools,
   prepareUrl: new URL(`${originalPrefix}/prepare`, publicUrl).href,
+  watchUrl: new URL(`${originalPrefix}/watch.sh`, publicUrl).href,
   publish: { method: 'PUT', path: '/api/entities/:id/files/<path>.html', contentType: 'text/html; charset=utf-8' },
 };
 function originalReadonly(parts, method) {
@@ -1165,6 +1167,9 @@ async function originalRequest(call) {
 }
 async function serveOriginal(req, res, parts, url) {
   if (parts.length === 1 && req.method === 'GET') return json(res, 200, originalIndex);
+  if (parts.length === 2 && parts[1] === 'watch.sh' && req.method === 'GET') {
+    return send(res, 200, watchScript, 'text/x-shellscript; charset=utf-8');
+  }
   if (parts.length === 2 && parts[1] === 'bootstrap-prompt' && req.method === 'GET') {
     const content = skills.getEffectiveDoc('webui/bootstrap-prompt.md');
     return json(res, 200, {
@@ -1539,6 +1544,7 @@ const http = createServer(async (req, res) => {
           after: url.searchParams.get('after'),
           client: url.searchParams.get('client') ?? '',
           ip: req.socket?.remoteAddress,
+          tokenId: auth.keyId ?? (auth.accountId && !auth.builtIn ? `account:${auth.accountId}` : null),
         });
         return;
       }
@@ -1559,7 +1565,13 @@ const http = createServer(async (req, res) => {
             if (!filename) throw new ApiError(404, 'File not found');
             await requirePage(filename);
           }
-          return { entityId: id, filename, path };
+          return {
+            entityId: id,
+            filename,
+            path,
+            tokenId: auth.tokenId ?? (auth.accountId && !auth.builtIn ? `account:${auth.accountId}` : null),
+            expiresAt: auth.expiresAt ?? null,
+          };
         });
         const onceRaw = (url.searchParams.get('once') ?? '').trim().toLowerCase();
         const once = onceRaw === '1' || onceRaw === 'true';
@@ -1574,6 +1586,8 @@ const http = createServer(async (req, res) => {
           client: url.searchParams.get('client') ?? '',
           ip: req.socket?.remoteAddress,
           inScope: catalog.inScope,
+          tokenId: subTarget.tokenId,
+          expiresAt: subTarget.expiresAt,
         });
         return;
       }
@@ -1633,6 +1647,7 @@ const http = createServer(async (req, res) => {
             }
             if (parts.length === 3 && req.method === 'DELETE') {
               await skills.revokeKey(parts[2]);
+              skillEvents.disconnectByToken(parts[2], 'Skill editor key revoked');
               return send(res, 204, '');
             }
           }
@@ -1937,6 +1952,8 @@ const http = createServer(async (req, res) => {
           }
           if (parts.length === 2 && req.method === 'DELETE') {
             await accounts.remove(id);
+            events.disconnectByToken(`account:${id}`, 'Account deleted');
+            skillEvents.disconnectByToken(`account:${id}`, 'Account deleted');
             return send(res, 204, '');
           }
         }
@@ -2010,6 +2027,7 @@ const http = createServer(async (req, res) => {
           // Revoke first: a partial failure can never leave live keys to a removed Entity.
           await tokens.revokeEntity(id);
           await catalog.remove(id, pages);
+          events.disconnectByEntity(id, 'Folder deleted');
           await history.snapshot(`Delete entity ${id}`);
           return send(res, 204, '');
         }
@@ -2047,9 +2065,15 @@ const http = createServer(async (req, res) => {
           }
           if (parts.length === 4 && req.method === 'PATCH') {
             const body = await readJson(req, 4096); fields(body, ['expiresIn'], ['expiresIn']);
-            return json(res, 200, await tokens.setExpiry(id, parts[3], body.expiresIn));
+            const result = await tokens.setExpiry(id, parts[3], body.expiresIn);
+            events.updateTokenExpiry(parts[3], result.token.expiresAt ?? null);
+            return json(res, 200, result);
           }
-          if (parts.length === 4 && req.method === 'DELETE') { await tokens.revoke(id, parts[3]); return send(res, 204, ''); }
+          if (parts.length === 4 && req.method === 'DELETE') {
+            await tokens.revoke(id, parts[3]);
+            events.disconnectByToken(parts[3], 'Token revoked');
+            return send(res, 204, '');
+          }
         }
         if (resource === 'entities' && action === 'files' && parts.length >= 4) {
           catalog.entity(id);

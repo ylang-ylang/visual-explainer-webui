@@ -166,6 +166,41 @@ assert.equal((await req(`/api/entities/${folderA.id}/events`, { token: null, hea
 const timedOut = await req(`/api/entities/${folderA.id}/events?events=comment.dispatch&once=1&timeout=1&client=probe`, { token: keyA });
 assert.equal(timedOut.status, 204);
 
+// watch.sh endpoint requires auth and returns POSIX shell script
+assert.equal((await req('/api/visual-explainer/watch.sh', { token: null })).status, 401);
+const watchRes = await req('/api/visual-explainer/watch.sh', { token: keyA });
+assert.equal(watchRes.status, 200);
+assert.ok(watchRes.headers.get('content-type').startsWith('text/x-shellscript'));
+assert.ok(watchRes.text.startsWith('#!/bin/sh\n'));
+
+// Instant disconnect on key revocation (401), expiry update (401), and folder deletion (404)
+{
+  const revTok = (await req(`/api/entities/${folderA.id}/tokens`, { method: 'POST', body: { expiresIn: 3600 } })).data;
+  const revWait = req(`/api/entities/${folderA.id}/events?once=1&timeout=30&client=rev-probe`, { token: revTok.secret });
+  await new Promise(r => setTimeout(r, 120));
+  assert.equal((await req(`/api/entities/${folderA.id}/tokens/${revTok.token.id}`, { method: 'DELETE' })).status, 204);
+  const revRes = await revWait;
+  assert.equal(revRes.status, 401);
+  assert.match(revRes.data.error, /revoked/i);
+
+  const expTok = (await req(`/api/entities/${folderA.id}/tokens`, { method: 'POST', body: { expiresIn: 3600 } })).data;
+  const expWait = req(`/api/entities/${folderA.id}/events?once=1&timeout=30&client=exp-probe`, { token: expTok.secret });
+  await new Promise(r => setTimeout(r, 120));
+  assert.equal((await req(`/api/entities/${folderA.id}/tokens/${expTok.token.id}`, { method: 'PATCH', body: { expiresIn: 1 } })).status, 200);
+  const expRes = await expWait;
+  assert.equal(expRes.status, 401);
+  assert.match(expRes.data.error, /expired/i);
+
+  const doomedFolder = (await req('/api/entities', { method: 'POST', body: { id: 'events-doomed', name: 'Doomed Folder' } })).data.entity;
+  const doomedTok = (await req(`/api/entities/${doomedFolder.id}/tokens`, { method: 'POST', body: { expiresIn: 3600 } })).data;
+  const delWait = req(`/api/entities/${doomedFolder.id}/events?once=1&timeout=30&client=del-probe`, { token: doomedTok.secret });
+  await new Promise(r => setTimeout(r, 120));
+  assert.equal((await req(`/api/entities/${doomedFolder.id}`, { method: 'DELETE' })).status, 204);
+  const delRes = await delWait;
+  assert.equal(delRes.status, 404);
+  assert.match(delRes.data.error, /deleted/i);
+}
+
 const sse1 = await openSse(`/api/entities/${folderA.id}/events?path=report.html&client=runner-1`, keyA);
 const sse2 = await openSse(`/api/entities/${folderA.id}/events?client=runner-2`, keyA);
 
@@ -203,12 +238,12 @@ try {
     await ownerPage.waitForSelector('.report[aria-current="page"]');
     await ownerPage.waitForSelector('#preview:not([hidden])');
 
-    // File API prompt includes default non-blocking background listener, closed-loop updates & SSE docs
+    // File API prompt includes zero-idle-token watch.sh background watcher, closed-loop updates & key-lifetime stop rules
     await ownerPage.click('#viewer-api');
     await ownerPage.waitForFunction(() => !document.querySelector('#copy-api').disabled);
     const payloadText = await ownerPage.locator('#api-payload').inputValue();
-    assert.ok(payloadText.includes('/events?') && payloadText.includes('events=comment.dispatch&once=1&timeout=300&client=agent'), 'Copied File API prompt must include default one-shot comment.dispatch listener URL');
-    assert.ok(payloadText.includes('non-blocking background listener') && payloadText.includes('Re-arm') && payloadText.includes('204'), 'Copied File API prompt must instruct default background listener and closed-loop re-arm/204 handling');
+    assert.ok(payloadText.includes('/api/visual-explainer/watch.sh') && payloadText.includes(`./ve-watch.sh --url '${base.origin}/api/entities/${folderA.id}/events'`), 'Copied File API prompt must include watch.sh download and watcher command');
+    assert.ok(payloadText.includes('zero idle tokens') && payloadText.includes('key_expired') && payloadText.includes('--after <eventId>'), 'Copied File API prompt must instruct zero-idle-token watch.sh lifecycle and stop rules');
     await ownerPage.click('[data-close="api-dialog"]');
 
     // Open comments panel -> verify 1 host & Send button -> click Send with parallel ?once=1 listener

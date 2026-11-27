@@ -50,7 +50,9 @@ export async function createTokens(outputDir, catalog) {
     authenticate(secret) {
       const hash = Buffer.from(digest(secret), 'hex');
       const entry = entries.find(entry => timingSafeEqual(hash, Buffer.from(entry.hash, 'hex')));
-      return entry && active(entry) && catalog.entities().some(entity => entity.id === entry.entityId) ? { role: 'agent', entityId: entry.entityId } : null;
+      return entry && active(entry) && catalog.entities().some(entity => entity.id === entry.entityId)
+        ? { role: 'agent', entityId: entry.entityId, tokenId: entry.id, expiresAt: entry.expiresAt ?? null }
+        : null;
     },
     list(entityId) { catalog.entity(entityId); return entries.filter(entry => entry.entityId === entityId).map(metadata); },
     async create(entityId, name, expiresIn) {

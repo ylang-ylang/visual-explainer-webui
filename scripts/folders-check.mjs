@@ -26,9 +26,11 @@ try {
   secrets.push(key);
   const url = new URL(`/api/entities/${entityId}/files/${path.split('/').map(encodeURIComponent).join('/')}`, base);
   assert.ok(copyPayload.includes(url.href), 'Copied upload target must match the selected nested folder');
-  const eventsOnceUrl = new URL(`/api/entities/${entityId}/events?events=comment.dispatch&once=1&timeout=300&client=agent`, base);
-  assert.ok(copyPayload.includes(eventsOnceUrl.href), 'Copied prompt must include default background one-shot events listener URL');
-  assert.ok(copyPayload.includes('non-blocking background listener') && copyPayload.includes('Re-arm') && copyPayload.includes('204'), 'Copied prompt must instruct default background listener and closed-loop re-arm/204 handling');
+  const watchUrl = new URL('/api/visual-explainer/watch.sh', base);
+  const eventsBaseUrl = new URL(`/api/entities/${entityId}/events`, base);
+  assert.ok(copyPayload.includes(watchUrl.href), 'Copied prompt must include generic watch.sh script URL');
+  assert.ok(copyPayload.includes(`./ve-watch.sh --url '${eventsBaseUrl.href}'`), 'Copied prompt must instruct starting ONE folder-scoped ve-watch.sh watcher');
+  assert.ok(copyPayload.includes('key_expired') && copyPayload.includes('--after <eventId>') && copyPayload.includes('zero idle tokens'), 'Copied prompt must document zero-idle-token watch.sh lifecycle, --after re-arming, and key_expired stop rule');
   const blocks = [...copyPayload.matchAll(/```bash\n([\s\S]*?)```/g)].map(match => match[1].trim());
   assert.equal(blocks.length, 2, 'Copied prompt must include bootstrap and publish bash blocks');
   const script = blocks.join('\n');

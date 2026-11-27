@@ -506,6 +506,7 @@ test('HTTP/MCP/Renderer E2E: enumeration, permission isolation, lock switch, liv
     mountArgs.push('--mount', `type=bind,src=${join(REPO_ROOT, 'remote-app', file)},dst=/opt/bridge/${file},readonly`);
   }
   mountArgs.push('--mount', `type=bind,src=${BUILTIN_DIR},dst=/opt/bridge/builtin-skills,readonly`);
+  mountArgs.push('--mount', `type=bind,src=${join(REPO_ROOT, 'remote-app', 'static')},dst=/opt/bridge/static,readonly`);
 
   let failed = false;
   try {
@@ -650,6 +651,7 @@ test('HTTP/MCP/Renderer E2E: enumeration, permission isolation, lock switch, liv
     await req('/api/skills', { auth: skillKey, status: 200 });
     await req('/api/visual-explainer/SKILL.md', { auth: skillKey, status: 200 });
     await req('/api/visual-explainer/bootstrap-prompt', { auth: skillKey, status: 200 });
+    await req('/api/visual-explainer/watch.sh', { auth: skillKey, status: 200 });
 
     // 4. Live override: PUT /api/skills/docs/SKILL.md immediately affects /bundle, /SKILL.md, and MCP ReadResource!
     const origSkillDoc = await (await req('/api/skills/docs/SKILL.md', { auth: skillKey, status: 200 })).json();

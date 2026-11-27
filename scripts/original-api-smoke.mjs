@@ -92,6 +92,11 @@ try {
   await symlink(process.env.TOKEN_FILE, join(dataDir, 'SKILL.md'));
   const beforeReads = await readonlySnapshot();
   const index = await json(prefix);
+  assert.equal(index.watchUrl, new URL(`${prefix}/watch.sh`, base).href, 'Official index must advertise watchUrl');
+  const watchRes = await request(`${prefix}/watch.sh`);
+  assert.ok(watchRes.headers.get('content-type').startsWith('text/x-shellscript'), 'watch.sh must serve text/x-shellscript');
+  assert.ok((await watchRes.text()).startsWith('#!/bin/sh\n'), 'watch.sh must be a POSIX shell script');
+  await request(`${prefix}/watch.sh`, { auth: null, status: 401 });
   const [resources, prompts, tools] = await Promise.all([official.listResources(), official.listPrompts(), official.listTools()]);
   const installed = JSON.parse(await readFile(join(upstreamDir, 'package.json'), 'utf8'));
   const wrapper = JSON.parse(await readFile('/opt/bridge/package.json', 'utf8'));

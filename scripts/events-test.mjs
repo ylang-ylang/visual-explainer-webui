@@ -20,6 +20,8 @@ function startTestServer(hub, { inScope = null } = {}) {
     const timeoutSec = url.searchParams.has('timeout') ? url.searchParams.get('timeout') : undefined;
     const client = url.searchParams.get('client') ?? '';
     const ip = url.searchParams.has('ip') ? url.searchParams.get('ip') : undefined;
+    const tokenId = url.searchParams.get('tokenId') || null;
+    const expiresAt = url.searchParams.get('expiresAt') || null;
     try {
       hub.subscribe(req, res, {
         entityId,
@@ -32,6 +34,8 @@ function startTestServer(hub, { inScope = null } = {}) {
         client,
         ip,
         inScope,
+        tokenId,
+        expiresAt,
       });
     } catch (error) {
       const status = error instanceof ApiError ? error.status : 500;
@@ -507,6 +511,138 @@ test('hostSummary deduplicates IPv4-mapped and plain IP, distinguishes distinct 
     assert.equal(closedOnce.status, 204);
     assert.equal(hub.hostSummary({ entityId: 'proj', filename: 'flow.html' }).connectionCount, 0);
     assert.equal(hub.hostSummary({ entityId: 'proj', filename: 'flow.html' }).hostCount, 0);
+  } finally {
+    await srv.close();
+  }
+});
+
+test('initialEventId and monotonicTimestampIds produce strictly monotonic event IDs', () => {
+  const customHub = createEventHub({ initialEventId: 5000, heartbeatMs: 0 });
+  const e1 = customHub.emit({ type: 'comment.created', entityId: 'p', filename: 'a.html' });
+  const e2 = customHub.emit({ type: 'comment.replied', entityId: 'p', filename: 'a.html' });
+  assert.equal(e1.event.id, '5001');
+  assert.equal(e2.event.id, '5002');
+
+  const tsBefore = Date.now() * 1000;
+  const tsHub = createEventHub({ monotonicTimestampIds: true, heartbeatMs: 0 });
+  const t1 = tsHub.emit({ type: 'comment.created', entityId: 'p', filename: 'a.html' });
+  const t2 = tsHub.emit({ type: 'comment.replied', entityId: 'p', filename: 'a.html' });
+  assert.ok(Number(t1.event.id) >= tsBefore);
+  assert.ok(Number(t2.event.id) > Number(t1.event.id));
+});
+
+test('expiresAt rejects already-expired tokens, disconnects active once/SSE on expiry, and supports >24d chunked timers', async () => {
+  const hub = createEventHub({ heartbeatMs: 0 });
+  const srv = await startTestServer(hub);
+  try {
+    // Seed an event to ensure expired tokens do NOT receive replay
+    hub.emit({ type: 'comment.created', entityId: 'proj', filename: 'a.html', path: 'a.html' });
+
+    const pastIso = new Date(Date.now() - 1000).toISOString();
+    const expiredRes = await httpGet(srv.baseUrl, `/events?once=1&entityId=proj&after=0&tokenId=tok_past&expiresAt=${encodeURIComponent(pastIso)}`);
+    assert.equal(expiredRes.status, 401);
+    assert.equal(expiredRes.json.error, 'Token expired');
+    assert.equal(hub.hostSummary({ entityId: 'proj' }).connectionCount, 0);
+
+    // Active once=1 and SSE disconnect automatically when expiresAt elapses
+    const soonIso = new Date(Date.now() + 180).toISOString();
+    const oncePromise = httpGet(srv.baseUrl, `/events?once=1&timeout=30&entityId=proj&tokenId=tok_soon&expiresAt=${encodeURIComponent(soonIso)}`);
+    const sse = await openSse(srv.baseUrl, `/events?entityId=proj&tokenId=tok_soon&expiresAt=${encodeURIComponent(soonIso)}`);
+    await sse.waitFor(b => b.kind === 'comment' && b.comment === 'connected');
+    assert.equal(hub.hostSummary({ entityId: 'proj' }).connectionCount, 2);
+
+    const [onceRes, expiredFrame] = await Promise.all([
+      oncePromise,
+      sse.waitFor(b => b.kind === 'event' && b.event === 'auth.expired'),
+    ]);
+    await sse.ended;
+    assert.equal(onceRes.status, 401);
+    assert.equal(onceRes.json.error, 'Token expired');
+    assert.equal(expiredFrame.data.status, 'key_expired');
+    assert.equal(expiredFrame.data.error, 'Token expired');
+    assert.equal(hub.hostSummary({ entityId: 'proj' }).connectionCount, 0);
+
+    // >24 days expiry does not overflow setTimeout 32-bit int and stays connected until closed
+    const farIso = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const farSse = await openSse(srv.baseUrl, `/events?entityId=proj&tokenId=tok_far&expiresAt=${encodeURIComponent(farIso)}`);
+    try {
+      await farSse.waitFor(b => b.kind === 'comment' && b.comment === 'connected');
+      await new Promise(r => setTimeout(r, 80));
+      assert.equal(hub.hostSummary({ entityId: 'proj' }).connectionCount, 1);
+      assert.equal(farSse.pendingBlocks().length, 0);
+    } finally {
+      farSse.close();
+      await waitUntil(() => hub.hostSummary({ entityId: 'proj' }).connectionCount === 0);
+    }
+  } finally {
+    await srv.close();
+  }
+});
+
+test('disconnectByToken, updateTokenExpiry, and disconnectByEntity terminate only matching subscribers', async () => {
+  const hub = createEventHub({ heartbeatMs: 0 });
+  const srv = await startTestServer(hub);
+  try {
+    // 1. disconnectByToken terminates both once=1 and SSE for target token only
+    const onceTarget = httpGet(srv.baseUrl, '/events?once=1&timeout=30&entityId=proj&tokenId=tok_a');
+    const sseTarget = await openSse(srv.baseUrl, '/events?entityId=proj&tokenId=tok_a');
+    const sseOther = await openSse(srv.baseUrl, '/events?entityId=proj&tokenId=tok_b');
+    await sseTarget.waitFor(b => b.kind === 'comment' && b.comment === 'connected');
+    await sseOther.waitFor(b => b.kind === 'comment' && b.comment === 'connected');
+    await waitUntil(() => hub.hostSummary({ entityId: 'proj' }).connectionCount === 3);
+
+    const disconnected = hub.disconnectByToken('tok_a', 'Token revoked');
+    assert.equal(disconnected, 2);
+    const [onceRes, sseExpired] = await Promise.all([
+      onceTarget,
+      sseTarget.waitFor(b => b.kind === 'event' && b.event === 'auth.expired'),
+    ]);
+    await sseTarget.ended;
+    assert.equal(onceRes.status, 401);
+    assert.equal(onceRes.json.error, 'Token revoked');
+    assert.equal(sseExpired.data.status, 'key_expired');
+    assert.equal(sseExpired.data.error, 'Token revoked');
+    assert.equal(hub.hostSummary({ entityId: 'proj' }).connectionCount, 1);
+
+    // 2. updateTokenExpiry reschedules active subscriber: clearing to null prevents expiry, shortening triggers immediate expiry
+    const soonIso = new Date(Date.now() + 120).toISOString();
+    const sseMod = await openSse(srv.baseUrl, `/events?entityId=proj&tokenId=tok_mod&expiresAt=${encodeURIComponent(soonIso)}`);
+    await sseMod.waitFor(b => b.kind === 'comment' && b.comment === 'connected');
+    // Extend to null (never expires) before 120ms elapses
+    assert.equal(hub.updateTokenExpiry('tok_mod', null), 1);
+    await new Promise(r => setTimeout(r, 200));
+    assert.equal(hub.hostSummary({ entityId: 'proj' }).connectionCount, 2);
+    // Now shorten expiry to 80ms -> triggers disconnect
+    hub.updateTokenExpiry('tok_mod', new Date(Date.now() + 80).toISOString());
+    const modExpired = await sseMod.waitFor(b => b.kind === 'event' && b.event === 'auth.expired');
+    await sseMod.ended;
+    assert.equal(modExpired.data.status, 'key_expired');
+
+    // 3. disconnectByEntity sends 404 on once=1 and auth.expired (scope_gone) on SSE, without touching global or other entities
+    const onceDel = httpGet(srv.baseUrl, '/events?once=1&timeout=30&entityId=doomed');
+    const sseDel = await openSse(srv.baseUrl, '/events?entityId=doomed');
+    const sseGlobal = await openSse(srv.baseUrl, '/events?entityId=null');
+    await sseDel.waitFor(b => b.kind === 'comment' && b.comment === 'connected');
+    await sseGlobal.waitFor(b => b.kind === 'comment' && b.comment === 'connected');
+    await waitUntil(() => hub.hostSummary({ entityId: 'doomed' }).connectionCount === 3);
+
+    const delCount = hub.disconnectByEntity('doomed');
+    assert.equal(delCount, 2);
+    const [delOnceRes, delSseFrame] = await Promise.all([
+      onceDel,
+      sseDel.waitFor(b => b.kind === 'event' && b.event === 'auth.expired'),
+    ]);
+    await sseDel.ended;
+    assert.equal(delOnceRes.status, 404);
+    assert.equal(delOnceRes.json.error, 'Folder deleted');
+    assert.equal(delSseFrame.data.status, 'scope_gone');
+    assert.equal(delSseFrame.data.error, 'Folder deleted');
+
+    // sseOther (proj) and sseGlobal (null) are still connected!
+    assert.equal(hub.hostSummary({ entityId: 'proj' }).connectionCount, 2);
+    sseOther.close();
+    sseGlobal.close();
+    await waitUntil(() => hub.hostSummary({ entityId: 'proj' }).connectionCount === 0);
   } finally {
     await srv.close();
   }

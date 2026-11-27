@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-register="blueprint">
 <head>
 <title>WebUI 入口提示词（bootstrap-prompt）</title>
-<meta name="description" content="拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle、编写渲染与 Checksheet 自查、非阻塞挂 SSE 监听后汇报链接、收到 Send 后拉评改图并续挂。">
+<meta name="description" content="拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle、编写渲染与 Checksheet 自查、通过 watch.sh 零空闲 Token 后台监听并按 Key 生命周期自动停止。">
 <link rel="stylesheet" href="kit.css" data-ve-kit>
 <style>
 .seq-svg text { font-size: 15px; }
@@ -16,35 +16,35 @@
 <main>
   <header>
     <p class="eyebrow">SKILL WIKI · L1 · ENTRY PROTOCOL</p>
-    <h1>四步闭环：先拉 bundle 写图自检，再后台挂监听后汇报链接</h1>
-    <p class="lead"><code>webui/bootstrap-prompt.md</code> 是 WebUI 注入给所有远程 Agent 的操作手册，将 <b>拉规范、渲染校验、Wiki 下钻与评论唤醒</b> 统一为标准 HTTP 协议。</p>
-    <p class="meta">covers: webui/bootstrap-prompt.md · 4 Stages · 300 s One-Shot SSE</p>
+    <h1>四步闭环：先拉 bundle 写图自检，再用 watch.sh 零 Token 监听后汇报链接</h1>
+    <p class="lead"><code>webui/bootstrap-prompt.md</code> 是 WebUI 注入给所有远程 Agent 的操作手册，将 <b>拉规范、渲染校验、Wiki 下钻与零空闲 Token 评论唤醒</b> 统一为标准 HTTP 协议。</p>
+    <p class="meta">covers: webui/bootstrap-prompt.md · 4 Stages · Zero-Idle-Token watch.sh</p>
   </header>
 
   <figure class="ve-steps">
-    <ve-flow label="Agent 遵循 bootstrap-prompt.md 执行的四阶段发布与评论闭环">
+    <ve-flow label="Agent 遵循 bootstrap-prompt.md 执行的四阶段发布与零空闲 Token 评论闭环">
       <ve-node id="s1" at="1 1" sub="GET /bundle" data-s="1" data-ref="bundle">1. 单命令拉规范</ve-node>
       <ve-node id="s2" at="2 1" sub="PUT .src.html" key data-s="2" data-ref="publish">2. 渲染与自查</ve-node>
-      <ve-node id="s3" at="3 1" sub="后台 events/once" data-s="3" data-ref="listen">3. 挂监听再报链</ve-node>
-      <ve-node id="s4" at="4 1" sub="改图 + Resolve" data-s="4" data-ref="loop">4. 响应 Send 续挂</ve-node>
+      <ve-node id="s3" at="3 1" sub="后台 watch.sh" data-s="3" data-ref="listen">3. 挂监听再报链</ve-node>
+      <ve-node id="s4" at="4 1" sub="改图 + Resolve" data-s="4" data-ref="loop">4. 响应评论续挂</ve-node>
       <ve-edge from="s1" to="s2" label="读完再写" data-s="2"/>
       <ve-edge from="s2" to="s3" label="零 ✗ 放行" hot data-s="3"/>
-      <ve-edge from="s3" to="s4" label="200 唤醒" hot data-s="4"/>
-      <ve-edge from="s4" to="s3" label="&amp;after=id" async data-s="4"/>
+      <ve-edge from="s3" to="s4" label="comment.*" hot data-s="4"/>
+      <ve-edge from="s4" to="s3" label="--after id" async data-s="4"/>
     </ve-flow>
     <div class="ve-player">
       <ol class="ve-cap">
         <li data-n="1/4">执行单条 <code>curl /bundle</code> 拉取索引、<code>SKILL.md</code> 与核心规范，严禁直接上传随意 HTML。</li>
         <li data-n="2/4">本地核实事实并写 <code>./diagram.src.html</code>，<code>PUT</code> 渲染后解码 Checksheet 截图，小步修到零 <code>✗</code>。</li>
-        <li data-n="3/4">在回复 <code>page.url</code> 前，先以非阻塞后台任务启动 <code>events/once</code> 监听，让 WebUI 立即显示在线。</li>
-        <li data-n="4/4">用户点 Send 触发 <code>comment.dispatch</code> 后拉评与源码、发新版、Resolve 线程，并带 <code>&amp;after=&lt;id&gt;</code> 续挂监听。</li>
+        <li data-n="3/4">在回复 <code>page.url</code> 前，先下载 <code>/watch.sh</code> 并以单实例后台进程监听整目录，本地静默吞掉 <code>204</code> 轮询。</li>
+        <li data-n="4/4">收到任意 <code>comment.*</code> 事件后拉评改图、Resolve 并带 <code>--after &lt;id&gt;</code> 续挂；Key 过期或撤销时收到 <code>key_expired</code> 自动止停。</li>
       </ol>
       <button type="button" data-go="-1" aria-label="上一步">‹</button>
       <button type="button" data-play aria-label="播放">▶</button>
       <input type="range" aria-label="步骤">
       <button type="button" data-go="1" aria-label="下一步">›</button>
     </div>
-    <figcaption><span class="fig-n"></span>四阶段闭环把“一次性出图”升级为可实时协作修改的交互工作流。</figcaption>
+    <figcaption><span class="fig-n"></span>四阶段闭环把“一次性出图”升级为可长期在线、零空闲 Token 消耗的实时协作工作流。</figcaption>
   </figure>
 
   <section id="publish">
@@ -69,13 +69,13 @@
   </section>
 
   <section id="listener">
-    <div class="sec-head"><p class="ve-label caps">Stage 3–4</p><h2>非阻塞后台监听与 <code>&amp;after=&lt;id&gt;</code> 游标避免遗漏编辑期评论</h2></div>
+    <div class="sec-head"><p class="ve-label caps">Stage 3–4</p><h2>零空闲 Token 后台监听（<code>watch.sh</code>）与 Key 生命周期自动止停</h2></div>
     <figure>
       <div class="frame">
-        <svg class="ve-svg seq-svg" viewBox="0 0 860 306" aria-label="Agent 与 WebUI 之间的发布、监听、唤醒与续挂时序图">
+        <svg class="ve-svg seq-svg" viewBox="0 0 860 318" aria-label="Agent 与 WebUI 之间通过 watch.sh 进行零空闲 Token 监听、评论唤醒与 Key 到期自动停止的时序图">
           <g class="ve-n">
             <rect class="sh" x="62" y="18" width="180" height="38" rx="6"/>
-            <text x="152" y="42">Agent Harness</text>
+            <text x="152" y="42">Agent + watch.sh</text>
           </g>
 
           <g class="ve-n is-key">
@@ -88,35 +88,52 @@
             <text x="758" y="42">Reviewer 浏览器</text>
           </g>
 
-          <path class="ve-axis" d="M152 56 V286 M472 56 V286 M758 56 V286"/>
+          <path class="ve-axis" d="M152 56 V298 M472 56 V298 M758 56 V298"/>
 
           <path class="ve-e" d="M152 88 H466"/>
           <text class="ve-el" x="312" y="79">1. PUT v1 → 零 ✗ 通过</text>
 
-          <path class="ve-e is-async" d="M152 124 H466"/>
-          <text class="ve-el" x="312" y="115">2. 后台挂 GET events/once（≤ 300 s）</text>
+          <path class="ve-e is-async" d="M152 126 H466"/>
+          <text class="ve-el" x="312" y="117">2. 后台 watch.sh（整目录单连接 + PID 锁）</text>
 
-          <path class="ve-e" d="M152 160 H752"/>
-          <text class="ve-el" x="615" y="151">3. 汇报 page.url（已在线）</text>
+          <path class="ve-e" d="M152 164 H752"/>
+          <text class="ve-el" x="615" y="155">3. 汇报 page.url（已在线）</text>
 
-          <path class="ve-e is-hot" d="M758 196 H478"/>
-          <text class="ve-el" x="615" y="187">4. 批注并点击 Send</text>
+          <path class="ve-e is-hot" d="M758 202 H478"/>
+          <text class="ve-el" x="615" y="193">4. 评论 / 回复 / 重开 / 点 Send</text>
 
-          <path class="ve-e is-hot" d="M472 230 H158"/>
-          <text class="ve-el" x="312" y="221">5. 200 comment.dispatch (e_9)</text>
+          <path class="ve-e is-hot" d="M472 238 H158"/>
+          <text class="ve-el" x="312" y="229">5. 200 comment.* (e_9)（204 本地吞）</text>
 
-          <path class="ve-e is-hot" d="M152 268 H466"/>
-          <text class="ve-el" x="312" y="259">6. 改图 PUT v2 → Resolve → &amp;after=e_9</text>
+          <path class="ve-e is-hot" d="M152 278 H466"/>
+          <text class="ve-el" x="312" y="269">6. PUT v2 → Resolve → --after e_9</text>
 
           <g class="ve-dim is-key">
-            <path class="ext" d="M22 124 H44 M22 230 H44"/>
-            <path class="ln" d="M32 124 V230 M28 128 l8-8 M28 234 l8-8"/>
-            <text x="92" y="182">≤ 300 s</text>
+            <path class="ext" d="M22 126 H44 M22 238 H44"/>
+            <path class="ln" d="M32 126 V238 M28 130 l8-8 M28 242 l8-8"/>
+            <text x="92" y="186">0 Token</text>
           </g>
         </svg>
       </div>
-      <figcaption><span class="fig-n"></span>先挂后台再汇报链接，避免用户在空白窗口点击 Send；遇到 <code>204</code> 超时静默退出，无后台能力的环境则跳过监听不阻塞回复。</figcaption>
+      <figcaption><span class="fig-n"></span><code>watch.sh</code> 仅依赖 POSIX sh + curl：通过 stdin 传 <code>VE_KEY</code>、本地静默吞掉 <code>204</code> 与重启抖动、默认监听全部评论事件（可选 <code>--events comment.dispatch</code>），在 Key 到期或撤销收到 <code>401/403</code> 时输出 <code>key_expired</code> 并自动止停。</figcaption>
     </figure>
+    <div class="cases">
+      <div class="case" data-st="ok">
+        <span class="chip ok">Zero Idle</span>
+        <h3>204 本地消化，零空闲 Token</h3>
+        <p>禁止手写裸 <code>once=1</code> curl 轮询或按页并发开多个监听；整目录只需一个 <code>watch.sh</code> 进程，重跑时 PID 锁自动优雅替换旧进程。</p>
+      </div>
+      <div class="case" data-st="ok">
+        <span class="chip ok">All Events</span>
+        <h3>默认响应全量评论事件</h3>
+        <p>省略 <code>--events</code> 时，新建评论、回复、重新打开与手动 Send 都会立即唤醒 Agent；仅需攒批发送时追加 <code>--events comment.dispatch</code>。</p>
+      </div>
+      <div class="case" data-st="warn">
+        <span class="chip warn">Key Lifetime</span>
+        <h3>到期 / 撤销自动退出不续挂</h3>
+        <p>服务端在 Key 过期、撤销或目录删除时主动断开长轮询与 SSE；脚本输出 <code>key_expired</code> / <code>scope_gone</code> 后 Agent 须静默停止，禁止重挂。</p>
+      </div>
+    </div>
   </section>
 
   <section id="endpoints">
@@ -138,7 +155,7 @@
           </tr>
           <tr>
             <td>发布与读源码</td>
-            <td><code>PUT /files/&lt;path&gt;.html</code> · <code>GET /files/&lt;path&gt;.src.html</code></td>
+            <td><code>PUT /files/&lt;path&gt;.html</code> · <code>GET /files/&lt;path&gt;</code></td>
             <td>同路径覆盖自动递增 <code>v2 / v3</code> 版本</td>
           </tr>
           <tr>
@@ -147,9 +164,9 @@
             <td>回复已解决线程会自动重新打开；Resolve 可附 <code>note</code></td>
           </tr>
           <tr>
-            <td>事件唤醒</td>
-            <td><code>GET /events/once</code> · <code>GET /events</code>（持久 SSE）</td>
-            <td>均支持 <code>after=&lt;id&gt;</code> / <code>Last-Event-ID</code> 断点续传</td>
+            <td>零 Token 监听</td>
+            <td><code>GET /watch.sh</code> · <code>GET /events</code>（<code>once</code> / <code>stream</code>）</td>
+            <td>本地吞 <code>204</code>、默认全量 <code>comment.*</code>、支持 <code>--after</code> 与 Key 生命周期自动止停</td>
           </tr>
           <tr>
             <td>目录与版本回溯</td>
@@ -164,7 +181,7 @@
 
   <section class="sources" aria-label="Sources">
     <p class="ve-label caps">Sources</p>
-    <p><code>webui/bootstrap-prompt.md</code></p>
+    <p><code>webui/bootstrap-prompt.md</code> · <code>GET /api/visual-explainer/watch.sh</code></p>
   </section>
 </main>
 </body>

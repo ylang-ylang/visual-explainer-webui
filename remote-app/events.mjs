@@ -12,6 +12,14 @@ const MAX_CLIENT_LENGTH = 64;
 const MIN_TIMEOUT_SEC = 1;
 const MAX_TIMEOUT_SEC = 3600;
 const DEFAULT_ONCE_TIMEOUT_SEC = 300;
+const MAX_TIMER_MS = 24 * 24 * 60 * 60 * 1000;
+
+function parseExpiresAtMs(expiresAt) {
+  if (expiresAt === undefined || expiresAt === null || expiresAt === '') return null;
+  if (typeof expiresAt === 'number') return Number.isFinite(expiresAt) ? expiresAt : null;
+  const ms = Date.parse(String(expiresAt));
+  return Number.isFinite(ms) ? ms : null;
+}
 
 export function normalizeClientIp(raw) {
   if (typeof raw !== 'string') return 'unknown';
@@ -100,15 +108,25 @@ function matchesEvent(sub, event) {
   return true;
 }
 
-export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
+export function createEventHub({ maxHistory = 200, heartbeatMs = 25000, initialEventId = 0, monotonicTimestampIds = false } = {}) {
   const historyLimit = Number.isInteger(maxHistory) && maxHistory >= 0 ? maxHistory : 200;
   const heartbeatIntervalMs = Number.isFinite(heartbeatMs) && heartbeatMs >= 0 ? heartbeatMs : 25000;
+  const useTimestampIds = Boolean(monotonicTimestampIds);
 
-  let nextEventId = 0;
+  let nextEventId = Number.isSafeInteger(initialEventId) && initialEventId > 0
+    ? initialEventId
+    : (useTimestampIds ? Date.now() * 1000 : (Number.isSafeInteger(initialEventId) && initialEventId >= 0 ? initialEventId : 0));
   let nextSubId = 0;
   const history = [];
   const subscribers = new Set();
   const detachHandlers = new WeakMap();
+
+  function clearExpiryTimer(sub) {
+    if (sub.expiryTimer !== null) {
+      clearTimeout(sub.expiryTimer);
+      sub.expiryTimer = null;
+    }
+  }
 
   function cleanup(sub) {
     subscribers.delete(sub);
@@ -120,11 +138,51 @@ export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
       clearInterval(sub.heartbeat);
       sub.heartbeat = null;
     }
+    clearExpiryTimer(sub);
     const detach = detachHandlers.get(sub);
     if (detach) {
       detachHandlers.delete(sub);
       detach();
     }
+  }
+
+  function terminateSubscriber(sub, { statusCode = 401, status = 'key_expired', error = 'Token expired' } = {}) {
+    if (!subscribers.has(sub)) return false;
+    cleanup(sub);
+    try {
+      if (sub.res.writableEnded || sub.res.destroyed) return true;
+      if (!sub.res.headersSent) {
+        sub.res.writeHead(statusCode, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+        sub.res.end(JSON.stringify({ error }));
+      } else {
+        sub.res.write(`event: auth.expired\ndata: ${JSON.stringify({ status, error })}\n\n`);
+        sub.res.end();
+      }
+    } catch {
+      // Socket already closed during termination write.
+    }
+    return true;
+  }
+
+  function scheduleExpiry(sub, expiresAt) {
+    clearExpiryTimer(sub);
+    const ms = parseExpiresAtMs(expiresAt);
+    sub.expiresAt = ms === null ? null : new Date(ms).toISOString();
+    if (ms === null) return;
+    const remaining = ms - Date.now();
+    if (remaining <= 0) {
+      terminateSubscriber(sub, { statusCode: 401, status: 'key_expired', error: 'Token expired' });
+      return;
+    }
+    const delay = Math.min(remaining, MAX_TIMER_MS);
+    sub.expiryTimer = setTimeout(() => {
+      sub.expiryTimer = null;
+      if (!subscribers.has(sub)) return;
+      scheduleExpiry(sub, ms);
+    }, delay);
   }
 
   function attachCleanup(req, res, sub) {
@@ -158,7 +216,8 @@ export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
 
   function emit({ type, entityId = null, filename = null, path = '', payload = {} } = {}) {
     if (typeof type !== 'string' || !type) throw new ApiError(400, 'Event type is required');
-    const id = String(++nextEventId);
+    nextEventId = useTimestampIds ? Math.max(nextEventId + 1, Date.now() * 1000) : nextEventId + 1;
+    const id = String(nextEventId);
     const timestamp = new Date().toISOString();
     const event = { id, type, timestamp, entityId, filename, path };
     if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
@@ -218,6 +277,8 @@ export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
       client = '',
       ip,
       inScope = null,
+      tokenId = null,
+      expiresAt = null,
     } = options;
 
     const isOnce = Boolean(once);
@@ -233,6 +294,27 @@ export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
     const subFilename = filename || null;
     const subPath = typeof path === 'string' ? path : '';
     const resolvedIp = normalizeClientIp(ip !== undefined ? ip : (req?.socket?.remoteAddress ?? ''));
+    const subTokenId = tokenId ?? null;
+    const expiresAtMs = parseExpiresAtMs(expiresAt);
+
+    if (expiresAtMs !== null && expiresAtMs <= Date.now()) {
+      try {
+        if (!res.writableEnded && !res.destroyed) {
+          if (!res.headersSent) {
+            res.writeHead(401, {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Cache-Control': 'no-store',
+            });
+            res.end(JSON.stringify({ error: 'Token expired' }));
+          } else {
+            res.end();
+          }
+        }
+      } catch {
+        // Ignore write errors on closing sockets.
+      }
+      return { id: null, replayed: false, event: null };
+    }
 
     const matcher = {
       entityId: subEntityId,
@@ -268,9 +350,12 @@ export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
       ip: resolvedIp,
       connectedAt: new Date().toISOString(),
       inScope: scopeFn,
+      tokenId: subTokenId,
+      expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(),
       res,
       timer: null,
       heartbeat: null,
+      expiryTimer: null,
     };
 
     if (isOnce) {
@@ -288,6 +373,7 @@ export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
           // Ignore write errors on closing sockets.
         }
       }, resolvedTimeoutSec * 1000);
+      scheduleExpiry(sub, expiresAtMs);
       return { id: sub.id, replayed: false, event: null };
     }
 
@@ -340,6 +426,8 @@ export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
       }, resolvedTimeoutSec * 1000);
     }
 
+    scheduleExpiry(sub, expiresAtMs);
+
     return { id: sub.id, replayed: replay.length > 0, event: null };
   }
 
@@ -390,6 +478,46 @@ export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
     };
   }
 
+  function disconnectByToken(tokenId, reason = 'Token revoked') {
+    if (!tokenId) return 0;
+    let count = 0;
+    for (const sub of [...subscribers]) {
+      if (sub.tokenId === tokenId) {
+        if (terminateSubscriber(sub, { statusCode: 401, status: 'key_expired', error: reason })) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  }
+
+  function updateTokenExpiry(tokenId, expiresAt) {
+    if (!tokenId) return 0;
+    let count = 0;
+    for (const sub of [...subscribers]) {
+      if (sub.tokenId === tokenId) {
+        scheduleExpiry(sub, expiresAt);
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  function disconnectByEntity(entityId, reason = 'Folder deleted') {
+    if (!entityId) return 0;
+    let count = 0;
+    for (const sub of [...subscribers]) {
+      if (sub.entityId === null || sub.entityId === undefined) continue;
+      const matches = sub.entityId === entityId || (typeof sub.inScope === 'function' && Boolean(sub.inScope(entityId, sub.entityId)));
+      if (matches) {
+        if (terminateSubscriber(sub, { statusCode: 404, status: 'scope_gone', error: reason })) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  }
+
   function closeAll() {
     for (const sub of [...subscribers]) {
       cleanup(sub);
@@ -406,5 +534,5 @@ export function createEventHub({ maxHistory = 200, heartbeatMs = 25000 } = {}) {
     }
   }
 
-  return { emit, subscribe, hostSummary, closeAll };
+  return { emit, subscribe, hostSummary, disconnectByToken, updateTokenExpiry, disconnectByEntity, closeAll };
 }
