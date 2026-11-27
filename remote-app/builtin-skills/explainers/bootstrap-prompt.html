@@ -504,9 +504,9 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
             <td>同路径覆盖自动递增 <code>v2 / v3</code> 版本</td>
           </tr>
           <tr>
-            <td>评论与线程闭环</td>
-            <td><code>GET /comments</code> · <code>POST /comments</code> · <code>POST /comments/&lt;id&gt;/resolve|reopen</code></td>
-            <td>回复已解决线程会自动重新打开；Resolve 可附 <code>note</code></td>
+            <td>评论与框选锚点</td>
+            <td><code>GET /anchors</code> · <code>GET /comments</code> · <code>POST /comments</code> · <code>POST /comments/&lt;id&gt;/resolve|reopen</code></td>
+            <td><code>/anchors</code> 列出可框选元素；<code>POST /comments</code> 支持元素 <code>selector</code>/<code>ref</code> 或引文自动框选（Agent Pick），回复已解决线程自动重开</td>
           </tr>
           <tr>
             <td>零 Token 监听</td>

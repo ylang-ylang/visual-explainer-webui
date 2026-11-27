@@ -58,7 +58,8 @@ const kitV1 = `<!doctype html>
     <section id="sec-flow">
       <h2>数据流设计</h2>
       <p id="p-latency">当前请求延迟统计为 P95 120ms，需要核对真实指标。</p>
-      <figure id="fig-arch"><div class="ve-n" id="node-gateway" data-ref="Gateway">API Gateway</div></figure>
+      <figure id="fig-arch"><div class="ve-n" id="node-gateway" data-ref="Gateway">API Gateway</div><div class="ve-n" id="node-worker" data-ref="WorkerPool">Worker Pool</div></figure>
+      <p id="p-decision">Pending decision: switch write-ahead log to async batch flush or stay sync.</p>
     </section>
   </main>
 </body>
@@ -396,6 +397,106 @@ try {
   await mdCard.locator('> .edit-box').getByRole('button', { name: 'Cancel' }).click();
   await mdCard.locator('> .comment-body strong', { hasText: 'P99 budget' }).waitFor({ timeout: 5000 });
 
+  // 6. Agent Box-Selection (Anchors Discovery + Element/Ref/Quote Auto-Anchor + Blueprint Amber Box UI)
+  const anchorsEntity = await req(`/api/entities/${own.id}/anchors?path=${encodeURIComponent('raft/architecture.html')}`, { token: ownKey });
+  assert.equal(anchorsEntity.status, 200, anchorsEntity.text);
+  assert.equal(anchorsEntity.data.page.path, 'raft/architecture.html');
+  assert.ok(Array.isArray(anchorsEntity.data.anchors) && anchorsEntity.data.anchors.length >= 4);
+  const workerAnchor = anchorsEntity.data.anchors.find(a => a.selector === '#node-worker');
+  const gatewayAnchor = anchorsEntity.data.anchors.find(a => a.selector === '#node-gateway');
+  assert.ok(workerAnchor && workerAnchor.ref === 'WorkerPool' && workerAnchor.label === 'WorkerPool', `Expected #node-worker anchor, got ${JSON.stringify(anchorsEntity.data.anchors)}`);
+  assert.ok(gatewayAnchor && gatewayAnchor.ref === 'Gateway' && gatewayAnchor.label === 'Gateway');
+
+  // Page-route anchors works for own agent and is 403 for cross-folder agent
+  assert.equal((await req(`/api/pages/${encodeURIComponent(filename)}/anchors`, { token: ownKey })).status, 200);
+  assert.equal((await req(`/api/pages/${encodeURIComponent(filename)}/anchors`, { token: otherKey })).status, 403);
+  assert.equal((await req(`/api/entities/${other.id}/anchors?path=${encodeURIComponent('raft/architecture.html')}`, { token: otherKey })).status, 404);
+
+  // Agent posts element-anchored comment via exact selector (auto-fills label, tag, headings)
+  const agentBySel = await req(`/api/entities/${own.id}/comments`, {
+    method: 'POST',
+    token: ownKey,
+    body: {
+      path: 'raft/architecture.html',
+      where: { kind: 'element', selector: '#node-worker' },
+      body: 'Open question: should **Worker Pool** scale horizontally per shard?',
+    },
+  });
+  assert.equal(agentBySel.status, 201, agentBySel.text);
+  assert.equal(agentBySel.data.anchorMatched, true);
+  assert.equal(agentBySel.data.matchedCount, 1);
+  assert.equal(agentBySel.data.thread.where.label, 'WorkerPool');
+  assert.equal(agentBySel.data.thread.where.tag, 'div');
+  assert.deepEqual(agentBySel.data.thread.where.headings, ['Raft 架构图解', '数据流设计']);
+
+  // Agent posts element-anchored comment via data-ref shorthand
+  const agentByRef = await req(`/api/entities/${own.id}/comments`, {
+    method: 'POST',
+    token: ownKey,
+    body: {
+      path: 'raft/architecture.html',
+      where: { kind: 'element', ref: 'Gateway' },
+      body: 'Trade-off: confirm retry budget on Gateway.',
+    },
+  });
+  assert.equal(agentByRef.status, 201, agentByRef.text);
+  assert.equal(agentByRef.data.anchorMatched, true);
+  assert.equal(agentByRef.data.matchedCount, 1);
+  assert.equal(agentByRef.data.thread.where.selector, '[data-ref="Gateway"]');
+  assert.equal(agentByRef.data.thread.where.label, 'Gateway');
+
+  // Agent posts quote-only text comment -> server auto-resolves box selector
+  const agentByQuote = await req(`/api/entities/${own.id}/comments`, {
+    method: 'POST',
+    token: ownKey,
+    body: {
+      path: 'raft/architecture.html',
+      where: { kind: 'text', quote: 'async batch flush' },
+      body: 'Pending decision: sync WAL guarantees durability, async flush cuts tail latency.',
+    },
+  });
+  assert.equal(agentByQuote.status, 201, agentByQuote.text);
+  assert.equal(agentByQuote.data.anchorMatched, true);
+  assert.equal(agentByQuote.data.matchedCount, 1);
+  assert.equal(agentByQuote.data.thread.where.selector, '#p-decision');
+  assert.equal(agentByQuote.data.thread.where.tag, 'p');
+
+  // Reopen comments drawer to sync the newly posted Agent comments immediately
+  await page.click('#comments-close');
+  await page.click('#comments-toggle');
+  await page.waitForFunction(() => document.querySelector('#comments-badge')?.textContent === '7');
+
+  // Diagram renders BOTH Human Cobalt box (.ve-raft-comment-box:not(.is-agent)) AND Agent Amber box (.ve-raft-comment-box.is-agent)
+  await frame.locator('.ve-raft-comment-box:not(.is-agent)').first().waitFor({ timeout: 5000 });
+  await frame.locator('.ve-raft-comment-box.is-agent').first().waitFor({ timeout: 5000 });
+  const boxCheck = await previewFrame.evaluate((workerThreadId) => {
+    const humanBoxes = [...document.querySelectorAll('.ve-raft-comment-box:not(.is-agent)')];
+    const agentBoxes = [...document.querySelectorAll('.ve-raft-comment-box.is-agent')];
+    const workerBox = document.querySelector(`.ve-raft-comment-box.is-agent[data-thread-id="${workerThreadId}"]`);
+    const workerHandle = workerBox?.querySelector('.ve-raft-box-handle');
+    const humanHandle = humanBoxes[0]?.querySelector('.ve-raft-box-handle');
+    return {
+      humanCount: humanBoxes.length,
+      agentCount: agentBoxes.length,
+      humanVisibleRects: humanBoxes.filter(b => { const r = b.getBoundingClientRect(); return r.width > 5 && r.height > 5; }).length,
+      agentVisibleRects: agentBoxes.filter(b => { const r = b.getBoundingClientRect(); return r.width > 5 && r.height > 5; }).length,
+      workerHandleLabel: workerHandle?.getAttribute('aria-label') || '',
+      workerHandleBg: workerHandle ? getComputedStyle(workerHandle).backgroundColor : '',
+      humanHandleBg: humanHandle ? getComputedStyle(humanHandle).backgroundColor : '',
+    };
+  }, agentBySel.data.thread.id);
+  assert.ok(boxCheck.humanCount >= 2 && boxCheck.humanVisibleRects >= 2, `Expected visible human Cobalt boxes: ${JSON.stringify(boxCheck)}`);
+  assert.ok(boxCheck.agentCount >= 3 && boxCheck.agentVisibleRects >= 3, `Expected visible Agent Amber boxes: ${JSON.stringify(boxCheck)}`);
+  assert.equal(boxCheck.workerHandleLabel, 'Open AI comment');
+  assert.notEqual(boxCheck.workerHandleBg, boxCheck.humanHandleBg, 'Agent Amber handle color must visually differ from Human Cobalt handle color');
+
+  // Clicking Agent box handle opens/flashes the Agent comment card with AI badge and element anchor label
+  await frame.locator(`.ve-raft-comment-box.is-agent[data-thread-id="${agentBySel.data.thread.id}"] .ve-raft-box-handle`).click();
+  const agentCard = page.locator(`.comment-card[data-thread-id="${agentBySel.data.thread.id}"]`);
+  await page.waitForSelector(`.comment-card[data-thread-id="${agentBySel.data.thread.id}"].flash`, { timeout: 5000 });
+  assert.equal(await agentCard.locator('.author-role-badge', { hasText: 'AI' }).count(), 1, 'Agent card must display AI badge');
+  assert.equal(await agentCard.locator('.comment-anchor-btn', { hasText: 'WorkerPool' }).count(), 1, 'Agent card must display resolved element anchor label');
+
   // Verify Auto theme mode follows prefers-color-scheme, plus manual 3-state cycle (auto -> dark -> light -> auto)
   assert.equal(await page.evaluate(() => document.documentElement.dataset.themeMode), 'auto');
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
@@ -436,7 +537,7 @@ try {
   await viewerPage.click('#comments-toggle');
   await viewerPage.waitForSelector('#comments-panel:not([hidden])');
   assert.equal(await viewerPage.locator('#comment-composer').isVisible(), false);
-  assert.equal(await viewerPage.locator('.comment-card').count(), 4);
+  assert.equal(await viewerPage.locator('.comment-card').count(), 7);
   assert.equal(await viewerPage.locator('.comment-actions').count(), 0);
   await viewerCtx.close();
 

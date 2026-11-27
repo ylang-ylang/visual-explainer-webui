@@ -18,7 +18,7 @@ const HEX_SHA256_RE = /^[0-9a-f]{64}$/;
 const EXPLAINER_ID_RE = /^[A-Za-z0-9][A-Za-z0-9/-]{0,80}$/;
 const TEMPLATE_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const TEMPLATE_DOC_RE = /^templates\/[a-z0-9][a-z0-9-]{0,63}\.md$/;
-const RESERVED_TEMPLATE_SLUGS = new Set(['html', 'source', 'thumb']);
+const RESERVED_TEMPLATE_SLUGS = new Set(['html', 'source', 'thumb', 'anchors']);
 const MAX_KEY_NAME_LEN = 64;
 const MAX_TITLE_LEN = 160;
 const MAX_SUMMARY_LEN = 400;
@@ -138,7 +138,7 @@ export function validateExplainerId(id) {
     throw new ApiError(400, 'Invalid explainer id');
   }
   const tail = segments.at(-1);
-  if (segments.length > 1 && ['html', 'source', 'thumb'].includes(tail)) {
+  if (segments.length > 1 && ['html', 'source', 'thumb', 'anchors'].includes(tail)) {
     throw new ApiError(400, 'Explainer id must not end with reserved sub-route segment');
   }
   return id;

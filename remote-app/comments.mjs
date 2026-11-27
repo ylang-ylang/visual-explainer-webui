@@ -7,6 +7,7 @@ const MAX_BODY = 8000;
 const MAX_QUOTE = 1000;
 const MAX_SELECTOR = 512;
 const MAX_LABEL = 200;
+const MAX_REF = 120;
 const MAX_AUTHOR = 60;
 const MAX_HEADINGS = 12;
 
@@ -50,9 +51,18 @@ export function normalizeWhere(input) {
     const quote = cleanText(input.quote, 'where.quote', MAX_QUOTE, false);
     if (quote) where.quote = quote;
   }
+  if (kind === 'element' && input.ref !== undefined && input.ref !== null) {
+    const ref = cleanSingleLine(input.ref, 'where.ref', MAX_REF);
+    if (ref) where.ref = ref;
+  }
   if (input.selector !== undefined && input.selector !== null) {
     const selector = cleanSingleLine(input.selector, 'where.selector', MAX_SELECTOR);
     if (selector) where.selector = selector;
+  }
+  if (kind === 'element' && where.ref && !where.selector) {
+    const escaped = where.ref.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const built = `[data-ref="${escaped}"]`;
+    if ([...built].length <= MAX_SELECTOR) where.selector = built;
   }
   if (input.tag !== undefined && input.tag !== null) {
     const tag = cleanSingleLine(input.tag, 'where.tag', 40).toLowerCase();
@@ -72,8 +82,8 @@ export function normalizeWhere(input) {
   if (kind === 'text' && !where.quote && !where.selector) {
     throw new ApiError(400, 'Text comment requires where.quote or where.selector');
   }
-  if (kind === 'element' && !where.selector && !where.label) {
-    throw new ApiError(400, 'Element comment requires where.selector or where.label');
+  if (kind === 'element' && !where.selector && !where.label && !where.ref) {
+    throw new ApiError(400, 'Element comment requires where.selector, where.ref, or where.label');
   }
   return where;
 }
@@ -83,7 +93,8 @@ export function formatWhere(where) {
   const parts = [];
   if (where.kind === 'element') {
     parts.push(where.tag ? `element <${where.tag}>` : 'element');
-    if (where.label) parts.push(`"${where.label}"`);
+    const display = where.label || where.ref;
+    if (display) parts.push(`"${display}"`);
   } else {
     parts.push(where.tag ? `selected text in <${where.tag}>` : 'selected text');
   }

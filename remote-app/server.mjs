@@ -15,7 +15,8 @@ import {
 import { parse } from 'node-html-parser';
 import { ApiError, canonicalFilename, createCatalog, logicalPath, pageFilename, sourceFilename, sourcePairs } from './catalog.mjs';
 import { createAccounts, createShares } from './accounts.mjs';
-import { createComments, createCommentsStore, formatCommentsSummary, normalizeAuthor } from './comments.mjs';
+import { extractPageAnchors, resolveCommentWhere } from './anchors.mjs';
+import { createComments, createCommentsStore, formatCommentsSummary, normalizeAuthor, normalizeWhere } from './comments.mjs';
 import { createEventHub } from './events.mjs';
 import { createHistory } from './history.mjs';
 import { createSkills, docIdFromUri, validateExplainerId } from './skills.mjs';
@@ -155,6 +156,12 @@ function parseVersionQuery(raw) {
   if (!Number.isInteger(value) || value < 1) throw new ApiError(400, 'version must be a positive integer');
   return value;
 }
+function parseAnchorLimit(raw) {
+  if (raw === null || raw === undefined || raw === '') return 160;
+  const value = Number(String(raw).trim());
+  if (!Number.isInteger(value) || value < 1) throw new ApiError(400, 'limit must be a positive integer');
+  return Math.min(value, 500);
+}
 
 // Runtime comment bridge injected ONLY on embedded preview requests (?embed=1).
 // Saved HTML on disk and in Git remains 100% unmodified; sandbox="allow-scripts" stays opaque.
@@ -281,6 +288,10 @@ function init(){
     '.ve-raft-comment-box.is-active{border:1.75px solid #2458d6;background:rgba(36,88,214,.11);box-shadow:0 0 0 3px rgba(36,88,214,.16);z-index:2;}',
     '.ve-raft-box-handle{position:absolute;top:-7px;right:-7px;pointer-events:auto;width:15px;height:15px;padding:0 !important;margin:0 !important;border:1.5px solid #ffffff;border-radius:50%;background:#2458d6;box-shadow:0 1px 4px rgba(15,23,42,.22),0 0 0 1px rgba(36,88,214,.28);cursor:pointer;transition:transform 110ms ease,background 110ms ease;}',
     '.ve-raft-box-handle:hover,.ve-raft-comment-box.is-active .ve-raft-box-handle{transform:scale(1.16);background:#1b45b0;}',
+    '.ve-raft-comment-box.is-agent{border:1.5px solid rgba(180,83,9,.56);background:rgba(217,119,6,.06);}',
+    '.ve-raft-comment-box.is-agent.is-active{border:2px solid #b45309;background:rgba(217,119,6,.13);box-shadow:0 0 0 3px rgba(217,119,6,.18);z-index:2;}',
+    '.ve-raft-comment-box.is-agent .ve-raft-box-handle{border-color:#ffffff;background:#d97706;box-shadow:0 1px 4px rgba(15,23,42,.22),0 0 0 1px rgba(180,83,9,.34);}',
+    '.ve-raft-comment-box.is-agent .ve-raft-box-handle:hover,.ve-raft-comment-box.is-agent.is-active .ve-raft-box-handle{transform:scale(1.16);background:#b45309;}',
     'body.ve-raft-picking,body.ve-raft-picking *{cursor:crosshair !important;}',
     ':root[data-theme="dark"] .ve-raft-sel{border-color:#8fb6ff;background:#6ea0ff;color:#0f1218;box-shadow:0 10px 24px rgba(0,0,0,.45);}',
     ':root[data-theme="dark"] .ve-raft-sel:hover{background:#8fb6ff;}',
@@ -292,6 +303,10 @@ function init(){
     ':root[data-theme="dark"] .ve-raft-comment-box.is-active{border-color:#6ea0ff;background:rgba(110,160,255,.15);box-shadow:0 0 0 3px rgba(110,160,255,.22);}',
     ':root[data-theme="dark"] .ve-raft-box-handle{border-color:#0d1520;background:#6ea0ff;box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 0 1px rgba(110,160,255,.35);}',
     ':root[data-theme="dark"] .ve-raft-box-handle:hover,:root[data-theme="dark"] .ve-raft-comment-box.is-active .ve-raft-box-handle{background:#8fb6ff;}',
+    ':root[data-theme="dark"] .ve-raft-comment-box.is-agent{border:1.5px solid rgba(255,181,71,.62);background:rgba(255,181,71,.07);}',
+    ':root[data-theme="dark"] .ve-raft-comment-box.is-agent.is-active{border:2px solid #ffb547;background:rgba(255,181,71,.15);box-shadow:0 0 0 3px rgba(255,181,71,.22);}',
+    ':root[data-theme="dark"] .ve-raft-comment-box.is-agent .ve-raft-box-handle{border-color:#0d1520;background:#ffb547;box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 0 1px rgba(255,181,71,.42);}',
+    ':root[data-theme="dark"] .ve-raft-comment-box.is-agent .ve-raft-box-handle:hover,:root[data-theme="dark"] .ve-raft-comment-box.is-agent.is-active .ve-raft-box-handle{background:#ffd080;}',
     '.ve-drill-node{cursor:pointer;outline:none;}',
     '.ve-drill-node > rect:first-of-type,.ve-drill-node > polygon:first-of-type{stroke:rgba(36,88,214,.52);stroke-width:1.6px;filter:drop-shadow(4px 4px 0 rgba(36,88,214,.16)) drop-shadow(0 1px 2px rgba(15,23,42,.08));transition:stroke 140ms ease,filter 140ms ease;}',
     '.ve-drill-node:hover > rect:first-of-type,.ve-drill-node:focus-visible > rect:first-of-type,.ve-drill-node.is-drill-hover > rect:first-of-type,.ve-drill-node:hover > polygon:first-of-type,.ve-drill-node:focus-visible > polygon:first-of-type,.ve-drill-node.is-drill-hover > polygon:first-of-type{stroke:#2458d6;stroke-width:1.9px;filter:drop-shadow(5px 5px 0 rgba(36,88,214,.26)) drop-shadow(0 6px 14px rgba(36,88,214,.20));}',
@@ -324,6 +339,10 @@ function init(){
     ':root:not([data-theme="light"]) .ve-raft-comment-box.is-active{border-color:#6ea0ff;background:rgba(110,160,255,.15);box-shadow:0 0 0 3px rgba(110,160,255,.22);}',
     ':root:not([data-theme="light"]) .ve-raft-box-handle{border-color:#0d1520;background:#6ea0ff;box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 0 1px rgba(110,160,255,.35);}',
     ':root:not([data-theme="light"]) .ve-raft-box-handle:hover,:root:not([data-theme="light"]) .ve-raft-comment-box.is-active .ve-raft-box-handle{background:#8fb6ff;}',
+    ':root:not([data-theme="light"]) .ve-raft-comment-box.is-agent{border:1.5px solid rgba(255,181,71,.62);background:rgba(255,181,71,.07);}',
+    ':root:not([data-theme="light"]) .ve-raft-comment-box.is-agent.is-active{border:2px solid #ffb547;background:rgba(255,181,71,.15);box-shadow:0 0 0 3px rgba(255,181,71,.22);}',
+    ':root:not([data-theme="light"]) .ve-raft-comment-box.is-agent .ve-raft-box-handle{border-color:#0d1520;background:#ffb547;box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 0 1px rgba(255,181,71,.42);}',
+    ':root:not([data-theme="light"]) .ve-raft-comment-box.is-agent .ve-raft-box-handle:hover,:root:not([data-theme="light"]) .ve-raft-comment-box.is-agent.is-active .ve-raft-box-handle{background:#ffd080;}',
     ':root:not([data-theme="light"]) .ve-drill-node > rect:first-of-type,:root:not([data-theme="light"]) .ve-drill-node > polygon:first-of-type{stroke:rgba(110,160,255,.54);filter:drop-shadow(4px 4px 0 rgba(110,160,255,.22)) drop-shadow(0 2px 5px rgba(0,0,0,.45));}',
     ':root:not([data-theme="light"]) .ve-drill-card{border-color:rgba(110,160,255,.50) !important;box-shadow:4px 4px 0 0 rgba(110,160,255,.14),4px 4px 0 1px rgba(110,160,255,.30) !important;}',
     ':root:not([data-theme="light"]) .ve-drill-chip{background:rgba(110,160,255,.12);border-color:rgba(110,160,255,.32);color:#8eb7ff !important;}',
@@ -598,11 +617,13 @@ function init(){
       let el=null;
       try{el=document.querySelector(t.selector);}catch{}
       if(!el||isBridge(el))continue;
-      const box=h('div',{class:'ve-raft-comment-box','data-ve-bridge-ui':'','data-thread-id':t.id});
+      const isAgent=t.authorRole==='agent';
+      const box=h('div',{class:'ve-raft-comment-box'+(isAgent?' is-agent':''),'data-ve-bridge-ui':'','data-thread-id':t.id});
       if(!placeBox(box,el,3))continue;
       const slot=seen.get(el)||0;
       seen.set(el,slot+1);
-      const handle=h('button',{type:'button',class:'ve-raft-box-handle','data-ve-bridge-ui':'','aria-label':'Open comment',onclick:e=>{e.stopPropagation();e.preventDefault();post({type:'ve-comment:select',id:t.id});}});
+      const handleLabel=isAgent?'Open AI comment':'Open comment';
+      const handle=h('button',{type:'button',class:'ve-raft-box-handle','data-ve-bridge-ui':'',title:handleLabel,'aria-label':handleLabel,onclick:e=>{e.stopPropagation();e.preventDefault();post({type:'ve-comment:select',id:t.id});}});
       if(slot>0)handle.style.right=(-7+slot*18)+'px';
       box.append(handle);
       if(hoveredId&&hoveredId===t.id)box.classList.add('is-active');
@@ -1803,6 +1824,13 @@ const http = createServer(async (req, res) => {
               });
               return res.end(req.method === 'HEAD' ? '' : bytes);
             }
+            if (parts.length >= 4 && tail === 'anchors' && req.method === 'GET') {
+              const explainerId = parts.slice(2, -1).join('/');
+              const renderedHtml = skills.getExplainerHtml(explainerId);
+              const limit = parseAnchorLimit(url.searchParams.get('limit'));
+              const anchors = extractPageAnchors(renderedHtml, { limit });
+              return json(res, 200, { explainerId, anchors });
+            }
             const explainerId = parts.slice(2).join('/');
             if (req.method === 'GET') {
               return json(res, 200, exposeSkillExplainer(skills.getExplainer(explainerId)));
@@ -1903,7 +1931,11 @@ const http = createServer(async (req, res) => {
               const latest = skills.overview().latestVersion;
               const verNum = body.version !== undefined ? parseVersionQuery(body.version) : (latest?.version ?? null);
               const rev = body.revision ?? latest?.revision ?? null;
-              const result = await skillComments.create({ filename: targetExplainer, version: verNum, revision: rev, where: body.where, author: actor, body: body.body });
+              const normalizedWhere = normalizeWhere(body.where);
+              let renderedHtml = '';
+              try { renderedHtml = skills.getExplainerHtml(targetExplainer); } catch {}
+              const resolvedAnchor = resolveCommentWhere(renderedHtml, normalizedWhere);
+              const result = await skillComments.create({ filename: targetExplainer, version: verNum, revision: rev, where: resolvedAnchor.where, author: actor, body: body.body });
               if (auth.role === 'admin') {
                 skillEvents.emit({
                   type: 'comment.created',
@@ -1913,7 +1945,7 @@ const http = createServer(async (req, res) => {
                   payload: { threadId: result.thread.id, explainerId: targetExplainer, thread: result.thread, author: actor },
                 });
               }
-              return json(res, 201, result);
+              return json(res, 201, { ...result, anchorMatched: resolvedAnchor.anchorMatched, matchedCount: resolvedAnchor.matchedCount });
             }
             if (parts.length === 3 && parts[2] === 'dispatch' && req.method === 'POST') {
               requireSkillsEditEnabled();
@@ -2046,11 +2078,13 @@ const http = createServer(async (req, res) => {
              (action === 'folders' && parts.length === 3 && ['POST', 'PATCH', 'DELETE'].includes(req.method)) ||
              (action === 'files' && parts.length >= 4 && ['GET', 'PUT', 'PATCH'].includes(req.method)) ||
              (action === 'versions' && parts.length === 3 && req.method === 'GET') ||
+             (action === 'anchors' && parts.length === 3 && req.method === 'GET') ||
              (action === 'comments' && ((parts.length === 3 && ['GET', 'POST'].includes(req.method)) ||
                (parts.length === 5 && ['resolve', 'reopen'].includes(parts[4]) && req.method === 'POST'))));
           const ownPage = resource === 'pages' &&
             ((action === 'versions' && [3, 4].includes(parts.length) && req.method === 'GET') ||
              (action === 'thumb' && parts.length === 3 && ['GET', 'HEAD'].includes(req.method)) ||
+             (action === 'anchors' && parts.length === 3 && req.method === 'GET') ||
              (action === 'restore' && parts.length === 3 && req.method === 'POST') ||
              (action === 'comments' && ((parts.length === 3 && ['GET', 'POST'].includes(req.method)) ||
                (parts.length === 5 && ['resolve', 'reopen'].includes(parts[4]) && req.method === 'POST'))));
@@ -2199,6 +2233,20 @@ const http = createServer(async (req, res) => {
             return json(res, 200, { page: scopedPage(await requirePage(filename), id) });
           }
         }
+        if (resource === 'entities' && action === 'anchors' && parts.length === 3 && req.method === 'GET') {
+          catalog.entity(id);
+          const rawPath = url.searchParams.get('path');
+          if (!rawPath) throw new ApiError(400, 'path query parameter is required');
+          const path = logicalPath(rawPath, true);
+          const filename = catalog.find(id, path);
+          if (!filename) throw new ApiError(404, 'File not found');
+          const page = await requirePage(filename);
+          const bytes = await regularBytes(filename);
+          if (bytes === null) throw new ApiError(404, 'Page not found');
+          const limit = parseAnchorLimit(url.searchParams.get('limit'));
+          const anchors = extractPageAnchors(bytes.toString('utf8'), { limit });
+          return json(res, 200, { page: scopedPage(page, id), anchors });
+        }
         if (resource === 'entities' && action === 'versions' && parts.length === 3 && req.method === 'GET') {
           catalog.entity(id);
           const rawPath = url.searchParams.get('path');
@@ -2269,7 +2317,10 @@ const http = createServer(async (req, res) => {
             const latest = await history.latestVersion(filename);
             const verNum = body.version !== undefined ? parseVersionQuery(body.version) : (latest?.version ?? null);
             const rev = body.revision ?? latest?.revision ?? null;
-            const result = await comments.create({ filename, version: verNum, revision: rev, where: body.where, author: actor, body: body.body });
+            const normalizedWhere = normalizeWhere(body.where);
+            const renderedBytes = await regularBytes(filename);
+            const resolvedAnchor = resolveCommentWhere(renderedBytes ? renderedBytes.toString('utf8') : '', normalizedWhere);
+            const result = await comments.create({ filename, version: verNum, revision: rev, where: resolvedAnchor.where, author: actor, body: body.body });
             if (auth.role !== 'agent') {
               events.emit({
                 type: 'comment.created',
@@ -2279,7 +2330,7 @@ const http = createServer(async (req, res) => {
                 payload: { threadId: result.thread.id, thread: result.thread, author: actor },
               });
             }
-            return json(res, 201, result);
+            return json(res, 201, { ...result, anchorMatched: resolvedAnchor.anchorMatched, matchedCount: resolvedAnchor.matchedCount });
           }
           if (parts.length === 5 && ['resolve', 'reopen'].includes(parts[4]) && req.method === 'POST') {
             const threadId = parts[3];
@@ -2356,6 +2407,14 @@ const http = createServer(async (req, res) => {
             return send(res, 204, '');
           }
         }
+        if (resource === 'pages' && action === 'anchors' && parts.length === 3 && req.method === 'GET') {
+          const page = await requirePage(id);
+          const bytes = await regularBytes(id);
+          if (bytes === null) throw new ApiError(404, 'Page not found');
+          const limit = parseAnchorLimit(url.searchParams.get('limit'));
+          const anchors = extractPageAnchors(bytes.toString('utf8'), { limit });
+          return json(res, 200, { page, anchors });
+        }
         if (resource === 'pages' && action === 'comments') {
           const page = await requirePage(id);
           if (parts.length === 3 && req.method === 'GET') {
@@ -2413,7 +2472,10 @@ const http = createServer(async (req, res) => {
             const latest = await history.latestVersion(id);
             const verNum = body.version !== undefined ? parseVersionQuery(body.version) : (latest?.version ?? null);
             const rev = body.revision ?? latest?.revision ?? null;
-            const result = await comments.create({ filename: id, version: verNum, revision: rev, where: body.where, author: actor, body: body.body });
+            const normalizedWhere = normalizeWhere(body.where);
+            const renderedBytes = await regularBytes(id);
+            const resolvedAnchor = resolveCommentWhere(renderedBytes ? renderedBytes.toString('utf8') : '', normalizedWhere);
+            const result = await comments.create({ filename: id, version: verNum, revision: rev, where: resolvedAnchor.where, author: actor, body: body.body });
             if (auth.role !== 'agent') {
               events.emit({
                 type: 'comment.created',
@@ -2423,7 +2485,7 @@ const http = createServer(async (req, res) => {
                 payload: { threadId: result.thread.id, thread: result.thread, author: actor },
               });
             }
-            return json(res, 201, result);
+            return json(res, 201, { ...result, anchorMatched: resolvedAnchor.anchorMatched, matchedCount: resolvedAnchor.matchedCount });
           }
           if (parts.length === 5 && ['resolve', 'reopen'].includes(parts[4]) && req.method === 'POST') {
             const threadId = parts[3];

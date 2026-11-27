@@ -345,9 +345,9 @@ try {
   await page.waitForSelector('#skills-explainers-tree .report[data-explainer-id="kit"]');
 
   // Verify custom template appears in #skills-templates-list, set it default, switch back, and delete via UI.
-  assert.equal(await page.locator('#skills-templates-count').innerText(), '2');
   const rfcCard = page.locator('#skills-templates-list .skill-tpl-card[data-template-id="rfc-proposal"]');
   await rfcCard.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#skills-templates-count').innerText(), '2');
   assert.ok((await rfcCard.innerText()).includes('Custom'), 'Custom template card must display Custom badge');
   await rfcCard.locator('[data-set-default-template="rfc-proposal"]').click();
   await page.waitForFunction(() => {

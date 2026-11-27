@@ -39,6 +39,7 @@ Inspect `./diagram.render.json`:
 - Fix every `✗` diagnostic with small targeted edits to `./diagram.src.html` and re-PUT the same path until clean.
 - Include `<meta name="description" content="...">` for a concise 1-line hover preview summary (Light and Dark thumbnails are captured automatically on publish).
 - Wiki drill-down & templates: follow the selected template (default `{{ORIGINAL_BASE}}/templates/default.md`) for L0 overview vs L1 component child pages and change diffs; publish child diagrams under `{{CHILD_PATH_EXAMPLE}}` (same scoped folder key) and add `data-ve-child="<child>"` (omit `.html`) on any SVG node (`<g class="ve-n" data-ve-child="...">`) or inline `<span>`. The WebUI viewer injects portal styling, stacked badges, hover previews, and click navigation at view time — plain appearance in standalone checksheets is expected, so do NOT add custom fake-portal CSS.
+- Box-selected comments (Agent Pick): to flag open questions, trade-offs, or pending decisions directly on the rendered diagram, list pickable anchors via `GET {{BASE_URL}}/anchors?path=<url-encoded-path>` and post an element- or quote-anchored comment via `POST {{BASE_URL}}/comments` (see §4).
 - **Before replying with `page.url`**, start the non-blocking background comment watcher in §3 by default (if your harness supports background/async execution), then share `page.url` from the response (also returns `page.filename`, `version`, `commentsUrl`, and `openComments`).
 
 ## 3. Live comment listener (default, zero idle tokens)
@@ -59,6 +60,7 @@ By default, after publishing and passing visual checks, start **ONE non-blocking
 ## 4. Comments, SSE & versions reference
 
 - List open comments: `GET {{COMMENT_LIST_URL}}`{{COMMENT_LIST_SUFFIX}}. Returns structured `threads` (anchor quote/selector/headings, `version`, `replies`) and a readable `summary`.
+- Box-selected comments (Agent Pick): list pickable elements on any rendered page via `GET {{BASE_URL}}/anchors?path=<url-encoded-path>` (returns exact `selector`, `tag`, `label`, `ref`, `headings`), then create a box-anchored comment via `POST {{BASE_URL}}/comments` with `{"path":{{REPLY_PATH_ARG}},"where":{"kind":"element","selector":"#node-id"},"body":"..."}` (also accepts `"ref":"<data-ref>"` or `{"kind":"text","quote":"..."}` — server auto-resolves the box selector and returns `anchorMatched: true`). Great for flagging open questions, trade-offs, or pending decisions directly on the diagram.
 - Read current source: `GET {{READ_SOURCE_URL}}` — edit locally and re-`PUT` the same path for a new version (`v2`, `v3`, …).
 - Reply: `POST {{BASE_URL}}/comments` with `{"path":{{REPLY_PATH_ARG}},"replyTo":"c_1","body":"..."}` (replying to a resolved thread reopens it automatically).
 - Resolve: `POST {{BASE_URL}}/comments/<threadId>/resolve` with `{"note":"Done in v2: ..."}` (optional `note` is posted as a reply first).

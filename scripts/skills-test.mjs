@@ -631,7 +631,7 @@ test('HTTP/MCP/Renderer E2E: enumeration, permission isolation, lock switch, liv
   await chmod(dataDir, 0o777);
 
   const bindFiles = [
-    'server.mjs', 'catalog.mjs', 'comments.mjs', 'events.mjs',
+    'server.mjs', 'catalog.mjs', 'anchors.mjs', 'comments.mjs', 'events.mjs',
     'accounts.mjs', 'history.mjs', 'skills.mjs', 'tokens.mjs', 'index.html',
   ];
   const mountArgs = [];
@@ -1114,7 +1114,13 @@ test('HTTP/MCP/Renderer E2E: enumeration, permission isolation, lock switch, liv
     assert.deepEqual(rbToV1.templates.map(t => t.id), ['default']);
     await req('/api/visual-explainer/templates/postmortem.md', { auth: folderKey, status: 404 });
 
-    // 7. Dedicated skill comments + SSE comment.dispatch wakeup (isolated from user comments!)
+    // 7. Dedicated skill comments + anchors discovery + SSE comment.dispatch wakeup (isolated from user comments!)
+    const skillAnchors = await (await req('/api/skills/explainers/SKILL/anchors', { auth: skillKey, status: 200 })).json();
+    assert.equal(skillAnchors.explainerId, 'SKILL');
+    assert.ok(Array.isArray(skillAnchors.anchors) && skillAnchors.anchors.length >= 2);
+    assert.ok(skillAnchors.anchors.some(a => a.tag === 'g' || a.tag === 'h1'));
+    await req('/api/skills/explainers/SKILL/anchors', { auth: folderKey, status: 403 });
+
     const skillComment = await (await req('/api/skills/comments', {
       method: 'POST',
       auth: adminToken,
@@ -1126,6 +1132,8 @@ test('HTTP/MCP/Renderer E2E: enumeration, permission isolation, lock switch, liv
       status: 201,
     })).json();
     assert.equal(skillComment.thread.id, 'c_1');
+    assert.equal(skillComment.anchorMatched, true);
+    assert.equal(skillComment.matchedCount, 1);
 
     // User page comments remain isolated from skill comments
     const userComments = await (await req(`/api/pages/${userPage.page.filename}/comments`, { status: 200 })).json();

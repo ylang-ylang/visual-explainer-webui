@@ -11,8 +11,8 @@
       ],
       "htmlFile": "explainers/overview.html",
       "sourceFile": "explainers/overview.src.html",
-      "skillHash": "6e667915acaf1ba014043164d4570743e75bd1382422185f65fcc65faed320bd",
-      "updatedAt": "2026-11-27T06:02:00.000Z"
+      "skillHash": "269dffbb5c4fdc24c05fc2f89dec15ebb7113fe0df6603d8b4e5e1cb9a838979",
+      "updatedAt": "2026-11-27T12:22:00.000Z"
     },
     {
       "id": "templates/default",
@@ -39,8 +39,8 @@
       ],
       "htmlFile": "explainers/bootstrap-prompt.html",
       "sourceFile": "explainers/bootstrap-prompt.src.html",
-      "skillHash": "ec426042d15542ad0df7a58fc2e3dffe298f4e60fa9e1f08c0960b9e84b7aa28",
-      "updatedAt": "2026-11-27T06:02:00.000Z"
+      "skillHash": "6bd78295413f439e1dba210ddcdfc11df479769141841a335583a762c8b1016e",
+      "updatedAt": "2026-11-27T12:22:00.000Z"
     },
     {
       "id": "SKILL",
