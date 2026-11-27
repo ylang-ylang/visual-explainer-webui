@@ -63,6 +63,12 @@
       --popover-shadow: 0 16px 38px -8px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.07);
       --shadow: 0 10px 28px rgba(15, 23, 42, 0.10);
       --shadow-lg: 0 24px 64px rgba(15, 23, 42, 0.16);
+      --comment-card-bg: #f5f7fb;
+      --comment-inset-bg: #ffffff;
+      --comment-code-inline-bg: rgba(21, 25, 34, 0.06);
+      --comment-code-head-bg: #eef2f7;
+      --comment-agent-bg: rgba(36, 88, 214, 0.06);
+      --comment-agent-border: rgba(36, 88, 214, 0.20);
       --bar-h: 52px;
       --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", VisualCJK, sans-serif;
       --font-mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
@@ -110,6 +116,12 @@
       --popover-shadow: 0 20px 44px -8px rgba(0, 0, 0, 0.65), 0 4px 14px rgba(0, 0, 0, 0.40);
       --shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
       --shadow-lg: 0 24px 72px rgba(0, 0, 0, 0.65);
+      --comment-card-bg: #1b212d;
+      --comment-inset-bg: #121721;
+      --comment-code-inline-bg: rgba(226, 234, 248, 0.08);
+      --comment-code-head-bg: #161c27;
+      --comment-agent-bg: rgba(110, 160, 255, 0.09);
+      --comment-agent-border: rgba(110, 160, 255, 0.24);
     }
 
     * { box-sizing: border-box; }
@@ -718,31 +730,49 @@
     .comments-panel {
       display: flex;
       flex-direction: column;
-      flex: 0 0 364px;
-      width: 364px;
+      flex: 0 0 388px;
+      width: 388px;
       min-height: 0;
       border-left: 1px solid var(--border);
-      background: var(--bg);
+      background: var(--surface);
+    }
+    .comments-chrome {
+      flex: none;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
     .comments-head {
       display: flex;
       align-items: center;
       gap: 8px;
-      flex: 0 0 var(--bar-h);
-      height: var(--bar-h);
-      padding: 0 12px 0 16px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      height: 38px;
+      padding: 2px 8px 0 13px;
     }
-    .comments-head h2 { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+    .comments-head h2 {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: -.01em;
+      color: var(--ink);
+    }
+    #comments-close {
+      width: 26px;
+      height: 26px;
+      color: var(--ink-3);
+      font-size: 17px;
+      line-height: 1;
+    }
+    #comments-close:hover { color: var(--ink); }
     .comments-dispatch-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 8px 14px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      padding: 0 12px 8px 13px;
     }
     .hosts-pill {
       display: inline-flex;
@@ -757,29 +787,62 @@
     }
     .hosts-pill.online { color: var(--ink-2); }
     .hosts-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-strong); flex: none; }
-    .hosts-pill.online .hosts-dot { background: #16a34a; }
-    #comments-dispatch { height: 26px; padding: 0 10px; font-size: 12px; }
+    .hosts-pill.online .hosts-dot { background: var(--ok); }
+    .comments-dispatch-bar .hosts-pill {
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-2);
+      font-size: 11.5px;
+      line-height: 1.35;
+    }
+    .comments-dispatch-bar .hosts-pill.online {
+      border-color: var(--ok-border);
+      background: var(--ok-soft);
+      color: var(--ok);
+      font-weight: 550;
+    }
+    #comments-dispatch {
+      height: 24px;
+      padding: 0 9px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+    #comments-dispatch:hover:not(:disabled) {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+    :root[data-theme="dark"] #comments-dispatch:hover:not(:disabled) {
+      color: #0f1218;
+    }
 
     .comment-composer {
-      padding: 14px;
+      padding: 9px 12px 10px;
       border-bottom: 1px solid var(--border);
       background: var(--surface);
       display: grid;
-      gap: 10px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 7px;
     }
     .anchor-chip {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
+      gap: 7px;
+      padding: 6px 8px 6px 9px;
       border: 1px solid var(--accent-border);
-      border-radius: 7px;
+      border-radius: 6px;
       background: var(--accent-soft);
       font-size: 12px;
-      line-height: 1.45;
+      line-height: 1.4;
       color: var(--ink);
+      min-width: 0;
     }
-    .anchor-chip .icon { width: 14px; height: 14px; color: var(--accent); }
+    .anchor-chip .icon { width: 13px; height: 13px; color: var(--accent); flex: none; }
     .anchor-chip-quote {
       flex: 1;
       min-width: 0;
@@ -796,132 +859,336 @@
       flex: 1;
       min-width: 0;
       color: var(--accent);
-      font-weight: 500;
+      font-weight: 550;
       font-size: 12px;
+    }
+    .anchor-box-pill > span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
     }
     .anchor-clear {
       flex: none;
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       padding: 0;
       border: 0;
       border-radius: 5px;
       background: transparent;
       color: var(--ink-2);
-      font-size: 16px;
+      font-size: 15px;
       line-height: 1;
     }
     .anchor-clear:hover { background: var(--hover); color: var(--ink); }
 
     .comment-composer textarea, .reply-box textarea, .edit-box textarea {
       width: 100%;
-      min-height: 68px;
-      padding: 9px 11px;
+      min-height: 52px;
+      padding: 8px 10px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 7px;
       background: var(--bg);
       color: var(--ink);
-      font-size: 13px;
-      line-height: 1.55;
+      font-size: 12.5px;
+      line-height: 1.5;
       resize: vertical;
-      transition: border-color 110ms ease, background 110ms ease;
+      transition: border-color 110ms ease, background 110ms ease, box-shadow 110ms ease;
     }
+    .comment-composer textarea::placeholder, .reply-box textarea::placeholder { color: var(--ink-3); }
     .comment-composer textarea:focus, .reply-box textarea:focus, .edit-box textarea:focus {
       border-color: var(--accent);
       background: var(--surface);
+      box-shadow: 0 0 0 3px var(--accent-soft);
       outline: none;
     }
-    .composer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .composer-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .composer-hint { font-size: 11.5px; color: var(--ink-3); user-select: none; }
+    #comment-submit { height: 27px; padding: 0 11px; border-radius: 6px; font-size: 12px; }
 
     .comments-list {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding: 14px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       scrollbar-width: thin;
       scrollbar-color: var(--border-strong) transparent;
     }
-    .comments-empty { padding: 40px 16px; text-align: center; color: var(--ink-3); font-size: 12.5px; line-height: 1.8; }
+    .comments-empty { padding: 36px 16px; text-align: center; color: var(--ink-3); font-size: 12.5px; line-height: 1.75; }
 
     .comment-card {
       border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--surface);
-      padding: 13px 14px;
+      border-radius: 8px;
+      background: var(--comment-card-bg);
+      padding: 11px 12px;
       display: grid;
-      gap: 10px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+      min-width: 0;
       transition: border-color 120ms ease, box-shadow 120ms ease;
     }
     .comment-card:hover { border-color: var(--border-strong); }
     .comment-card.flash { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-    .comment-card.resolved { background: var(--bg); opacity: .86; }
+    .comment-card.resolved { background: var(--surface); border-style: dashed; opacity: .78; }
+    .comment-card.resolved:hover { opacity: .94; }
     .comment-card.resolved .comment-body { color: var(--ink-2); }
 
-    .comment-meta { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-3); }
+    .comment-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); min-width: 0; }
     .avatar-dot {
       display: inline-grid;
       place-items: center;
       width: 22px;
       height: 22px;
       border-radius: 50%;
+      border: 1px solid var(--border);
       background: var(--surface-2);
-      color: var(--ink);
-      font: 700 11.5px/1 var(--font-sans);
+      color: var(--ink-2);
+      font: 700 10.5px/1 var(--font-sans);
       flex: none;
     }
-    .avatar-dot.agent { background: var(--accent-soft); color: var(--accent); }
-    .comment-author { font-weight: 600; color: var(--ink); font-size: 13px; }
-    .comment-ver {
-      padding: 1px 6px;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      background: var(--bg);
-      color: var(--ink-2);
-      font: 600 11.5px/1.35 var(--font-mono);
+    .avatar-dot.sm { width: 18px; height: 18px; font-size: 9.5px; }
+    .avatar-dot.agent {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent);
+      font-family: var(--font-mono);
+      letter-spacing: -.03em;
     }
-    .comment-ver:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-    .comment-locate {
+    .comment-author {
+      font-weight: 600;
+      color: var(--ink);
+      font-size: 12.5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .author-role-badge {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      width: 22px;
-      height: 22px;
-      padding: 0;
+      height: 16px;
+      padding: 0 5px;
       border: 1px solid var(--accent-border);
-      border-radius: 5px;
+      border-radius: 4px;
       background: var(--accent-soft);
       color: var(--accent);
+      font: 600 10px/1 var(--font-mono);
+      letter-spacing: 0.03em;
+      flex: none;
     }
-    .comment-locate:hover { border-color: var(--accent); }
-    .comment-locate .icon { width: 13px; height: 13px; }
-    .comment-time { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+    .comment-ver {
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--comment-inset-bg);
+      color: var(--ink-2);
+      font: 600 11px/1.35 var(--font-mono);
+      flex: none;
+    }
+    .comment-ver:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .comment-time { margin-left: auto; font-size: 11.5px; color: var(--ink-3); flex: none; white-space: nowrap; }
+
+    .comment-anchor-btn {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      width: 100%;
+      padding: 6px 9px;
+      border: 1px solid var(--border);
+      border-left: 2.5px solid var(--accent);
+      border-radius: 6px;
+      background: var(--comment-inset-bg);
+      text-align: left;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--ink-2);
+      min-width: 0;
+      transition: background 110ms ease, border-color 110ms ease, color 110ms ease;
+    }
+    .comment-anchor-btn:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent-border); color: var(--ink); }
+    .comment-anchor-btn .icon { width: 13px; height: 13px; margin-top: 2px; color: var(--accent); flex: none; }
+    .comment-anchor-label {
+      flex: 1;
+      min-width: 0;
+      font-weight: 550;
+      color: var(--ink);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
 
     .comment-quote-btn {
-      display: block;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
       width: 100%;
-      padding: 7px 10px;
+      padding: 6px 9px;
       border: 1px solid var(--border);
-      border-left: 3px solid var(--accent);
+      border-left: 2.5px solid var(--accent);
       border-radius: 6px;
-      background: var(--bg);
+      background: var(--comment-inset-bg);
       text-align: left;
-      font-size: 12.5px;
-      line-height: 1.5;
+      font-size: 12px;
+      line-height: 1.48;
       color: var(--ink-2);
+      transition: background 110ms ease, border-color 110ms ease, color 110ms ease;
     }
     .comment-quote-btn:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--ink); }
 
-    .comment-body { font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
-    .comment-replies { display: grid; gap: 10px; padding: 2px 0 2px 12px; border-left: 2px solid var(--border); }
-    .comment-reply { display: grid; gap: 3px; }
-    .comment-reply-head { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
-    .comment-reply-head strong { color: var(--ink); font-size: 12.5px; font-weight: 600; }
-    .comment-reply .comment-body { font-size: 13px; }
+    .comment-body {
+      font-size: 13px;
+      line-height: 1.58;
+      overflow-wrap: anywhere;
+      color: var(--ink);
+      min-width: 0;
+    }
+    .comment-md > :first-child { margin-top: 0; }
+    .comment-md > :last-child { margin-bottom: 0; }
+    .comment-md p { margin: 0 0 7px; }
+    .comment-md .md-h { margin: 9px 0 4px; font-weight: 650; line-height: 1.35; color: var(--ink); }
+    .comment-md .md-h1 { font-size: 14px; letter-spacing: -.01em; }
+    .comment-md .md-h2 { font-size: 13.25px; }
+    .comment-md .md-h3 { font-size: 12.5px; color: var(--ink-2); }
+    .comment-md ul, .comment-md ol { margin: 0 0 7px; padding-left: 18px; }
+    .comment-md li { margin: 2px 0; }
+    .comment-md li > ul, .comment-md li > ol { margin: 2px 0; }
+    .comment-md .md-inline-code {
+      font-family: var(--font-mono);
+      font-size: 11.75px;
+      padding: 0.5px 4.5px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--comment-code-inline-bg);
+      color: var(--ink);
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+    }
+    .comment-md .md-code-wrap {
+      margin: 7px 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--comment-inset-bg);
+      overflow: hidden;
+      max-width: 100%;
+    }
+    .comment-md .md-code-lang {
+      display: block;
+      padding: 3px 9px;
+      border-bottom: 1px solid var(--border);
+      background: var(--comment-code-head-bg);
+      color: var(--ink-3);
+      font: 600 10.5px/1.35 var(--font-mono);
+      letter-spacing: 0.02em;
+    }
+    .comment-md pre.md-code {
+      margin: 7px 0;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--comment-inset-bg);
+      overflow-x: auto;
+      max-width: 100%;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+    }
+    .comment-md .md-code-wrap pre.md-code { margin: 0; border: 0; border-radius: 0; }
+    .comment-md pre.md-code code {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 11.75px;
+      line-height: 1.5;
+      white-space: pre;
+      color: var(--ink);
+    }
+    .comment-md blockquote.md-quote {
+      margin: 7px 0;
+      padding: 4px 10px;
+      border-left: 2.5px solid var(--accent-border);
+      border-radius: 0 5px 5px 0;
+      background: var(--comment-inset-bg);
+      color: var(--ink-2);
+    }
+    .comment-md .md-table-wrap {
+      margin: 7px 0;
+      overflow-x: auto;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--comment-inset-bg);
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+    }
+    .comment-md table.md-table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.45; }
+    .comment-md table.md-table th, .comment-md table.md-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+    .comment-md table.md-table th { font-weight: 600; color: var(--ink); background: var(--comment-code-head-bg); }
+    .comment-md table.md-table tr:last-child td { border-bottom: 0; }
+    .comment-md hr.md-hr { margin: 9px 0; border: 0; border-top: 1px solid var(--border); }
+    .comment-md a.md-link {
+      color: var(--accent);
+      text-decoration: underline;
+      text-decoration-color: var(--accent-border);
+      text-underline-offset: 2px;
+      font-weight: 500;
+    }
+    .comment-md a.md-link:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
+    .comment-md strong { font-weight: 700; font-synthesis: weight; color: var(--ink); }
+    .comment-md em { font-style: italic; font-synthesis: style; }
+    .comment-md del { color: var(--ink-3); }
 
-    .comment-actions { display: flex; align-items: center; gap: 4px; padding-top: 6px; border-top: 1px solid var(--border); }
+    .comment-replies {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+      margin-left: 4px;
+      padding: 2px 0 2px 11px;
+      border-left: 2px solid var(--border);
+    }
+    .comment-reply {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 5px;
+      min-width: 0;
+    }
+    .comment-reply.is-agent {
+      padding: 8px 10px;
+      border: 1px solid var(--comment-agent-border);
+      border-radius: 7px;
+      background: var(--comment-agent-bg);
+    }
+    .comment-reply-head {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      color: var(--ink-3);
+      min-width: 0;
+    }
+    .comment-reply-head strong {
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .comment-reply-time { flex: none; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+    .comment-reply-head .link-btn.quiet { padding: 2px 5px; font-size: 11.5px; opacity: .38; }
+    .comment-reply:hover .comment-reply-head .link-btn.quiet,
+    .comment-reply:focus-within .comment-reply-head .link-btn.quiet { opacity: 1; }
+    .comment-reply .comment-body { font-size: 12.5px; line-height: 1.55; }
+
+    .comment-actions { display: flex; align-items: center; gap: 3px; padding-top: 7px; border-top: 1px solid var(--border); }
     .link-btn {
       display: inline-flex;
       align-items: center;
@@ -932,19 +1199,23 @@
       background: transparent;
       color: var(--ink-2);
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 550;
+      transition: background 110ms ease, color 110ms ease, opacity 110ms ease;
     }
     .link-btn:hover:not(:disabled) { background: var(--hover); color: var(--ink); }
     .link-btn.accent { color: var(--accent); font-weight: 600; }
     .link-btn.accent:hover:not(:disabled) { background: var(--accent-soft); }
-    .link-btn.quiet { color: var(--ink-3); font-weight: 400; opacity: .78; }
-    .comment-card:hover .link-btn.quiet { opacity: 1; }
+    .link-btn.quiet { color: var(--ink-3); font-weight: 450; opacity: .48; }
+    .comment-card:hover .link-btn.quiet,
+    .comment-card:focus-within .link-btn.quiet,
+    .link-btn.quiet:focus-visible { opacity: 1; }
     .link-btn.push-right { margin-left: auto; }
     .link-btn.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
 
-    .resolved-note { font-size: 12px; color: var(--ink-3); }
-    .reply-box, .edit-box { display: grid; gap: 8px; }
+    .resolved-note { font-size: 11.5px; color: var(--ink-3); }
+    .reply-box, .edit-box { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
     .reply-box-actions, .edit-box-actions { display: flex; justify-content: flex-end; gap: 6px; }
+    .reply-box-actions .btn, .edit-box-actions .btn { height: 27px; padding: 0 10px; border-radius: 6px; font-size: 12px; }
 
     .resolved-section { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); }
     .resolved-section > summary {
@@ -953,10 +1224,10 @@
       align-items: center;
       gap: 7px;
       padding: 6px 8px;
-      border-radius: 7px;
+      border-radius: 6px;
       color: var(--ink-2);
-      font-size: 12.5px;
-      font-weight: 500;
+      font-size: 12px;
+      font-weight: 550;
       user-select: none;
       list-style: none;
     }
@@ -964,7 +1235,7 @@
     .resolved-section > summary:hover { background: var(--hover); color: var(--ink); }
     .resolved-section > summary::before { content: "▸"; font-size: 10px; color: var(--ink-3); transition: transform 120ms ease; }
     .resolved-section[open] > summary::before { transform: rotate(90deg); }
-    .resolved-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+    .resolved-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
 
     /* Context Menu */
     .context-target { box-shadow: inset 0 0 0 1px var(--border-strong); background: var(--hover) !important; }
@@ -1646,12 +1917,14 @@
     #skills-history-open { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
 
     .comments-lock-note {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
+      margin: 10px 12px 0;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
       background: var(--surface-2);
       color: var(--ink-2);
       font-size: 12px;
-      line-height: 1.5;
+      line-height: 1.48;
     }
 
     /* Wide Skill Modals (API, Doc Inspector, History) */
@@ -1857,7 +2130,7 @@
     }
 
     @media (max-width: 960px) {
-      .comments-panel { position: absolute; z-index: 15; inset: 0 0 0 auto; width: min(364px, 100%); box-shadow: var(--shadow-lg); }
+      .comments-panel { position: absolute; z-index: 15; inset: 0 0 0 auto; width: min(388px, 100%); box-shadow: var(--shadow-lg); }
       .viewer-title p { display: none; }
     }
     @media (max-width: 760px) {
@@ -2056,29 +2329,32 @@
         </div>
 
         <aside id="comments-panel" class="comments-panel" aria-label="Comments" hidden>
-          <div class="comments-head">
-            <h2><span>Comments</span><span id="comments-version-tag" class="ver-pill" hidden></span></h2>
-            <button id="comments-close" class="btn icon-only" type="button" aria-label="Close comments" title="Close">×</button>
-          </div>
-          <div id="comments-dispatch-bar" class="comments-dispatch-bar" hidden>
-            <span id="comments-hosts" class="hosts-pill" title="No connected hosts">
-              <span class="hosts-dot" aria-hidden="true"></span>
-              <span id="comments-hosts-text">0 hosts</span>
-            </span>
-            <button id="comments-dispatch" class="btn primary" type="button" hidden>Send</button>
+          <div class="comments-chrome">
+            <div class="comments-head">
+              <h2><span>Comments</span><span id="comments-version-tag" class="ver-pill" hidden></span></h2>
+              <button id="comments-close" class="btn icon-only" type="button" aria-label="Close comments" title="Close">×</button>
+            </div>
+            <div id="comments-dispatch-bar" class="comments-dispatch-bar" hidden>
+              <span id="comments-hosts" class="hosts-pill" title="No connected hosts">
+                <span class="hosts-dot" aria-hidden="true"></span>
+                <span id="comments-hosts-text">0 hosts</span>
+              </span>
+              <button id="comments-dispatch" class="btn primary" type="button" hidden>Send</button>
+            </div>
           </div>
           <p id="comments-lock-note" class="comments-lock-note" hidden>Unlock Skill Editing to comment or dispatch changes.</p>
           <form id="comment-composer" class="comment-composer" hidden>
             <div id="comment-anchor" class="anchor-chip" hidden>
               <span id="comment-anchor-box" class="anchor-box-pill" hidden>
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2"/></svg>
-                <span>Selected area</span>
+                <span id="comment-anchor-box-label">Selected area</span>
               </span>
               <span id="comment-anchor-quote" class="anchor-chip-quote" hidden></span>
               <button id="comment-anchor-clear" class="anchor-clear" type="button" title="Clear selection" aria-label="Clear selection">×</button>
             </div>
-            <textarea id="comment-input" placeholder="Write a comment… (⌘↵)" maxlength="8000" required></textarea>
+            <textarea id="comment-input" placeholder="Write a comment…" maxlength="8000" required></textarea>
             <div class="composer-actions">
+              <span class="composer-hint">Markdown · ⌘↵</span>
               <button id="comment-submit" class="btn primary" type="submit">Post</button>
             </div>
           </form>
@@ -4811,6 +5087,536 @@
       if (pickMode) sendToIframe({ type: 've-comment:pick', active: true });
       syncIframeWiki();
     }
+    function agentIcon() {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 16 16');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.style.width = '11px';
+      svg.style.height = '11px';
+      svg.style.fill = 'currentColor';
+      const path = document.createElementNS(svg.namespaceURI, 'path');
+      path.setAttribute('d', 'M8 1.5l1.6 4.1 4.1 1.6-4.1 1.6L8 12.9l-1.6-4.1-4.1-1.6 4.1-1.6z');
+      svg.append(path);
+      return svg;
+    }
+    function isAgentAuthor(author) {
+      return author?.role === 'agent' || author?.role === 'skill-editor';
+    }
+    function describeElementAnchor(where) {
+      if (!where) return 'Selected area';
+      const label = typeof where.label === 'string' ? where.label.trim() : '';
+      if (label) return label;
+      if (Array.isArray(where.headings) && where.headings.length) {
+        const last = String(where.headings[where.headings.length - 1] || '').trim();
+        if (last) return last;
+      }
+      const quote = typeof where.quote === 'string' ? where.quote.trim() : '';
+      if (quote) return quote.slice(0, 80) + (quote.length > 80 ? '…' : '');
+      const tag = typeof where.tag === 'string' ? where.tag.trim() : '';
+      if (tag) return `<${tag}>`;
+      return 'Selected area';
+    }
+    function safeHttpUrl(raw) {
+      const trimmed = String(raw || '').trim();
+      if (!trimmed || /[\u0000-\u001f\u007f]/.test(trimmed)) return null;
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.href;
+      } catch {}
+      return null;
+    }
+    function findClosingBackticks(text, start, count) {
+      let i = start;
+      while (i < text.length) {
+        if (text[i] === '`') {
+          let n = 0;
+          while (i + n < text.length && text[i + n] === '`') n++;
+          if (n === count) return i;
+          i += n;
+          continue;
+        }
+        i++;
+      }
+      return -1;
+    }
+    function findClosingInlineDelimiter(text, start, delim, forbidWordAfter = false) {
+      const len = delim.length;
+      let i = start;
+      while (i <= text.length - len) {
+        const ch = text[i];
+        if (ch === '\\' && i + 1 < text.length) { i += 2; continue; }
+        if (ch === '`') {
+          let ticks = 0;
+          while (i + ticks < text.length && text[i + ticks] === '`') ticks++;
+          const closeIdx = findClosingBackticks(text, i + ticks, ticks);
+          i = closeIdx >= 0 ? closeIdx + ticks : i + ticks;
+          continue;
+        }
+        if (text.startsWith(delim, i)) {
+          const prev = i > 0 ? text[i - 1] : '';
+          const next = i + len < text.length ? text[i + len] : '';
+          const validSingle = len !== 1 || (prev !== delim && next !== delim);
+          const validWord = !forbidWordAfter || !/[A-Za-z0-9_]/.test(next);
+          if (i > start && !/\s/.test(prev) && validSingle && validWord) return i;
+        }
+        i++;
+      }
+      return -1;
+    }
+    function parseMarkdownLinkAt(text, start) {
+      if (text[start] !== '[') return null;
+      let i = start + 1;
+      let bracketDepth = 0;
+      let closeBracket = -1;
+      while (i < text.length) {
+        const ch = text[i];
+        if (ch === '\\' && i + 1 < text.length) { i += 2; continue; }
+        if (ch === '`') {
+          let ticks = 0;
+          while (i + ticks < text.length && text[i + ticks] === '`') ticks++;
+          const closeIdx = findClosingBackticks(text, i + ticks, ticks);
+          i = closeIdx >= 0 ? closeIdx + ticks : i + ticks;
+          continue;
+        }
+        if (ch === '[') bracketDepth++;
+        else if (ch === ']') {
+          if (bracketDepth === 0) { closeBracket = i; break; }
+          bracketDepth--;
+        }
+        i++;
+      }
+      if (closeBracket < 0 || text[closeBracket + 1] !== '(') return null;
+      let j = closeBracket + 2;
+      let parenDepth = 0;
+      let closeParen = -1;
+      while (j < text.length) {
+        const ch = text[j];
+        if (ch === '\\' && j + 1 < text.length) { j += 2; continue; }
+        if (ch === '(') parenDepth++;
+        else if (ch === ')') {
+          if (parenDepth === 0) { closeParen = j; break; }
+          parenDepth--;
+        }
+        j++;
+      }
+      if (closeParen < 0) return null;
+      const label = text.slice(start + 1, closeBracket);
+      let dest = text.slice(closeBracket + 2, closeParen).trim();
+      if (dest.startsWith('<')) {
+        const gt = dest.indexOf('>');
+        if (gt > 0) dest = dest.slice(1, gt);
+      } else {
+        dest = dest.replace(/\s+["'][^"']*["']\s*$/, '').trim();
+      }
+      return { label, rawUrl: dest, end: closeParen + 1 };
+    }
+    function renderInlineMarkdown(text, inLink = false) {
+      const frag = document.createDocumentFragment();
+      let buf = '';
+      const flush = () => {
+        if (buf) { frag.append(document.createTextNode(buf)); buf = ''; }
+      };
+      let i = 0;
+      while (i < text.length) {
+        const ch = text[i];
+        if (ch === '\\' && i + 1 < text.length && /[\\`*_{}[\]()#+\-.!~|<>]/.test(text[i + 1])) {
+          buf += text[i + 1];
+          i += 2;
+          continue;
+        }
+        if (ch === '`') {
+          let ticks = 0;
+          while (i + ticks < text.length && text[i + ticks] === '`') ticks++;
+          const close = findClosingBackticks(text, i + ticks, ticks);
+          if (close >= 0) {
+            flush();
+            let codeText = text.slice(i + ticks, close);
+            if (codeText.length >= 2 && codeText.startsWith(' ') && codeText.endsWith(' ') && /[^ ]/.test(codeText)) {
+              codeText = codeText.slice(1, -1);
+            }
+            const codeEl = document.createElement('code');
+            codeEl.className = 'md-inline-code';
+            codeEl.textContent = codeText;
+            frag.append(codeEl);
+            i = close + ticks;
+            continue;
+          }
+          buf += text.slice(i, i + ticks);
+          i += ticks;
+          continue;
+        }
+        if (!inLink && ch === '[') {
+          const link = parseMarkdownLinkAt(text, i);
+          if (link && link.label.length > 0 && link.rawUrl.length > 0) {
+            const safeUrl = safeHttpUrl(link.rawUrl);
+            if (safeUrl) {
+              flush();
+              const a = document.createElement('a');
+              a.className = 'md-link';
+              a.href = safeUrl;
+              a.target = '_blank';
+              a.rel = 'noopener noreferrer';
+              a.append(renderInlineMarkdown(link.label, true));
+              frag.append(a);
+              i = link.end;
+              continue;
+            }
+            buf += text.slice(i, link.end);
+            i = link.end;
+            continue;
+          }
+        }
+        if (!inLink && (ch === 'h' || ch === 'H') && (i === 0 || !/[A-Za-z0-9_]/.test(text[i - 1]))) {
+          const m = /^https?:\/\/[^\s<>"'`]+/i.exec(text.slice(i));
+          if (m) {
+            let raw = m[0];
+            while (raw.length > 0 && /[.,;:!?]/.test(raw[raw.length - 1])) raw = raw.slice(0, -1);
+            while (raw.endsWith(')') && (raw.match(/\(/g)?.length || 0) < (raw.match(/\)/g)?.length || 0)) raw = raw.slice(0, -1);
+            while (raw.endsWith(']') && (raw.match(/\[/g)?.length || 0) < (raw.match(/\]/g)?.length || 0)) raw = raw.slice(0, -1);
+            const safeUrl = safeHttpUrl(raw);
+            if (safeUrl) {
+              flush();
+              const a = document.createElement('a');
+              a.className = 'md-link';
+              a.href = safeUrl;
+              a.target = '_blank';
+              a.rel = 'noopener noreferrer';
+              a.textContent = raw;
+              frag.append(a);
+              i += raw.length;
+              continue;
+            }
+          }
+        }
+        if (ch === '~' && text[i + 1] === '~' && i + 2 < text.length && !/\s/.test(text[i + 2])) {
+          const close = findClosingInlineDelimiter(text, i + 2, '~~');
+          if (close >= 0) {
+            flush();
+            const del = document.createElement('del');
+            del.append(renderInlineMarkdown(text.slice(i + 2, close), inLink));
+            frag.append(del);
+            i = close + 2;
+            continue;
+          }
+        }
+        if (ch === '*' && text.startsWith('***', i) && i + 3 < text.length && !/\s/.test(text[i + 3])) {
+          const close = findClosingInlineDelimiter(text, i + 3, '***');
+          if (close >= 0) {
+            flush();
+            const strong = document.createElement('strong');
+            const em = document.createElement('em');
+            em.append(renderInlineMarkdown(text.slice(i + 3, close), inLink));
+            strong.append(em);
+            frag.append(strong);
+            i = close + 3;
+            continue;
+          }
+        }
+        if (ch === '*' && text[i + 1] === '*' && i + 2 < text.length && !/\s/.test(text[i + 2])) {
+          const close = findClosingInlineDelimiter(text, i + 2, '**');
+          if (close >= 0) {
+            flush();
+            const strong = document.createElement('strong');
+            strong.append(renderInlineMarkdown(text.slice(i + 2, close), inLink));
+            frag.append(strong);
+            i = close + 2;
+            continue;
+          }
+        }
+        if (ch === '_' && text[i + 1] === '_' && (i === 0 || !/[A-Za-z0-9_]/.test(text[i - 1])) && i + 2 < text.length && !/\s/.test(text[i + 2])) {
+          const close = findClosingInlineDelimiter(text, i + 2, '__', true);
+          if (close >= 0) {
+            flush();
+            const strong = document.createElement('strong');
+            strong.append(renderInlineMarkdown(text.slice(i + 2, close), inLink));
+            frag.append(strong);
+            i = close + 2;
+            continue;
+          }
+        }
+        if (ch === '*' && text[i + 1] !== '*' && i + 1 < text.length && !/\s/.test(text[i + 1])) {
+          const close = findClosingInlineDelimiter(text, i + 1, '*');
+          if (close >= 0) {
+            flush();
+            const em = document.createElement('em');
+            em.append(renderInlineMarkdown(text.slice(i + 1, close), inLink));
+            frag.append(em);
+            i = close + 1;
+            continue;
+          }
+        }
+        if (ch === '_' && text[i + 1] !== '_' && (i === 0 || !/[A-Za-z0-9_]/.test(text[i - 1])) && i + 1 < text.length && !/\s/.test(text[i + 1])) {
+          const close = findClosingInlineDelimiter(text, i + 1, '_', true);
+          if (close >= 0) {
+            flush();
+            const em = document.createElement('em');
+            em.append(renderInlineMarkdown(text.slice(i + 1, close), inLink));
+            frag.append(em);
+            i = close + 1;
+            continue;
+          }
+        }
+        buf += ch;
+        i++;
+      }
+      flush();
+      return frag;
+    }
+    function splitMdTableRow(line) {
+      let s = line.trim();
+      if (s.startsWith('|')) s = s.slice(1);
+      if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
+      const cells = [];
+      let cur = '';
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (ch === '\\' && s[i + 1] === '|') { cur += '|'; i++; continue; }
+        if (ch === '`') {
+          let ticks = 0;
+          while (i + ticks < s.length && s[i + ticks] === '`') ticks++;
+          const close = findClosingBackticks(s, i + ticks, ticks);
+          if (close >= 0) {
+            cur += s.slice(i, close + ticks);
+            i = close + ticks - 1;
+            continue;
+          }
+        }
+        if (ch === '|') { cells.push(cur.trim()); cur = ''; continue; }
+        cur += ch;
+      }
+      cells.push(cur.trim());
+      return cells;
+    }
+    function isMdTableSeparator(line) {
+      const trimmed = line.trim();
+      return trimmed.includes('|') && /^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?$/.test(trimmed);
+    }
+    function renderCommentMarkdown(rawText, depth = 0) {
+      const frag = document.createDocumentFragment();
+      const normalized = String(rawText ?? '').replace(/\r\n?/g, '\n');
+      const lines = normalized.split('\n');
+      const indentWidth = s => s.replace(/\t/g, '  ').length;
+      const isHr = line => /^\s{0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/.test(line);
+      const matchFence = line => /^\s{0,3}(`{3,}|~{3,})([^\n]*)$/.exec(line);
+      const matchHeading = line => /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+      const matchList = line => {
+        if (isHr(line)) return null;
+        const u = /^([ \t]*)([-*+])\s+(.*)$/.exec(line);
+        if (u) return { indent: indentWidth(u[1]), kind: 'ul', start: 1, text: u[3] };
+        const o = /^([ \t]*)(\d{1,9})[.)]\s+(.*)$/.exec(line);
+        if (o) return { indent: indentWidth(o[1]), kind: 'ol', start: Number(o[2]), text: o[3] };
+        return null;
+      };
+      const isTableStart = idx => idx + 1 < lines.length && lines[idx].includes('|') && isMdTableSeparator(lines[idx + 1]);
+      const isBlockStart = idx => {
+        const line = lines[idx];
+        if (!line.trim()) return true;
+        if (matchFence(line) || matchHeading(line) || isHr(line) || /^\s{0,3}>/.test(line) || matchList(line) || isTableStart(idx)) return true;
+        return false;
+      };
+
+      function parseList(startIdx, baseIndent, kind) {
+        const list = document.createElement(kind);
+        let idx = startIdx;
+        let first = true;
+        let currentLi = null;
+        while (idx < lines.length) {
+          if (!lines[idx].trim()) {
+            let look = idx;
+            while (look < lines.length && !lines[look].trim()) look++;
+            if (look >= lines.length) { idx = look; break; }
+            const nextItem = matchList(lines[look]);
+            if (nextItem && (nextItem.indent > baseIndent || (nextItem.indent === baseIndent && nextItem.kind === kind))) {
+              idx = look;
+              continue;
+            }
+            break;
+          }
+          const m = matchList(lines[idx]);
+          if (!m) {
+            const lead = indentWidth(/^([ \t]*)/.exec(lines[idx])[1]);
+            if (currentLi && lead > baseIndent && !matchFence(lines[idx]) && !isHr(lines[idx]) && !/^\s{0,3}>/.test(lines[idx])) {
+              currentLi.append(document.createElement('br'), renderInlineMarkdown(lines[idx].trim()));
+              idx++;
+              continue;
+            }
+            break;
+          }
+          if (m.indent < baseIndent) break;
+          if (m.indent > baseIndent) {
+            if (currentLi && depth < 6) {
+              const sub = parseList(idx, m.indent, m.kind);
+              currentLi.append(sub.node);
+              idx = sub.next;
+              continue;
+            }
+            break;
+          }
+          if (m.kind !== kind) break;
+          if (first && kind === 'ol' && m.start !== 1) list.start = m.start;
+          first = false;
+          const li = document.createElement('li');
+          li.append(renderInlineMarkdown(m.text));
+          list.append(li);
+          currentLi = li;
+          idx++;
+        }
+        return { node: list, next: idx };
+      }
+
+      let i = 0;
+      while (i < lines.length) {
+        if (!lines[i].trim()) { i++; continue; }
+
+        // Fenced code block
+        const fence = matchFence(lines[i]);
+        if (fence) {
+          const fenceChar = fence[1][0];
+          const fenceLen = fence[1].length;
+          const lang = fence[2].trim().split(/\s+/)[0].replace(/[^A-Za-z0-9_+#.-]/g, '').slice(0, 24);
+          const closeRe = new RegExp(`^\\s{0,3}${fenceChar}{${fenceLen},}\\s*$`);
+          const codeLines = [];
+          i++;
+          while (i < lines.length && !closeRe.test(lines[i])) {
+            codeLines.push(lines[i]);
+            i++;
+          }
+          if (i < lines.length) i++;
+          const pre = document.createElement('pre');
+          pre.className = 'md-code';
+          const code = document.createElement('code');
+          code.textContent = codeLines.join('\n');
+          pre.append(code);
+          if (lang) {
+            const wrap = document.createElement('div');
+            wrap.className = 'md-code-wrap';
+            const badge = document.createElement('span');
+            badge.className = 'md-code-lang';
+            badge.textContent = lang;
+            wrap.append(badge, pre);
+            frag.append(wrap);
+          } else {
+            frag.append(pre);
+          }
+          continue;
+        }
+
+        // Heading
+        const heading = matchHeading(lines[i]);
+        if (heading) {
+          const level = heading[1].length;
+          const tag = level === 1 ? 'h4' : level === 2 ? 'h5' : 'h6';
+          const cls = level === 1 ? 'md-h md-h1' : level === 2 ? 'md-h md-h2' : 'md-h md-h3';
+          const h = document.createElement(tag);
+          h.className = cls;
+          h.append(renderInlineMarkdown(heading[2]));
+          frag.append(h);
+          i++;
+          continue;
+        }
+
+        // Horizontal rule
+        if (isHr(lines[i])) {
+          const hr = document.createElement('hr');
+          hr.className = 'md-hr';
+          frag.append(hr);
+          i++;
+          continue;
+        }
+
+        // Blockquote
+        if (/^\s{0,3}>/.test(lines[i])) {
+          const quoteLines = [];
+          while (i < lines.length && /^\s{0,3}>/.test(lines[i])) {
+            quoteLines.push(lines[i].replace(/^\s{0,3}>\s?/, ''));
+            i++;
+          }
+          const bq = document.createElement('blockquote');
+          bq.className = 'md-quote';
+          if (depth < 6) {
+            bq.append(renderCommentMarkdown(quoteLines.join('\n'), depth + 1));
+          } else {
+            const p = document.createElement('p');
+            p.textContent = quoteLines.join('\n');
+            bq.append(p);
+          }
+          frag.append(bq);
+          continue;
+        }
+
+        // Simple GFM pipe table
+        if (isTableStart(i)) {
+          const headers = splitMdTableRow(lines[i]);
+          const aligns = splitMdTableRow(lines[i + 1]).map(cell => {
+            const c = cell.trim();
+            if (c.startsWith(':') && c.endsWith(':')) return 'center';
+            if (c.endsWith(':')) return 'right';
+            return 'left';
+          });
+          i += 2;
+          const bodyRows = [];
+          while (i < lines.length && lines[i].trim() && lines[i].includes('|') && !matchFence(lines[i]) && !matchHeading(lines[i]) && !/^\s{0,3}>/.test(lines[i])) {
+            bodyRows.push(splitMdTableRow(lines[i]));
+            i++;
+          }
+          const wrap = document.createElement('div');
+          wrap.className = 'md-table-wrap';
+          const table = document.createElement('table');
+          table.className = 'md-table';
+          const thead = document.createElement('thead');
+          const hrRow = document.createElement('tr');
+          headers.forEach((cell, colIdx) => {
+            const th = document.createElement('th');
+            if (aligns[colIdx] && aligns[colIdx] !== 'left') th.style.textAlign = aligns[colIdx];
+            th.append(renderInlineMarkdown(cell));
+            hrRow.append(th);
+          });
+          thead.append(hrRow);
+          table.append(thead);
+          if (bodyRows.length) {
+            const tbody = document.createElement('tbody');
+            for (const row of bodyRows) {
+              const tr = document.createElement('tr');
+              for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+                const td = document.createElement('td');
+                if (aligns[colIdx] && aligns[colIdx] !== 'left') td.style.textAlign = aligns[colIdx];
+                td.append(renderInlineMarkdown(row[colIdx] ?? ''));
+                tr.append(td);
+              }
+              tbody.append(tr);
+            }
+            table.append(tbody);
+          }
+          wrap.append(table);
+          frag.append(wrap);
+          continue;
+        }
+
+        // Unordered or ordered list
+        const listStart = matchList(lines[i]);
+        if (listStart) {
+          const parsed = parseList(i, listStart.indent, listStart.kind);
+          frag.append(parsed.node);
+          i = parsed.next;
+          continue;
+        }
+
+        // Paragraph with soft line breaks preserved
+        const paraLines = [];
+        while (i < lines.length) {
+          if (paraLines.length > 0 && isBlockStart(i)) break;
+          paraLines.push(lines[i]);
+          i++;
+        }
+        const p = document.createElement('p');
+        paraLines.forEach((line, idx) => {
+          if (idx > 0) p.append(document.createElement('br'));
+          p.append(renderInlineMarkdown(line.replace(/[ \t]+$/, '')));
+        });
+        frag.append(p);
+      }
+      return frag;
+    }
     function renderComposerAnchor() {
       if (!commentAnchor || commentAnchor.kind === 'page') {
         $('comment-anchor').hidden = true;
@@ -4828,6 +5634,7 @@
         $('comment-anchor-quote').hidden = true;
         $('comment-anchor-quote').textContent = '';
         $('comment-anchor-box').hidden = false;
+        $('comment-anchor-box-label').textContent = describeElementAnchor(commentAnchor);
       }
     }
     function updatePageOpenCount(filename, counts) {
@@ -4941,14 +5748,22 @@
       }
       const meta = document.createElement('div');
       meta.className = 'comment-meta';
+      const threadAgent = isAgentAuthor(thread.author);
       const avatar = document.createElement('span');
-      avatar.className = 'avatar-dot' + (thread.author.role === 'agent' ? ' agent' : '');
-      avatar.textContent = thread.author.role === 'agent' ? 'AI' : (thread.author.name[0]?.toUpperCase() || 'O');
+      avatar.className = 'avatar-dot' + (threadAgent ? ' agent' : '');
+      if (threadAgent) avatar.append(agentIcon());
+      else avatar.textContent = thread.author.name[0]?.toUpperCase() || 'O';
       const authorEl = document.createElement('span');
       authorEl.className = 'comment-author';
       authorEl.textContent = thread.author.name;
       authorEl.title = thread.id;
       meta.append(avatar, authorEl);
+      if (threadAgent) {
+        const badge = document.createElement('span');
+        badge.className = 'author-role-badge';
+        badge.textContent = 'AI';
+        meta.append(badge);
+      }
       if (thread.version) {
         const verBtn = document.createElement('button');
         verBtn.type = 'button';
@@ -4961,29 +5776,37 @@
         });
         meta.append(verBtn);
       }
-      if (thread.where?.kind === 'element' && thread.where.selector) {
-        const locBtn = document.createElement('button');
-        locBtn.type = 'button';
-        locBtn.className = 'comment-locate';
-        locBtn.title = 'Highlight on diagram';
-        locBtn.setAttribute('aria-label', 'Highlight on diagram');
-        locBtn.append(boxIcon());
-        locBtn.addEventListener('click', () => sendToIframe({ type: 've-comment:focus', id: thread.id, selector: thread.where.selector }));
-        meta.append(locBtn);
-      }
       const timeEl = document.createElement('span');
       timeEl.className = 'comment-time';
       timeEl.textContent = formatDate(thread.createdAt);
       meta.append(timeEl);
       card.append(meta);
 
-      if (thread.where?.kind === 'text' && thread.where.quote) {
+      if (thread.where?.kind === 'element') {
+        const anchorBtn = document.createElement('button');
+        anchorBtn.type = 'button';
+        anchorBtn.className = 'comment-anchor-btn comment-locate';
+        const anchorText = describeElementAnchor(thread.where);
+        const trail = thread.where.headings?.length ? thread.where.headings.join(' › ') : '';
+        anchorBtn.title = trail ? `${anchorText} — ${trail}` : 'Highlight on diagram';
+        anchorBtn.setAttribute('aria-label', `Highlight ${anchorText} on diagram`);
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'comment-anchor-label';
+        labelSpan.textContent = anchorText;
+        anchorBtn.append(boxIcon(), labelSpan);
+        if (thread.where.selector) {
+          anchorBtn.addEventListener('click', () => sendToIframe({ type: 've-comment:focus', id: thread.id, selector: thread.where.selector }));
+        } else {
+          anchorBtn.disabled = true;
+        }
+        card.append(anchorBtn);
+      } else if (thread.where?.kind === 'text' && thread.where.quote) {
         const quoteBtn = document.createElement('button');
         quoteBtn.type = 'button';
         quoteBtn.className = 'comment-quote-btn';
         quoteBtn.title = 'Highlight on diagram';
         const excerpt = thread.where.quote;
-        quoteBtn.textContent = `“${excerpt.slice(0, 100)}${excerpt.length > 100 ? '…' : ''}”`;
+        quoteBtn.textContent = `“${excerpt.slice(0, 120)}${excerpt.length > 120 ? '…' : ''}”`;
         quoteBtn.addEventListener('click', () => {
           if (thread.where.selector) sendToIframe({ type: 've-comment:focus', id: thread.id, selector: thread.where.selector });
         });
@@ -4994,8 +5817,8 @@
         card.append(makeEditBox(thread.id, thread.body));
       } else {
         const body = document.createElement('div');
-        body.className = 'comment-body';
-        body.textContent = thread.body;
+        body.className = 'comment-body comment-md';
+        body.append(renderCommentMarkdown(thread.body));
         card.append(body);
       }
 
@@ -5003,15 +5826,28 @@
         const repliesEl = document.createElement('div');
         repliesEl.className = 'comment-replies';
         for (const reply of thread.replies) {
+          const replyAgent = isAgentAuthor(reply.author);
           const item = document.createElement('div');
-          item.className = 'comment-reply';
+          item.className = 'comment-reply' + (replyAgent ? ' is-agent' : '');
           const head = document.createElement('div');
           head.className = 'comment-reply-head';
+          const replyAvatar = document.createElement('span');
+          replyAvatar.className = 'avatar-dot sm' + (replyAgent ? ' agent' : '');
+          if (replyAgent) replyAvatar.append(agentIcon());
+          else replyAvatar.textContent = reply.author.name[0]?.toUpperCase() || 'O';
           const who = document.createElement('strong');
           who.textContent = reply.author.name;
+          head.append(replyAvatar, who);
+          if (replyAgent) {
+            const badge = document.createElement('span');
+            badge.className = 'author-role-badge';
+            badge.textContent = 'AI';
+            head.append(badge);
+          }
           const when = document.createElement('span');
+          when.className = 'comment-reply-time';
           when.textContent = formatDate(reply.createdAt);
-          head.append(who, when);
+          head.append(when);
           if (writable) {
             head.append(makeButton('Edit', () => { openEditBoxId = reply.id; openReplyBoxId = null; renderComments(); }, 'link-btn quiet push-right'));
             head.append(makeButton('Delete', () => void deleteCommentItem(reply.id), 'link-btn quiet danger'));
@@ -5020,8 +5856,8 @@
           if (openEditBoxId === reply.id && writable) item.append(makeEditBox(reply.id, reply.body));
           else {
             const text = document.createElement('div');
-            text.className = 'comment-body';
-            text.textContent = reply.body;
+            text.className = 'comment-body comment-md';
+            text.append(renderCommentMarkdown(reply.body));
             item.append(text);
           }
           repliesEl.append(item);

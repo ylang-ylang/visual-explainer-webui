@@ -180,13 +180,16 @@ try {
   const context = await browser.newContext({ viewport: { width: 1360, height: 860 } });
   const page = await context.newPage();
   const errors = [];
-  page.on('pageerror', err => errors.push(err.message));
+  let loggedIn = false;
+  page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
+  page.on('console', msg => { if (loggedIn && msg.type() === 'error') errors.push(`console.error: ${msg.text()}`); });
 
   await page.goto(base.href);
   await page.fill('#key', adminToken);
   await page.click('#login-submit');
   await page.waitForSelector('.report[aria-current="page"]');
   await page.waitForSelector('#preview:not([hidden])');
+  loggedIn = true;
   await page.waitForFunction(() => document.querySelector('#viewer-version')?.textContent.includes('v2'));
   assert.equal(await page.locator('#comments-badge').textContent(), '1');
 
@@ -214,7 +217,7 @@ try {
   await page.click('#comment-submit');
   await page.waitForFunction(() => document.querySelector('#comments-badge')?.textContent === '2');
 
-  // Pick Element mode -> hover/click #node-gateway -> shows visual box (no selector text clutter) -> submit
+  // Pick Element mode -> hover/click #node-gateway -> shows visual box & element label (no selector text clutter) -> submit
   await page.click('#pick-element');
   await page.waitForFunction(() => document.querySelector('#pick-element')?.getAttribute('aria-pressed') === 'true');
   await frame.locator('body.ve-raft-picking').waitFor({ timeout: 5000 });
@@ -222,10 +225,17 @@ try {
   assert.equal(await frame.locator('.ve-raft-pick-tag').count(), 0, 'Pick mode must use a visual box, not selector text tooltip');
   await frame.locator('#node-gateway').click();
   await page.waitForSelector('#comment-anchor-box:not([hidden])', { timeout: 5000 });
+  assert.ok((await page.locator('#comment-anchor-box').textContent()).includes('Gateway'), 'Composer anchor chip should display picked element label');
   await frame.locator('.ve-raft-draft-box:not([hidden])').waitFor({ timeout: 5000 });
   await page.fill('#comment-input', 'Make the gateway block stand out more.');
   await page.click('#comment-submit');
   await page.waitForFunction(() => document.querySelector('#comments-badge')?.textContent === '3');
+
+  // Element-picked comment displays its label anchor pill and focuses diagram element on click
+  const elementAnchorBtn = page.locator('.comment-card .comment-anchor-btn', { hasText: 'Gateway' }).first();
+  await elementAnchorBtn.waitFor({ timeout: 5000 });
+  await elementAnchorBtn.click();
+  await frame.locator('.ve-raft-comment-box.is-active').first().waitFor({ timeout: 5000 });
 
   // Open comments render visual bounding boxes on the diagram, not text descriptions
   await frame.locator('.ve-raft-comment-box').first().waitFor({ timeout: 5000 });
@@ -296,6 +306,96 @@ try {
   await page.locator('.resolved-section .comment-card').getByRole('button', { name: 'Reopen' }).click();
   await page.waitForFunction(() => document.querySelector('#comments-badge')?.textContent === '3');
 
+  // Rich Markdown rendering & strict XSS neutralization in top-level comment + Agent reply, plus Edit raw Markdown preservation
+  const rawMarkdownComment = [
+    '### Latency Audit',
+    'Verify **P99 budget** with `inline_code` and keep_snake_case_id intact.',
+    '',
+    '- Check `p50_ms` baseline',
+    '- See [Latency Spec](https://example.com/spec)',
+    '',
+    '```js',
+    'const p99_ms = 185;',
+    '```',
+    '',
+    '| Metric | Target |',
+    '| --- | --- |',
+    '| P99 | 185ms |',
+    '',
+    '<img src=x onerror="window.__xss=1"> and [bad](javascript:alert(1))',
+  ].join('\n');
+  await page.fill('#comment-input', rawMarkdownComment);
+  await page.click('#comment-submit');
+  await page.waitForFunction(() => document.querySelector('#comments-badge')?.textContent === '4');
+
+  const mdThreadId = await page.locator('.comment-card').last().getAttribute('data-thread-id');
+  assert.ok(mdThreadId, 'Expected data-thread-id on newly posted Markdown comment');
+
+  // Agent posts a rich Markdown reply with XSS attempt
+  const agentMdReply = await req(`/api/pages/${encodeURIComponent(filename)}/comments`, {
+    method: 'POST',
+    token: ownKey,
+    body: {
+      replyTo: mdThreadId,
+      body: [
+        '**Updated** with `retry_budget` and [Docs](https://example.com/docs).',
+        '',
+        '- Added P50 baseline',
+        '- Tuned timeout',
+        '',
+        '```sh',
+        'echo ok',
+        '```',
+        '',
+        '[evil](javascript:alert(2)) <img src=x onerror="window.__xss=2">',
+      ].join('\n'),
+    },
+  });
+  assert.equal(agentMdReply.status, 201, agentMdReply.text);
+
+  // Reopen comments panel to fetch the new Agent reply
+  await page.click('#comments-close');
+  await page.click('#comments-toggle');
+  await page.waitForSelector(`.comment-card[data-thread-id="${mdThreadId}"] .comment-reply.is-agent`);
+
+  const mdCard = page.locator(`.comment-card[data-thread-id="${mdThreadId}"]`);
+  const topBody = mdCard.locator('> .comment-body');
+  assert.equal(await topBody.locator('strong', { hasText: 'P99 budget' }).count(), 1, 'Top-level bold must render as <strong>');
+  assert.equal(await topBody.locator('code.md-inline-code', { hasText: 'inline_code' }).count(), 1, 'Top-level inline code must render as <code>');
+  assert.equal(await topBody.locator('pre code', { hasText: 'const p99_ms = 185;' }).count(), 1, 'Top-level fenced code block must render as <pre><code>');
+  assert.equal(await topBody.locator('ul li').count(), 2, 'Top-level bullet list must render as <ul><li>');
+  const topLink = topBody.locator('a[target="_blank"][rel*="noopener"]', { hasText: 'Latency Spec' });
+  assert.equal(await topLink.count(), 1, 'Safe https link must render with target=_blank and rel=noopener');
+  assert.equal(await topLink.getAttribute('href'), 'https://example.com/spec');
+  assert.equal(await topBody.locator('table td', { hasText: '185ms' }).count(), 1, 'Pipe table must render as <table><td>');
+  assert.equal(await topBody.locator('em').count(), 0, 'snake_case identifiers must not be mangled into <em>');
+  assert.ok((await topBody.textContent()).includes('keep_snake_case_id'), 'snake_case text must remain intact');
+  assert.ok((await topBody.textContent()).includes('[bad](javascript:alert(1))'), 'Unsafe javascript: link must remain literal text');
+
+  // Verify Agent reply Markdown rendering & AI badge
+  const replyCard = mdCard.locator('.comment-reply.is-agent').first();
+  assert.equal(await replyCard.locator('.avatar-dot.agent').count(), 1, 'Agent reply must show agent avatar dot');
+  assert.equal(await replyCard.locator('.author-role-badge', { hasText: 'AI' }).count(), 1, 'Agent reply must show AI pill badge');
+  const replyBody = replyCard.locator('.comment-body');
+  assert.equal(await replyBody.locator('strong', { hasText: 'Updated' }).count(), 1, 'Reply bold must render as <strong>');
+  assert.equal(await replyBody.locator('code.md-inline-code', { hasText: 'retry_budget' }).count(), 1, 'Reply inline code must render as <code>');
+  assert.equal(await replyBody.locator('ul li').count(), 2, 'Reply bullet list must render as <ul><li>');
+  assert.equal(await replyBody.locator('pre code', { hasText: 'echo ok' }).count(), 1, 'Reply fenced code must render as <pre><code>');
+  assert.equal(await replyBody.locator('a[target="_blank"][href="https://example.com/docs"]').count(), 1, 'Reply safe link must render');
+
+  // Strict XSS checks across entire comments panel
+  assert.equal(await page.locator('#comments-panel img').count(), 0, 'Untrusted <img> tags must never be injected into DOM');
+  assert.equal(await page.locator('#comments-panel a[href^="javascript:" i]').count(), 0, 'javascript: links must never exist');
+  assert.equal(await page.evaluate(() => window.__xss), undefined, 'XSS payload must never execute');
+
+  // Clicking Edit preserves raw Markdown source untouched
+  await mdCard.locator('> .comment-actions').getByRole('button', { name: 'Edit' }).click();
+  const editTextarea = mdCard.locator('> .edit-box textarea');
+  await editTextarea.waitFor({ timeout: 5000 });
+  assert.equal(await editTextarea.inputValue(), rawMarkdownComment, 'Edit textarea must preserve exact raw Markdown');
+  await mdCard.locator('> .edit-box').getByRole('button', { name: 'Cancel' }).click();
+  await mdCard.locator('> .comment-body strong', { hasText: 'P99 budget' }).waitFor({ timeout: 5000 });
+
   // Verify Auto theme mode follows prefers-color-scheme, plus manual 3-state cycle (auto -> dark -> light -> auto)
   assert.equal(await page.evaluate(() => document.documentElement.dataset.themeMode), 'auto');
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
@@ -336,7 +436,7 @@ try {
   await viewerPage.click('#comments-toggle');
   await viewerPage.waitForSelector('#comments-panel:not([hidden])');
   assert.equal(await viewerPage.locator('#comment-composer').isVisible(), false);
-  assert.equal(await viewerPage.locator('.comment-card').count(), 3);
+  assert.equal(await viewerPage.locator('.comment-card').count(), 4);
   assert.equal(await viewerPage.locator('.comment-actions').count(), 0);
   await viewerCtx.close();
 
