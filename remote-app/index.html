@@ -1319,7 +1319,73 @@
       gap: 12px;
     }
     .skills-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; }
-    #skills-explainers-tree, #skills-docs-list { min-width: 0; }
+    #skills-templates-list, #skills-explainers-tree, #skills-docs-list { min-width: 0; }
+    #skills-templates-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .skill-tpl-card {
+      padding: 8px 8px 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+      transition: border-color 110ms ease, background 110ms ease;
+    }
+    .skill-tpl-card:hover { background: var(--hover); border-color: var(--border-strong); }
+    .skill-tpl-card.is-active { background: var(--accent-soft); border-color: var(--accent-border); }
+    .skill-tpl-top { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+    .skill-tpl-main {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      text-align: left;
+      display: grid;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .skill-tpl-title-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .skill-tpl-title {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      flex: 1;
+    }
+    .skill-tpl-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--ink-3);
+      min-width: 0;
+    }
+    .skill-tpl-slug {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+    .skill-tpl-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+    .skill-tpl-actions .btn {
+      height: 26px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
     .skills-section-head {
       display: flex;
       align-items: center;
@@ -1354,6 +1420,7 @@
     }
     .skill-sync-dot.synced { background: var(--ok); }
     .skill-sync-dot.stale { background: var(--warn); }
+    .skill-sync-dot.none { background: var(--border-strong); }
     .skill-pill {
       flex: none;
       display: inline-flex;
@@ -1368,6 +1435,18 @@
       font-weight: 500;
       line-height: 1.35;
       white-space: nowrap;
+    }
+    .skill-pill.default-tpl {
+      border-color: var(--ok-border);
+      background: var(--ok-soft);
+      color: var(--ok);
+      font-weight: 600;
+    }
+    .skill-pill.custom {
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
     }
     .skill-pill.stale {
       border-color: var(--warn-border);
@@ -1855,6 +1934,13 @@
         </div>
         <div id="skills-conflict-banner" class="skills-conflict-banner" hidden></div>
         <nav id="skills-nav" class="skills-nav" aria-label="Admin Skills navigation" tabindex="-1">
+          <section id="skills-templates-section" class="skills-section">
+            <div class="skills-section-head">
+              <span>Templates</span>
+              <span id="skills-templates-count" class="skills-count">0</span>
+            </div>
+            <div id="skills-templates-list"></div>
+          </section>
           <section id="skills-explainers-section" class="skills-section">
             <div class="skills-section-head">
               <span>Explainers</span>
@@ -2349,6 +2435,7 @@
       '',
       '{{ENDPOINT_LIST}}',
       '- Official skill & docs bundle: {{ORIGINAL_BASE}}/bundle',
+      '- Page & child-page templates catalog: {{ORIGINAL_BASE}}/templates (default: {{ORIGINAL_BASE}}/templates/default.md)',
       '- Zero-idle-token comment watcher script: {{ORIGINAL_BASE}}/watch.sh',
       '',
       '## 1. Read the official skill before writing HTML',
@@ -2362,6 +2449,7 @@
       '```',
       '',
       'Individual docs (`{{ORIGINAL_BASE}}/SKILL.md`, `{{ORIGINAL_BASE}}/references/style-guide.md`, `{{ORIGINAL_BASE}}/references/<name>.md`) also remain available separately, and `?refs=...` can include extra references like `motion` in one call.',
+      '**Page & child-page templates:** The `/bundle` index JSON (and `GET {{ORIGINAL_BASE}}/templates`) lists available multi-page templates (`id`, `default`, `whenToUse`, `url`). Before structuring a diagram, proposal, or multi-page Wiki, fetch the matching template (default: `GET {{ORIGINAL_BASE}}/templates/default.md`, or another template from the catalog if the user asks for it or `whenToUse` fits better) with `Authorization: Bearer $VE_KEY`. Follow the template for parent/child page organization and component diffs, and upstream `SKILL.md` / `references/*` for single-page visual rendering & checksheet QA.',
       'Optional official helpers (`POST` JSON with `Authorization: Bearer $VE_KEY` and `Content-Type: application/json`):',
       '- Prepare: `POST {{ORIGINAL_BASE}}/prepare` (matches `visual_explainer_prepare.inputSchema`, e.g. `{"topic":"..."}`)',
       '- Prompt: `POST {{ORIGINAL_BASE}}/prompts/<name>` (e.g. `generate-web-diagram` with `{"request":"..."}`)',
@@ -2383,7 +2471,7 @@
       '- Check `render.structuredContent.report` and every diagnostic in `render.content`; decode any `type: "image"` base64 blocks to inspect the official checksheet screenshots.',
       '- Fix every `✗` diagnostic with small targeted edits to `./diagram.src.html` and re-PUT the same path until clean.',
       '- Include `<meta name="description" content="...">` for a concise 1-line hover preview summary (Light and Dark thumbnails are captured automatically on publish).',
-      '- Wiki drill-down: publish child diagrams under `{{CHILD_PATH_EXAMPLE}}` (same scoped folder key) and add `data-ve-child="<child>"` (omit `.html`) on any SVG node (`<g class="ve-n" data-ve-child="...">`) or inline `<span>`. The WebUI viewer injects portal styling, stacked badges, hover previews, and click navigation at view time — plain appearance in standalone checksheets is expected, so do NOT add custom fake-portal CSS.',
+      '- Wiki drill-down & templates: follow the selected template (default `{{ORIGINAL_BASE}}/templates/default.md`) for L0 overview vs L1 component child pages and change diffs; publish child diagrams under `{{CHILD_PATH_EXAMPLE}}` (same scoped folder key) and add `data-ve-child="<child>"` (omit `.html`) on any SVG node (`<g class="ve-n" data-ve-child="...">`) or inline `<span>`. The WebUI viewer injects portal styling, stacked badges, hover previews, and click navigation at view time — plain appearance in standalone checksheets is expected, so do NOT add custom fake-portal CSS.',
       '- **Before replying with `page.url`**, start the non-blocking background comment watcher in §3 by default (if your harness supports background/async execution), then share `page.url` from the response (also returns `page.filename`, `version`, `commentsUrl`, and `openComments`).',
       '',
       '## 3. Live comment listener (default, zero idle tokens)',
@@ -2420,7 +2508,7 @@
     let selectedSkillId = null;
     let lastRenderedSkillKey = '';
     const skillsExpanded = new Map();
-    const skillGroupsExpanded = new Map([['core-webui', true], ['reference', true], ['command', true]]);
+    const skillGroupsExpanded = new Map([['template', true], ['core-webui', true], ['reference', false], ['command', false]]);
     let skillDocDialogState = null;
     let skillsPollTimer = null;
 
@@ -5785,11 +5873,169 @@
       tree.replaceChildren(frag);
     }
 
+    function renderSkillsTemplatesList() {
+      const container = $('skills-templates-list');
+      const templates = skillsData?.templates || [];
+      $('skills-templates-count').textContent = String(templates.length);
+      if (!templates.length) {
+        const empty = document.createElement('div');
+        empty.className = 'skills-empty-note';
+        empty.textContent = 'No page templates available yet.';
+        container.replaceChildren(empty);
+        return;
+      }
+      const editable = isSkillsEditable();
+      const frag = document.createDocumentFragment();
+      for (const tpl of templates) {
+        const expId = tpl.explainerId || `templates/${tpl.id}`;
+        const exp = (skillsData?.explainers || []).find(item => item.id === expId) || null;
+        const card = document.createElement('div');
+        card.className = 'skill-tpl-card' + (exp && selectedSkillId === exp.id ? ' is-active' : '');
+        card.dataset.templateId = tpl.id;
+        card.dataset.docId = tpl.docId;
+
+        const top = document.createElement('div');
+        top.className = 'skill-tpl-top';
+
+        const mainBtn = document.createElement('button');
+        mainBtn.type = 'button';
+        mainBtn.className = 'skill-tpl-main';
+        mainBtn.title = (tpl.title || tpl.id) + (tpl.whenToUse ? '\n' + tpl.whenToUse : '');
+        mainBtn.addEventListener('click', () => {
+          if (exp) {
+            selectSkillExplainer(exp, true);
+            if (compact.matches) setNavigation(false);
+          } else {
+            void openSkillDocDialog(tpl.docId, { tab: tpl.status === 'conflict' ? 'conflict' : 'content' });
+          }
+        });
+
+        const titleRow = document.createElement('div');
+        titleRow.className = 'skill-tpl-title-row';
+
+        const dot = document.createElement('span');
+        if (tpl.explainerId) {
+          dot.className = 'skill-sync-dot ' + (tpl.explainerSynced ? 'synced' : 'stale');
+          dot.title = tpl.explainerSynced ? `Synced (${tpl.sha256.slice(0, 8)})` : 'Template explainer out of sync';
+          dot.setAttribute('aria-label', tpl.explainerSynced ? 'Synced' : 'Out of sync');
+        } else {
+          dot.className = 'skill-sync-dot none';
+          dot.title = 'No dedicated visual explainer yet';
+          dot.setAttribute('aria-label', 'No visual explainer');
+        }
+
+        const titleEl = document.createElement('span');
+        titleEl.className = 'skill-tpl-title';
+        titleEl.textContent = tpl.title || tpl.id;
+        titleRow.append(dot, titleEl);
+
+        if (tpl.isDefault) {
+          const defPill = document.createElement('span');
+          defPill.className = 'skill-pill default-tpl';
+          defPill.textContent = 'Default';
+          titleRow.append(defPill);
+        }
+
+        const metaRow = document.createElement('div');
+        metaRow.className = 'skill-tpl-meta';
+
+        const slugEl = document.createElement('span');
+        slugEl.className = 'skill-tpl-slug';
+        slugEl.textContent = tpl.id;
+        metaRow.append(slugEl);
+
+        const statePill = document.createElement('span');
+        if (tpl.status === 'conflict') {
+          statePill.className = 'skill-pill conflict';
+          statePill.textContent = 'Conflict';
+        } else if (!tpl.builtIn) {
+          statePill.className = 'skill-pill custom';
+          statePill.textContent = 'Custom';
+        } else if (tpl.status === 'overridden') {
+          statePill.className = 'skill-pill overridden';
+          statePill.textContent = 'Overridden';
+        } else {
+          statePill.className = 'skill-pill';
+          statePill.textContent = 'Built-in';
+        }
+        metaRow.append(statePill);
+
+        mainBtn.append(titleRow, metaRow);
+
+        const inspectBtn = document.createElement('button');
+        inspectBtn.type = 'button';
+        inspectBtn.className = 'btn icon-only skill-doc-inspect';
+        inspectBtn.dataset.inspectTemplate = tpl.id;
+        inspectBtn.title = `Inspect Markdown & diff for ${tpl.docId}`;
+        inspectBtn.setAttribute('aria-label', `Inspect ${tpl.docId}`);
+        inspectBtn.append(inspectIcon());
+        inspectBtn.addEventListener('click', event => {
+          event.stopPropagation();
+          void openSkillDocDialog(tpl.docId, { tab: tpl.status === 'conflict' ? 'conflict' : (tpl.status === 'overridden' ? 'diff' : 'content') });
+        });
+
+        top.append(mainBtn, inspectBtn);
+        card.append(top);
+
+        if (editable && (!tpl.isDefault || !tpl.builtIn)) {
+          const actions = document.createElement('div');
+          actions.className = 'skill-tpl-actions';
+          if (!tpl.isDefault) {
+            const setDefBtn = makeButton('Set default', async () => {
+              setDefBtn.disabled = true;
+              try {
+                await apiRequest('/api/skills/templates/' + encodeURIComponent(tpl.id) + '/default', { method: 'PATCH', body: {} });
+                await loadSkillsOverview(false);
+                notify(`Default template set to ${tpl.id}`);
+              } catch (error) {
+                notify('Failed to set default template: ' + errorMessage(error));
+                setDefBtn.disabled = false;
+              }
+            }, 'btn bordered');
+            setDefBtn.dataset.setDefaultTemplate = tpl.id;
+            actions.append(setDefBtn);
+          }
+          if (!tpl.builtIn) {
+            const delBtn = makeButton('Delete', () => {
+              if (tpl.isDefault) return;
+              askConfirmation(
+                `Delete custom template "${tpl.id}"?`,
+                `Removes ${tpl.docId} (and its dedicated explainer if present) in a new version commit. Rollback can restore it later.`,
+                async () => {
+                  await apiRequest('/api/skills/templates/' + encodeURIComponent(tpl.id), { method: 'DELETE', body: {} });
+                  await loadSkillsOverview(false, { forceReloadPreview: true });
+                  notify(`Deleted template ${tpl.id}`);
+                },
+                'Delete template',
+              );
+            }, 'btn danger-outline');
+            delBtn.dataset.deleteTemplate = tpl.id;
+            if (tpl.isDefault) {
+              delBtn.disabled = true;
+              delBtn.title = 'Set another default template before deleting';
+            }
+            actions.append(delBtn);
+          }
+          card.append(actions);
+        }
+
+        frag.append(card);
+      }
+      container.replaceChildren(frag);
+    }
+
     function renderSkillsDocsList() {
       const container = $('skills-docs-list');
       const docs = skillsData?.docs || [];
+      const defaultTplDocId = skillsData?.defaultTemplate ? `templates/${skillsData.defaultTemplate}.md` : 'templates/default.md';
       $('skills-docs-count').textContent = String(docs.length);
       const groups = [
+        {
+          key: 'template',
+          label: 'Templates',
+          items: docs.filter(d => d.category === 'template')
+            .sort((a, b) => (a.id === defaultTplDocId ? -1 : b.id === defaultTplDocId ? 1 : a.id === 'templates/default.md' ? -1 : b.id === 'templates/default.md' ? 1 : a.id.localeCompare(b.id, 'en'))),
+        },
         {
           key: 'core-webui',
           label: 'Core & WebUI',
@@ -5813,7 +6059,7 @@
         const details = document.createElement('details');
         details.className = 'skill-group';
         details.dataset.groupKey = group.key;
-        details.open = skillGroupsExpanded.get(group.key) ?? true;
+        details.open = skillGroupsExpanded.get(group.key) ?? (group.key === 'template' || group.key === 'core-webui');
         details.addEventListener('toggle', () => {
           if (details.isConnected) skillGroupsExpanded.set(group.key, details.open);
         });
@@ -5857,8 +6103,8 @@
           sub.className = 'skill-doc-sub';
 
           const statusPill = document.createElement('span');
-          statusPill.className = 'skill-pill' + (doc.status === 'overridden' ? ' overridden' : doc.status === 'conflict' ? ' conflict' : '');
-          statusPill.textContent = doc.status === 'conflict' ? 'Conflict' : doc.status === 'overridden' ? 'Overridden' : 'Upstream';
+          statusPill.className = 'skill-pill' + (doc.status === 'overridden' ? ' overridden' : doc.status === 'custom' ? ' custom' : doc.status === 'conflict' ? ' conflict' : '');
+          statusPill.textContent = doc.status === 'conflict' ? 'Conflict' : doc.status === 'custom' ? 'Custom' : doc.status === 'overridden' ? 'Overridden' : 'Upstream';
           sub.append(statusPill);
 
           const syncEl = document.createElement('span');
@@ -5910,6 +6156,7 @@
       renderSkillsHostsBadge();
       renderSkillsLockCard();
       renderSkillsConflictBanner();
+      renderSkillsTemplatesList();
       renderSkillsExplainersTree();
       renderSkillsDocsList();
     }
@@ -6046,7 +6293,7 @@
         frag.append(allChip);
       } else {
         for (const doc of covered.slice(0, 4)) {
-          const cls = 'skill-cover-chip' + (doc.status === 'conflict' ? ' conflict' : doc.status === 'overridden' ? ' overridden' : '');
+          const cls = 'skill-cover-chip' + (doc.status === 'conflict' ? ' conflict' : (doc.status === 'overridden' || doc.status === 'custom') ? ' overridden' : '');
           const chip = makeButton(doc.id, () => void openSkillDocDialog(doc.id, {
             tab: doc.hasConflict ? 'conflict' : (doc.status === 'overridden' ? 'diff' : 'content'),
             docIds: covered.map(d => d.id),
@@ -6099,6 +6346,11 @@
       for (const btn of $('skills-explainers-tree').querySelectorAll('.report[data-explainer-id]')) {
         if (btn.dataset.explainerId === exp.id) btn.setAttribute('aria-current', 'page');
         else btn.removeAttribute('aria-current');
+      }
+      for (const card of $('skills-templates-list').querySelectorAll('.skill-tpl-card[data-template-id]')) {
+        const tpl = (skillsData?.templates || []).find(t => t.id === card.dataset.templateId);
+        const tplExpId = tpl?.explainerId || (tpl ? `templates/${tpl.id}` : '');
+        card.classList.toggle('is-active', Boolean(tplExpId && tplExpId === exp.id));
       }
       for (const row of $('skills-docs-list').querySelectorAll('.skill-doc-row')) {
         const doc = (skillsData?.docs || []).find(d => d.id === row.dataset.docId);
@@ -6248,6 +6500,7 @@
           openEditBoxId = null;
         }
         renderSkillsLockCard();
+        renderSkillsTemplatesList();
         renderSkillHashBar(selectedSkillExplainer());
         updateControls();
         renderComments();
@@ -6279,13 +6532,13 @@
         `curl --fail-with-body ${shellQuote(base)} -H "Authorization: Bearer $VE_SKILL_KEY"`,
         '```',
         '',
-        `- Inspect one doc (effective Markdown, upstream content, unified diff, SHA-256, conflict): \`GET ${base}/docs/<id>\` (e.g. \`SKILL.md\`, \`webui/bootstrap-prompt.md\`, \`references/kit.md\`, \`commands/diff-review.md\`).`,
+        `- List templates & active default: \`GET ${base}/templates\`. Inspect one doc or template (effective Markdown, upstream content, unified diff, SHA-256, conflict): \`GET ${base}/docs/<id>\` (e.g. \`templates/default.md\`, \`SKILL.md\`, \`webui/bootstrap-prompt.md\`, \`references/kit.md\`, \`commands/diff-review.md\`).`,
         `- Inspect current explainer source HTML: \`GET ${base}/explainers/<id>/source\`.`,
         `- Inspect skill comments: \`GET ${base}/comments?status=open\` (or \`?explainer=<id>&status=open\`).`,
         '',
-        '## 2. Update skill Markdown & hash-bound explainer',
+        '## 2. Update skill Markdown, templates & hash-bound explainers',
         '',
-        `1. Update a managed skill doc via \`PUT ${base}/docs/<id>\` (\`Content-Type: text/markdown; charset=utf-8\` or JSON \`{"content":"...","note":"..."}\`). The response returns the new \`skillHash\` and \`affectedExplainers\` with each explainer's \`expectedSkillHash\`:`,
+        `1. Update a managed skill doc or template via \`PUT ${base}/docs/<id>\` (\`Content-Type: text/markdown; charset=utf-8\` or JSON \`{"content":"...","note":"..."}\`). The response returns the new \`skillHash\` and \`affectedExplainers\` with each explainer's \`expectedSkillHash\`:`,
         '',
         '```bash',
         'curl --fail-with-body -X PUT \\',
@@ -6296,7 +6549,9 @@
         '  --data-binary @./kit.md',
         '```',
         '',
-        `2. Update each affected explainer via \`PUT ${base}/explainers/<id>\` (\`Content-Type: text/html; charset=utf-8\`) with the **mandatory** \`X-VE-Skill-Hash: <expectedSkillHash>\` header (mismatches return \`409 Conflict\` with the required hash; optional \`X-VE-Covers\`, \`X-VE-Title\`, \`X-VE-Summary\`, \`X-VE-Layer\`, \`X-VE-Parent\`, \`X-VE-Note\`):`,
+        `2. Manage page & child-page templates: create a custom template via \`POST ${base}/templates\` \`{"id":"<slug>","content":"...","note":"..."}\`; edit template Markdown via \`PUT ${base}/docs/templates/<slug>.md\`; switch default via \`PATCH ${base}/templates/<slug>/default\`; delete a custom (non-default) template via \`DELETE ${base}/templates/<slug>\`; publish a template's hash-bound explainer via \`PUT ${base}/explainers/templates/<slug>\` with \`X-VE-Skill-Hash\`.`,
+        '',
+        `3. Update each affected explainer via \`PUT ${base}/explainers/<id>\` (\`Content-Type: text/html; charset=utf-8\`) with the **mandatory** \`X-VE-Skill-Hash: <expectedSkillHash>\` header (mismatches return \`409 Conflict\` with the required hash; optional \`X-VE-Covers\`, \`X-VE-Title\`, \`X-VE-Summary\`, \`X-VE-Layer\`, \`X-VE-Parent\`, \`X-VE-Note\`):`,
         '',
         '```bash',
         'curl --fail-with-body -X PUT \\',
@@ -6477,8 +6732,8 @@
 
       const meta = $('skill-doc-meta');
       const statusBadge = document.createElement('span');
-      statusBadge.className = 'skills-status-pill' + (doc.status === 'conflict' ? ' conflict' : doc.status === 'overridden' ? ' overridden' : '');
-      statusBadge.textContent = doc.status === 'conflict' ? 'Conflict' : doc.status === 'overridden' ? 'Overridden' : 'Upstream';
+      statusBadge.className = 'skills-status-pill' + (doc.status === 'conflict' ? ' conflict' : (doc.status === 'overridden' || doc.status === 'custom') ? ' overridden' : '');
+      statusBadge.textContent = doc.status === 'conflict' ? 'Conflict' : doc.status === 'custom' ? 'Custom' : doc.status === 'overridden' ? 'Overridden' : 'Upstream';
 
       const effHash = document.createElement('span');
       effHash.className = 'skill-meta-hash';
@@ -6487,8 +6742,13 @@
 
       const upHash = document.createElement('span');
       upHash.className = 'skill-meta-hash';
-      upHash.textContent = `upstream ${doc.upstreamSha256.slice(0, 8)}`;
-      upHash.title = `Upstream SHA-256: ${doc.upstreamSha256}`;
+      if (doc.upstreamSha256) {
+        upHash.textContent = `upstream ${doc.upstreamSha256.slice(0, 8)}`;
+        upHash.title = `Upstream SHA-256: ${doc.upstreamSha256}`;
+      } else {
+        upHash.textContent = 'custom template';
+        upHash.title = 'Runtime-created custom template (no upstream baseline)';
+      }
 
       const expBadge = document.createElement('span');
       if (doc.explainerId) {
@@ -6629,7 +6889,7 @@
       if (!isSkillsMode()) return;
       const exp = selectedSkillExplainer();
       const covered = coveredDocsForExplainer(exp);
-      const preferred = covered.find(d => d.hasConflict) || covered.find(d => d.status === 'overridden') || covered[0];
+      const preferred = covered.find(d => d.hasConflict) || covered.find(d => d.status === 'overridden' || d.status === 'custom') || covered[0];
       const docId = preferred?.id || 'SKILL.md';
       const tab = preferred?.hasConflict ? 'conflict' : (preferDiff && preferred?.status === 'overridden' ? 'diff' : 'content');
       void openSkillDocDialog(docId, { tab, docIds: covered.map(d => d.id) });

@@ -11,7 +11,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { ApiError } from '../remote-app/catalog.mjs';
 import { createCommentsStore } from '../remote-app/comments.mjs';
-import { createSkills, sha256Hex, validateExplainerId } from '../remote-app/skills.mjs';
+import { createSkills, parseTemplateFrontmatter, sha256Hex, validateExplainerId, validateTemplateId } from '../remote-app/skills.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BUILTIN_DIR = join(REPO_ROOT, 'remote-app', 'builtin-skills');
@@ -73,14 +73,15 @@ test('skills.mjs initializes upstream + active git branches, defaults editEnable
   const statePath = join(dir, '.skills-state.json');
   assert.equal((await stat(statePath)).mode & 0o777, 0o600);
 
-  // Includes all upstream docs + built-in webui/bootstrap-prompt.md
+  // Includes all upstream docs + built-in webui/bootstrap-prompt.md + templates/default.md
   const listedDocs = skills.listDocs();
-  assert.equal(listedDocs.length, 5);
+  assert.equal(listedDocs.length, 6);
   assert.deepEqual(listedDocs.map(d => d.id), [
     'SKILL.md',
     'commands/diff-review.md',
     'references/kit.md',
     'references/motion.md',
+    'templates/default.md',
     'webui/bootstrap-prompt.md',
   ]);
   for (const d of listedDocs) {
@@ -93,11 +94,26 @@ test('skills.mjs initializes upstream + active git branches, defaults editEnable
   assert.equal(listedDocs.find(d => d.id === 'SKILL.md').category, 'core');
   assert.equal(listedDocs.find(d => d.id === 'references/kit.md').category, 'reference');
   assert.equal(listedDocs.find(d => d.id === 'commands/diff-review.md').category, 'command');
+  assert.equal(listedDocs.find(d => d.id === 'templates/default.md').category, 'template');
   assert.equal(listedDocs.find(d => d.id === 'webui/bootstrap-prompt.md').category, 'webui');
 
-  // Strict doc ID & explainer ID validation rejects path traversal / invalid names
-  for (const badDoc of ['../SKILL.md', 'kit/kit.css', 'references/UPPER.md', '/SKILL.md', 'evil.md', 'references/../SKILL.md']) {
+  assert.equal(skills.defaultTemplate(), 'default');
+  const listedTemplates = skills.listTemplates();
+  assert.equal(listedTemplates.length, 1);
+  assert.equal(listedTemplates[0].id, 'default');
+  assert.equal(listedTemplates[0].docId, 'templates/default.md');
+  assert.equal(listedTemplates[0].isDefault, true);
+  assert.equal(listedTemplates[0].builtIn, true);
+  assert.equal(listedTemplates[0].status, 'upstream');
+  assert.equal(listedTemplates[0].title, 'Default Wiki & Component Diff');
+  assert.ok(listedTemplates[0].whenToUse.length > 10);
+
+  // Strict doc ID, template ID & explainer ID validation rejects path traversal / invalid names
+  for (const badDoc of ['../SKILL.md', 'kit/kit.css', 'references/UPPER.md', '/SKILL.md', 'evil.md', 'references/../SKILL.md', 'templates/UPPER.md', 'templates/html.md']) {
     assert.throws(() => skills.validateDocId(badDoc), err => err instanceof ApiError && err.status === 400);
+  }
+  for (const badTpl of ['', '../evil', 'UPPER', '-leading', 'a/b', 'html', 'source', 'thumb']) {
+    assert.throws(() => validateTemplateId(badTpl), err => err instanceof ApiError && err.status === 400);
   }
   assert.throws(() => skills.validateDocId('references/does-not-exist.md'), err => err instanceof ApiError && err.status === 404);
   for (const badId of ['', '../evil', 'a//b', 'foo/', '/bar', 'commands/html', 'a/source', 'a/thumb']) {
@@ -444,6 +460,123 @@ test('dedicated skill comments store (.skills-comments.json) stays isolated from
   assert.equal(pageComments.list('diagram.html').threads.length, 1);
 }));
 
+test('skills.mjs manages built-in & custom templates, frontmatter fallback, default selection, upstream sync preservation, and rollback', () => withTempDir(async dir => {
+  // Frontmatter parser handles explicit YAML frontmatter and graceful fallback
+  const parsedFm = parseTemplateFrontmatter('rfc', '---\ntitle: "RFC Blueprint"\nwhenToUse: Use for RFC design proposals.\n---\n# Body\nDetails\n');
+  assert.deepEqual(parsedFm, { title: 'RFC Blueprint', whenToUse: 'Use for RFC design proposals.' });
+  const parsedFallback = parseTemplateFrontmatter('plain-guide', '# Heading Only\n\nFirst non-heading summary line.\nSecond line.\n');
+  assert.deepEqual(parsedFallback, { title: 'plain-guide', whenToUse: 'First non-heading summary line.' });
+
+  const docs = sampleUpstreamDocs();
+  const skills = await createSkills(dir, {
+    upstreamDocs: docs,
+    upstreamMeta: { version: '0.6.1', revision: 'rev1' },
+    builtinDir: BUILTIN_DIR,
+    builtinExplainers: [],
+  });
+
+  const beforeWildcardHash = skills.expectedSkillHash(['*']);
+  const postmortemMd = [
+    '---',
+    'title: Incident Postmortem',
+    'whenToUse: Use for outage timelines, root-cause chains, and remediation follow-ups.',
+    '---',
+    '',
+    '# Incident Postmortem Template',
+    '',
+    '- L0 timeline + impact map',
+    '- L1 component failure drill-down',
+    '',
+  ].join('\n');
+
+  // Create custom template -> v2
+  const created = await skills.createTemplate('postmortem', postmortemMd, { note: 'Add postmortem template', actor: 'Alice' });
+  assert.equal(created.version.label, 'v2');
+  assert.equal(created.template.id, 'postmortem');
+  assert.equal(created.template.docId, 'templates/postmortem.md');
+  assert.equal(created.template.title, 'Incident Postmortem');
+  assert.equal(created.template.whenToUse, 'Use for outage timelines, root-cause chains, and remediation follow-ups.');
+  assert.equal(created.template.builtIn, false);
+  assert.equal(created.template.isDefault, false);
+  assert.equal(created.template.status, 'custom');
+  assert.equal(created.doc.status, 'custom');
+  assert.equal(created.doc.upstreamSha256, null);
+  assert.equal(skills.hasDoc('templates/postmortem.md'), true);
+  assert.equal(skills.expectedSkillHash(['templates/postmortem.md']), sha256Hex(postmortemMd));
+  assert.notEqual(skills.expectedSkillHash(['*']), beforeWildcardHash);
+
+  // Duplicate template rejected with 409; resetting custom template rejected with 409
+  await assert.rejects(() => skills.createTemplate('postmortem', '# Dup\n'), err => err instanceof ApiError && err.status === 409);
+  await assert.rejects(() => skills.resetDoc('templates/postmortem.md'), err => err instanceof ApiError && err.status === 409);
+
+  // Built-in template cannot be deleted
+  await assert.rejects(
+    () => skills.deleteTemplate('default'),
+    err => err instanceof ApiError && err.status === 409 && /built-in/i.test(err.message),
+  );
+
+  // Bind dedicated explainer to custom template
+  const tplExp = await skills.updateExplainer('templates/postmortem', {
+    html: '<html><head><title>Postmortem Guide</title></head><body>Postmortem explainer</body></html>',
+    sourceHtml: '<html><body>Postmortem src</body></html>',
+    skillHash: sha256Hex(postmortemMd),
+    note: 'Bind postmortem explainer',
+  });
+  assert.equal(tplExp.synced, true);
+  assert.equal(tplExp.version.label, 'v3');
+  assert.deepEqual(tplExp.explainer.covers, ['templates/postmortem.md']);
+
+  // Set default template -> persists across reload & sorts first
+  const switched = await skills.setDefaultTemplate('postmortem');
+  assert.equal(switched.defaultTemplate, 'postmortem');
+  assert.equal(switched.templates[0].id, 'postmortem');
+  assert.equal(switched.templates[0].isDefault, true);
+  assert.equal(switched.templates[1].id, 'default');
+  assert.equal(switched.templates[1].isDefault, false);
+
+  // Cannot delete active default template (409)
+  await assert.rejects(
+    () => skills.deleteTemplate('postmortem'),
+    err => err instanceof ApiError && err.status === 409 && /default/i.test(err.message),
+  );
+
+  // Reload + upstream upgrade preserves custom template & defaultTemplate selection!
+  const reloaded = await createSkills(dir, {
+    upstreamDocs: { ...docs, 'references/motion.md': '# Motion v2\nUpdated motion\n' },
+    upstreamMeta: { version: '0.7.0', revision: 'rev2' },
+    builtinDir: BUILTIN_DIR,
+    builtinExplainers: [],
+  });
+  assert.equal(reloaded.defaultTemplate(), 'postmortem');
+  assert.equal(reloaded.hasDoc('templates/postmortem.md'), true);
+  assert.equal(reloaded.getEffectiveDoc('templates/postmortem.md'), postmortemMd);
+  assert.equal(reloaded.getExplainer('templates/postmortem').synced, true);
+
+  // Switch default back to 'default' and delete custom template -> removes doc & dedicated explainer
+  await reloaded.setDefaultTemplate('default');
+  const deleted = await reloaded.deleteTemplate('postmortem', { note: 'Retire postmortem' });
+  assert.equal(deleted.deleted, true);
+  assert.deepEqual(deleted.deletedExplainerIds, ['templates/postmortem']);
+  assert.equal(reloaded.hasDoc('templates/postmortem.md'), false);
+  assert.throws(() => reloaded.getExplainer('templates/postmortem'), err => err instanceof ApiError && err.status === 404);
+
+  // Rollback to v3 restores custom template AND its dedicated explainer!
+  const rbRestore = await reloaded.rollback('v3', { note: 'Restore postmortem template' });
+  assert.equal(reloaded.hasDoc('templates/postmortem.md'), true);
+  assert.equal(reloaded.getEffectiveDoc('templates/postmortem.md'), postmortemMd);
+  assert.equal(reloaded.getExplainer('templates/postmortem').synced, true);
+  assert.ok(rbRestore.templates.some(t => t.id === 'postmortem'));
+
+  // Set default to custom template, then rollback to v1 (before postmortem existed) -> defaultTemplate safely resets to 'default'!
+  await reloaded.setDefaultTemplate('postmortem');
+  assert.equal(reloaded.defaultTemplate(), 'postmortem');
+  const rbV1 = await reloaded.rollback('v1', { note: 'Reset to v1 before custom template' });
+  assert.equal(reloaded.hasDoc('templates/postmortem.md'), false);
+  assert.equal(reloaded.defaultTemplate(), 'default');
+  assert.equal(rbV1.defaultTemplate, 'default');
+  assert.deepEqual(rbV1.templates.map(t => t.id), ['default']);
+}));
+
 // ---- Full HTTP + MCP + Upstream Renderer Integration Suite ----
 
 function dockerImageAvailable(image) {
@@ -544,27 +677,75 @@ test('HTTP/MCP/Renderer E2E: enumeration, permission isolation, lock switch, liv
       return res;
     }
 
-    // 1. Complete enumeration: 21 upstream Markdown docs + webui/bootstrap-prompt.md = 22 docs (no kit/kit.css)
+    // 1. Complete enumeration: 21 upstream Markdown docs + webui/bootstrap-prompt.md + templates/default.md = 23 docs (no kit/kit.css)
     const overview0 = await (await req('/api/skills', { status: 200 })).json();
     assert.equal(overview0.editEnabled, false, 'editEnabled must default to false on fresh init');
-    assert.equal(overview0.docs.length, 22, 'Expected 21 upstream docs + webui/bootstrap-prompt.md');
+    assert.equal(overview0.docs.length, 23, 'Expected 21 upstream docs + webui/bootstrap-prompt.md + templates/default.md');
     assert.ok(overview0.docs.some(d => d.id === 'SKILL.md' && d.category === 'core'));
     assert.ok(overview0.docs.some(d => d.id === 'webui/bootstrap-prompt.md' && d.category === 'webui'));
+    assert.ok(overview0.docs.some(d => d.id === 'templates/default.md' && d.category === 'template'));
     assert.equal(overview0.docs.filter(d => d.category === 'reference').length, 10);
     assert.equal(overview0.docs.filter(d => d.category === 'command').length, 10);
+    assert.equal(overview0.docs.filter(d => d.category === 'template').length, 1);
     assert.equal(overview0.docs.some(d => d.id.includes('kit.css')), false);
+    assert.equal(overview0.defaultTemplate, 'default');
+    assert.equal(overview0.templates.length, 1);
+    assert.equal(overview0.templates[0].id, 'default');
+    assert.equal(overview0.templates[0].isDefault, true);
+    assert.equal(overview0.templates[0].builtIn, true);
     assert.equal(overview0.versionCount, 1);
     assert.equal(overview0.latestVersion.label, 'v1');
     assert.equal(overview0.keysCount, 0);
-    assert.equal(overview0.explainers.length, 8, 'Expected all 8 built-in progressive explainers loaded');
-    assert.equal(overview0.explainers.every(e => e.synced === true), true, 'All 8 built-in explainers must start synced');
+    assert.ok(overview0.explainers.length >= 8, 'Expected built-in progressive explainers loaded');
+    for (const upExpId of ['SKILL', 'style-guide', 'kit', 'diagrams', 'motion', 'commands-and-extras']) {
+      const exp = overview0.explainers.find(e => e.id === upExpId);
+      assert.ok(exp && exp.synced === true, `Built-in upstream explainer ${upExpId} must start synced`);
+    }
+    assert.ok(overview0.explainers.some(e => e.id === 'overview'));
+    assert.ok(overview0.explainers.some(e => e.id === 'bootstrap-prompt'));
     assert.equal(Object.keys(overview0.conflicts || {}).length, 0, 'Expected 0 conflicts on fresh init');
 
-    // Bootstrap prompt read-only endpoint works
+    // Bootstrap prompt & read-only templates discovery endpoints work
     const bp0 = await (await req('/api/visual-explainer/bootstrap-prompt', { status: 200 })).json();
     assert.equal(bp0.id, 'webui/bootstrap-prompt.md');
     assert.ok(bp0.content.includes('{{SCOPE_INTRO}}'));
+    assert.ok(bp0.content.includes('{{ORIGINAL_BASE}}/templates/default.md'));
     assert.equal(bp0.sha256, sha256Hex(bp0.content));
+
+    // Unauthenticated requests to read-only templates return 401
+    await req('/api/visual-explainer/templates', { auth: null, status: 401 });
+    await req('/api/visual-explainer/templates/default.md', { auth: null, status: 401 });
+
+    // Built-in templates/default.md is auto-discovered in /templates, /templates/default.md, /api/visual-explainer, /bundle, and MCP
+    const tplCatalog0 = await (await req('/api/visual-explainer/templates', { status: 200 })).json();
+    assert.equal(tplCatalog0.defaultTemplate, 'default');
+    assert.equal(tplCatalog0.templates.length, 1);
+    assert.equal(tplCatalog0.templates[0].id, 'default');
+    assert.equal(tplCatalog0.templates[0].docId, 'templates/default.md');
+    assert.equal(tplCatalog0.templates[0].default, true);
+    assert.equal(tplCatalog0.templates[0].url, `${baseUrl}/api/visual-explainer/templates/default.md`);
+    const defaultTplResp = await req('/api/visual-explainer/templates/default.md', { status: 200 });
+    assert.ok(defaultTplResp.headers.get('content-type').startsWith('text/markdown'));
+    const defaultTplText = await defaultTplResp.text();
+    assert.ok(defaultTplText.includes('Default Wiki & Component Diff'));
+    assert.equal(tplCatalog0.templates[0].sha256, sha256Hex(defaultTplText));
+    const index0 = await (await req('/api/visual-explainer', { status: 200 })).json();
+    assert.equal(index0.templatesUrl, `${baseUrl}/api/visual-explainer/templates`);
+    assert.equal(index0.defaultTemplate, 'default');
+    assert.deepEqual(index0.templates, tplCatalog0.templates);
+    const bundle0 = await (await req('/api/visual-explainer/bundle', { status: 200 })).text();
+    const bundleHeader0 = JSON.parse(bundle0.split('\n\n')[0].replace(/^=== \/api\/visual-explainer ===\n/, ''));
+    assert.equal(bundleHeader0.templatesUrl, `${baseUrl}/api/visual-explainer/templates`);
+    assert.equal(bundleHeader0.defaultTemplate, 'default');
+    assert.equal(bundleHeader0.templates[0].id, 'default');
+    const mcpDefaultTpl = await (await req('/mcp', {
+      method: 'POST',
+      auth: adminToken,
+      headers: { Accept: 'application/json, text/event-stream' },
+      body: { jsonrpc: '2.0', id: 5, method: 'resources/read', params: { uri: 'visual-explainer://templates/default.md' } },
+      status: 200,
+    })).json();
+    assert.equal(mcpDefaultTpl.result.contents[0].text, defaultTplText);
 
     // Create regular user account, secondary admin account, folder entity + folder key, and a user page
     const userAcct = await (await req('/api/accounts', { method: 'POST', body: { name: 'Regular User', role: 'user' }, status: 201 })).json();
@@ -590,16 +771,26 @@ test('HTTP/MCP/Renderer E2E: enumeration, permission isolation, lock switch, liv
       await req('/api/skills/settings', { method: 'PATCH', auth: caller, body: { editEnabled: true }, status: 403 });
       await req('/api/skills/docs/SKILL.md', { auth: caller, status: 403 });
       await req('/api/skills/docs/SKILL.md', { method: 'PUT', auth: caller, body: { content: 'nope' }, status: 403 });
+      await req('/api/skills/templates', { auth: caller, status: 403 });
+      await req('/api/skills/templates', { method: 'POST', auth: caller, body: { id: 'nope', content: '# Nope' }, status: 403 });
+      await req('/api/skills/templates/default/default', { method: 'PATCH', auth: caller, status: 403 });
+      await req('/api/skills/templates/default', { method: 'DELETE', auth: caller, status: 403 });
       await req('/api/skills/keys', { auth: caller, status: 403 });
       await req('/api/skills/comments', { auth: caller, status: 403 });
       await req('/api/skills/events?once=1&timeout=1', { auth: caller, status: 403 });
-      // Both can still read /api/visual-explainer/bootstrap-prompt
+      // Both can still read /api/visual-explainer/bootstrap-prompt and /api/visual-explainer/templates*
       await req('/api/visual-explainer/bootstrap-prompt', { auth: caller, status: 200 });
+      await req('/api/visual-explainer/templates', { auth: caller, status: 200 });
+      await req('/api/visual-explainer/templates/default.md', { auth: caller, status: 200 });
     }
 
     // 3. Server-enforced lock switch (editEnabled === false -> 423 on ALL skill mutations for Admin!)
     await req('/api/skills/docs/SKILL.md', { method: 'PUT', body: { content: '# Locked' }, status: 423 });
+    await req('/api/skills/docs/templates/default.md', { method: 'PUT', body: { content: '# Locked' }, status: 423 });
     await req('/api/skills/docs/SKILL.md/reset', { method: 'POST', body: {}, status: 423 });
+    await req('/api/skills/templates', { method: 'POST', body: { id: 'postmortem', content: '# Locked' }, status: 423 });
+    await req('/api/skills/templates/default/default', { method: 'PATCH', body: {}, status: 423 });
+    await req('/api/skills/templates/default', { method: 'DELETE', status: 423 });
     await req('/api/skills/explainers/SKILL', {
       method: 'PUT',
       raw: '<!doctype html><html><body>x</body></html>',
@@ -804,6 +995,124 @@ test('HTTP/MCP/Renderer E2E: enumeration, permission isolation, lock switch, liv
     })).json();
     assert.equal(rstRes.doc.status, 'upstream');
     assert.equal(await (await req('/api/visual-explainer/SKILL.md', { auth: folderKey, status: 200 })).text(), origSkillDoc.content);
+
+    // 6b. Custom template CRUD, live /bundle catalog updates, default switching, deletion guards & rollback!
+    const postmortemContent = [
+      '---',
+      'title: Postmortem Review',
+      'whenToUse: Use for incident timelines, fault-domain breakdowns, and corrective actions.',
+      '---',
+      '',
+      '# Postmortem Template',
+      '1. L0 incident timeline & impacted systems',
+      '2. L1 component root-cause & remediation diff',
+      '',
+    ].join('\n');
+    const createdTpl = await (await req('/api/skills/templates', {
+      method: 'POST',
+      auth: skillKey,
+      body: { id: 'postmortem', content: postmortemContent, note: 'Create postmortem template' },
+      status: 201,
+    })).json();
+    assert.equal(createdTpl.template.id, 'postmortem');
+    assert.equal(createdTpl.template.status, 'custom');
+    assert.equal(createdTpl.template.builtIn, false);
+    await req('/api/skills/templates', {
+      method: 'POST',
+      auth: skillKey,
+      body: { id: 'postmortem', content: '# Duplicate' },
+      status: 409,
+    });
+
+    // Folder key immediately reads new custom template via /templates, /templates/postmortem.md, and /bundle
+    assert.equal(await (await req('/api/visual-explainer/templates/postmortem.md', { auth: folderKey, status: 200 })).text(), postmortemContent);
+    const mcpCustomTpl = await (await req('/mcp', {
+      method: 'POST',
+      auth: adminToken,
+      headers: { Accept: 'application/json, text/event-stream' },
+      body: { jsonrpc: '2.0', id: 8, method: 'resources/read', params: { uri: 'visual-explainer://templates/postmortem.md' } },
+      status: 200,
+    })).json();
+    assert.equal(mcpCustomTpl.result.contents[0].text, postmortemContent);
+
+    // Switch default template to postmortem -> /bundle index updates immediately!
+    const setDefRes = await (await req('/api/skills/templates/postmortem/default', {
+      method: 'PATCH',
+      auth: skillKey,
+      body: {},
+      status: 200,
+    })).json();
+    assert.equal(setDefRes.defaultTemplate, 'postmortem');
+    const bundleWithCustom = await (await req('/api/visual-explainer/bundle', { auth: folderKey, status: 200 })).text();
+    const bundleHeaderCustom = JSON.parse(bundleWithCustom.split('\n\n')[0].replace(/^=== \/api\/visual-explainer ===\n/, ''));
+    assert.equal(bundleHeaderCustom.defaultTemplate, 'postmortem');
+    assert.equal(bundleHeaderCustom.templates[0].id, 'postmortem');
+    assert.equal(bundleHeaderCustom.templates[0].default, true);
+    assert.equal(bundleHeaderCustom.templates[1].id, 'default');
+    assert.equal(bundleHeaderCustom.templates[1].default, false);
+
+    // Prevent deleting built-in default or active default custom template (409)
+    await req('/api/skills/templates/default', { method: 'DELETE', auth: skillKey, status: 409 });
+    await req('/api/skills/templates/postmortem', { method: 'DELETE', auth: skillKey, status: 409 });
+
+    // Edit custom template via PUT /api/skills/docs/templates/postmortem.md & bind its explainer
+    const updatedPostmortem = postmortemContent + '3. Verification & blast-radius checklist\n';
+    const updPost = await (await req('/api/skills/docs/templates/postmortem.md', {
+      method: 'PUT',
+      auth: skillKey,
+      body: { content: updatedPostmortem, note: 'Add verification item' },
+      status: 200,
+    })).json();
+    assert.equal(updPost.doc.status, 'custom');
+    const postExp = await (await req('/api/skills/explainers/templates/postmortem', {
+      method: 'PUT',
+      auth: skillKey,
+      raw: '<!doctype html><html><head><title>Postmortem Guide</title></head><body><h1>Postmortem</h1></body></html>',
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-VE-Skill-Hash': updPost.skillHash },
+      status: 200,
+    })).json();
+    assert.equal(postExp.synced, true);
+    const postmortemSyncedVersion = postExp.version.label;
+
+    // Switch default back to 'default', then delete custom template -> 404 on public fetch and removed from /bundle
+    await req('/api/skills/templates/default/default', { method: 'PATCH', auth: skillKey, body: {}, status: 200 });
+    const delTpl = await (await req('/api/skills/templates/postmortem', {
+      method: 'DELETE',
+      auth: skillKey,
+      body: { note: 'Remove custom template' },
+      status: 200,
+    })).json();
+    assert.equal(delTpl.deleted, true);
+    assert.deepEqual(delTpl.deletedExplainerIds, ['templates/postmortem']);
+    await req('/api/visual-explainer/templates/postmortem.md', { auth: folderKey, status: 404 });
+    const bundleAfterDel = await (await req('/api/visual-explainer/bundle', { auth: folderKey, status: 200 })).text();
+    const bundleHeaderAfterDel = JSON.parse(bundleAfterDel.split('\n\n')[0].replace(/^=== \/api\/visual-explainer ===\n/, ''));
+    assert.equal(bundleHeaderAfterDel.defaultTemplate, 'default');
+    assert.deepEqual(bundleHeaderAfterDel.templates.map(t => t.id), ['default']);
+
+    // Rollback to version where postmortem existed -> restores custom template AND its explainer cleanly!
+    const rbTpl = await (await req('/api/skills/rollback', {
+      method: 'POST',
+      auth: skillKey,
+      body: { version: postmortemSyncedVersion, note: 'Restore postmortem template' },
+      status: 200,
+    })).json();
+    assert.ok(rbTpl.templates.some(t => t.id === 'postmortem'));
+    assert.equal(await (await req('/api/visual-explainer/templates/postmortem.md', { auth: folderKey, status: 200 })).text(), updatedPostmortem);
+    const restoredPostExp = await (await req('/api/skills/explainers/templates/postmortem', { auth: skillKey, status: 200 })).json();
+    assert.equal(restoredPostExp.synced, true);
+
+    // Set default to postmortem, then rollback to v1 (before postmortem existed) -> defaultTemplate safely resets to 'default'!
+    await req('/api/skills/templates/postmortem/default', { method: 'PATCH', auth: skillKey, body: {}, status: 200 });
+    const rbToV1 = await (await req('/api/skills/rollback', {
+      method: 'POST',
+      auth: skillKey,
+      body: { version: 'v1', note: 'Rollback before custom template' },
+      status: 200,
+    })).json();
+    assert.equal(rbToV1.defaultTemplate, 'default');
+    assert.deepEqual(rbToV1.templates.map(t => t.id), ['default']);
+    await req('/api/visual-explainer/templates/postmortem.md', { auth: folderKey, status: 404 });
 
     // 7. Dedicated skill comments + SSE comment.dispatch wakeup (isolated from user comments!)
     const skillComment = await (await req('/api/skills/comments', {

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN" data-register="blueprint">
+<head>
+<title>默认模板：多页 Wiki 与组件变更 Diff（templates/default）</title>
+<meta name="description" content="拆解 templates/default.md 的多页信息架构：L0 一屏全景与组件状态着色、L1 单组件深挖与 Before→After 结构 Diff、与上游 SKILL.md 零冲突边界及 Agent 自动发现流程。">
+<link rel="stylesheet" href="kit.css" data-ve-kit>
+<style>
+.tpl-svg text { font-size: 15px; }
+.tpl-svg text.sub { font-size: 14px; }
+.tpl-svg text.ve-el { font-size: 14px; }
+.tpl-svg text.ve-bnd-t { font-size: 14px; }
+.tpl-svg text.ve-tag { font-size: 14px; }
+.tpl-svg .st-new .sh { stroke: var(--ok); stroke-dasharray: 6 3; stroke-width: 2; }
+.tpl-svg .st-mod .sh { stroke: var(--accent); stroke-width: 2.2; }
+.tpl-svg .st-cpl .sh { stroke: var(--warn); stroke-width: 1.8; }
+.tpl-svg .st-keep .sh { stroke: var(--border-bright); stroke-dasharray: 4 3; stroke-width: 1.4; }
+.tpl-svg .st-keep text { fill: var(--text-dim); }
+.compare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.compare-list { margin: 10px 0 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; line-height: 1.55; color: var(--text-dim); }
+.compare-list strong { color: var(--text); }
+@media (max-width: 680px) { .compare-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="ve-toc" aria-label="Sections">
+  <div>
+    <a href="#structure">核心结构与分工</a>
+    <a href="#modes">L0 与 L1 规则</a>
+    <a href="#show-omit">展示 vs 省略</a>
+    <a href="#discovery">Agent 自动发现</a>
+  </div>
+  <span class="pos"></span>
+</nav>
+<main>
+  <header>
+    <p class="eyebrow">SKILL WIKI · L1 · PAGE TEMPLATE</p>
+    <h1>L0 一屏看全局影响，L1 单组件拆解 Before → After 变更 Diff</h1>
+    <p class="lead"><code>templates/default.md</code> 专门约束<b>多页结构与变更归属</b>，与上游 <code>SKILL.md</code> 的单页视觉 craft 与 Checksheet 质检完全正交、零冲突叠加。</p>
+    <p class="meta">covers: templates/default.md · Default Template · L0 Overview + L1 Component Diff</p>
+  </header>
+
+  <figure id="structure">
+    <div class="frame">
+      <svg class="ve-svg tpl-svg" viewBox="0 0 860 486" aria-label="templates/default 多页 Wiki 结构、组件四态着色、L1 变更 Diff 与上游 SKILL.md 的零冲突分工图">
+        <rect class="ve-bnd" x="20" y="16" width="820" height="94" rx="6"/>
+        <text class="ve-bnd-t" x="34" y="36">0. 零冲突双层分工 · NON-CONFLICT BOUNDARY</text>
+
+        <rect class="ve-bnd" x="20" y="146" width="820" height="114" rx="6"/>
+        <text class="ve-bnd-t" x="34" y="166">1. L0 父页 · &lt;topic&gt;.html（一屏心智模型）</text>
+
+        <rect class="ve-bnd" x="20" y="308" width="820" height="162" rx="6"/>
+        <text class="ve-bnd-t" x="34" y="328">2. L1 子页 · &lt;topic&gt;/&lt;comp&gt;.html</text>
+
+        <path class="ve-e is-hot" d="M225 98 V146"/>
+        <path class="ve-e is-async" d="M635 98 V146"/>
+        <text class="ve-el r" x="236" y="132">定多页结构与 Diff 归属</text>
+        <text class="ve-el r" x="646" y="132">定单页视觉与 Checksheet</text>
+
+        <path class="ve-e is-hot" d="M126 246 V284 H430 V344"/>
+        <path class="ve-e is-hot" d="M329 246 V284 H430 V344"/>
+        <path class="ve-e is-hot" d="M531 246 V284 H430 V344"/>
+        <text class="ve-el r" x="444" y="299">data-ve-child="&lt;comp&gt;"</text>
+
+        <g class="ve-n is-key">
+          <rect class="sh" x="42" y="46" width="366" height="52" rx="6"/>
+          <text x="225" y="68">templates/default.md</text>
+          <text class="sub" x="225" y="88">父子分区 · 四态标记 · Show vs Omit</text>
+        </g>
+
+        <g class="ve-n" data-ve-child="SKILL">
+          <rect class="sh" x="452" y="46" width="366" height="52" rx="6"/>
+          <text x="635" y="68">SKILL.md + references/*</text>
+          <text class="sub" x="635" y="88">语域 · &lt;ve-flow&gt; · 12px · Checksheet</text>
+        </g>
+
+        <g class="ve-n st-new">
+          <rect class="sh" x="38" y="184" width="176" height="62" rx="6"/>
+          <text x="126" y="209">[+] New</text>
+          <text class="sub" x="126" y="231">新增模块 · 挂子页</text>
+        </g>
+
+        <g class="ve-n st-mod is-key">
+          <rect class="sh" x="241" y="184" width="176" height="62" rx="6"/>
+          <text x="329" y="209">[~] Modified</text>
+          <text class="sub" x="329" y="231">核心改造 · 挂子页</text>
+        </g>
+
+        <g class="ve-n st-cpl">
+          <rect class="sh" x="443" y="184" width="176" height="62" rx="6"/>
+          <text x="531" y="209">[↔] Coupled</text>
+          <text class="sub" x="531" y="231">联动受影响 · 挂子页</text>
+        </g>
+
+        <g class="ve-n st-keep">
+          <rect class="sh" x="646" y="184" width="176" height="62" rx="6"/>
+          <text x="734" y="209">[=] Unchanged</text>
+          <text class="sub" x="734" y="231">未改动 · 略写背景</text>
+        </g>
+
+        <g class="ve-n is-key">
+          <rect class="sh" x="38" y="348" width="246" height="64" rx="6"/>
+          <text x="161" y="374">Before → After 结构 Diff</text>
+          <text class="sub" x="161" y="396">增删改流向 · 状态边界</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="307" y="348" width="246" height="64" rx="6"/>
+          <text x="430" y="374">Concrete Changes 清单</text>
+          <text class="sub" x="430" y="396">API · Schema · 状态 · 配置</text>
+        </g>
+
+        <g class="ve-n">
+          <rect class="sh" x="576" y="348" width="246" height="64" rx="6"/>
+          <text x="699" y="374">Impact, Risks &amp; Verify</text>
+          <text class="sub" x="699" y="396">爆炸半径 · 边界 · 验收</text>
+        </g>
+
+        <text class="ve-tag" x="430" y="446" text-anchor="middle">一页只深挖一个组件；仅当子机制确需独立图示时再建 L2：&lt;topic&gt;/&lt;comp&gt;/&lt;sub&gt;.html</text>
+      </svg>
+    </div>
+    <figcaption><span class="fig-n"></span>模板与原版 Skill 上下正交：<code>templates/default.md</code> 管 L0 全景、四态着色与 L1 单组件变更 Diff（<code>data-ve-child</code> 门户由查看器运行时注入，严禁手写假 Portal CSS），上游 <code>SKILL.md</code> 管每页渲染与体检。</figcaption>
+  </figure>
+
+  <section id="modes">
+    <div class="sec-head"><p class="ve-label caps">Page Contracts</p><h2>L0 按场景切换“影响地图 / 机制全景”，L1 永远只写一个组件</h2></div>
+    <div class="cases">
+      <div class="case" data-st="ok">
+        <span class="chip ok">Proposal / Refactor</span>
+        <h3>L0 影响地图（想法与改造）</h3>
+        <p>在一屏系统图上直接用 <b>New / Modified / Coupled / Unchanged</b> 四态（形与色双编码）标清受影响节点，凝练改造主旨、范围边界与推进顺序，并为每个改动节点挂 <code>data-ve-child="&lt;component&gt;"</code>。</p>
+      </div>
+      <div class="case" data-st="ok">
+        <span class="chip ok">System / Concept</span>
+        <h3>L0 机制全景（现有系统）</h3>
+        <p>清晰勾勒主子系统、控制/数据流与信任/状态边界，明确核心结论与推荐阅读顺序，把需要展开内部原理的模块挂上 <code>data-ve-child</code> 门户，绝不把长段实现塞进父页。</p>
+      </div>
+      <div class="case" data-st="warn">
+        <span class="chip warn">L1 Component Page</span>
+        <h3>L1 组件子页与 Diff 归属</h3>
+        <p>同目录发布到 <code>&lt;parent-stem&gt;/&lt;component&gt;.html</code>。提案/改造模式下直接回答“为实现想法，本组件要改什么”：结构 Diff、接口/Schema/状态改动、风险与验收；架构模式下拆解内部机制与失败边界。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="show-omit">
+    <div class="sec-head"><p class="ve-label caps">Signal Discipline</p><h2>展示什么 vs 不展示什么（Show vs Omit）</h2></div>
+    <div class="compare-grid">
+      <div class="case" data-st="ok">
+        <span class="chip ok">Show · 必须呈现</span>
+        <h3>保留可做决策的结构信息</h3>
+        <ul class="compare-list">
+          <li><strong>组件边界与动词箭头：</strong>标注谁调谁、传什么数据、在哪里跨信任或状态边界。</li>
+          <li><strong>Before → After 结构 Diff：</strong>直接画出新增、修改、移除的节点与流向变化。</li>
+          <li><strong>具体修改清单：</strong>落到接口/API、数据 Schema/存储文件、状态转移与配置契约。</li>
+          <li><strong>权衡与风险边界：</strong>明示上下游爆炸半径、关键边界条件与可落地验收标准。</li>
+        </ul>
+      </div>
+      <div class="case" data-st="risk">
+        <span class="chip risk">Omit · 严格省略</span>
+        <h3>剔除稀释判断力的噪音内容</h3>
+        <ul class="compare-list">
+          <li><strong>原始源码或配置全文：</strong>不贴整段文件 Dump 或冗长 YAML/JSON 列表。</li>
+          <li><strong>展开未改动模块：</strong>对 <code>Unchanged</code> 组件仅保留拓扑背景，不重复赘述细节。</li>
+          <li><strong>装饰性凑数卡片：</strong>删掉没有决策价值的空洞 KPI 数字与样板总结。</li>
+          <li><strong>把 Diff 全堆回 L0：</strong>组件级改造细节必须下沉到对应 L1 子页，守住 L0 一屏可读。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="discovery">
+    <div class="sec-head"><p class="ve-label caps">Auto Discovery</p><h2>Agent 自动发现：经 <code>/bundle</code> 索引枚举，按 <code>whenToUse</code> 选型</h2></div>
+    <figure>
+      <ve-flow label="Agent 通过 /bundle 索引或 /templates 发现模板目录，默认拉取 default.md，或按用户指定与 whenToUse 匹配自定义模板">
+        <ve-node id="idx" at="1 1" key sub="/bundle 索引">1. 拉取模板目录</ve-node>
+        <ve-node id="pick" at="2 1" sub="whenToUse">2. 匹配适用模板</ve-node>
+        <ve-node id="def" at="3 1" sub="default.md">3a. 默认模板</ve-node>
+        <ve-node id="cus" at="2 2" sub="&lt;slug&gt;.md">3b. 自定义模板</ve-node>
+        <ve-node id="build" at="3 2" key sub="多页 + SKILL">4. 分页编排渲染</ve-node>
+        <ve-edge from="idx" to="pick" label="目录 JSON" hot/>
+        <ve-edge from="pick" to="def" label="默认命中" hot/>
+        <ve-edge from="pick" to="cus" label="按场景指定" async/>
+        <ve-edge from="def" to="build" label="L0+L1 规范" hot/>
+        <ve-edge from="cus" to="build" label="专项规范" async/>
+      </ve-flow>
+      <figcaption><span class="fig-n"></span><code>/bundle</code> 顶部索引 JSON 与 <code>GET /api/visual-explainer/templates</code> 实时暴露 <code>defaultTemplate</code> 及每个模板的 <code>id / default / whenToUse / url</code>。</figcaption>
+    </figure>
+    <p>Admin 可在 Skills 面板或通过 Skill Editor Key 新建自定义模板（<code>POST /api/skills/templates</code>）并随时切换默认模板（<code>PATCH /api/skills/templates/&lt;slug&gt;/default</code>）；无需改写 <span data-ve-child="bootstrap-prompt">bootstrap-prompt</span>，Agent 下次拉包即可自动感知并匹配。返回 <span data-ve-child="overview">overview</span> 可查看全部 23 份托管文档，或进入 <span data-ve-child="SKILL">SKILL</span> 查阅单页视觉规范。</p>
+  </section>
+
+  <section class="sources" aria-label="Sources">
+    <p class="ve-label caps">Sources</p>
+    <p><code>templates/default.md</code> · <code>webui/bootstrap-prompt.md</code> · <code>SKILL.md</code> · <code>GET /api/visual-explainer/templates</code></p>
+  </section>
+</main>
+</body>
+</html>

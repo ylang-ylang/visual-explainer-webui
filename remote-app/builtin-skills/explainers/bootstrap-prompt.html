@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WebUI 入口提示词（bootstrap-prompt）</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Cpath d='M18 40V24l14-8 14 8v16l-14 8-14-8Z' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%2338bdf8'/%3E%3C/svg%3E">
-<meta name="description" content="拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle、编写渲染与 Checksheet 自查、通过 watch.sh 零空闲 Token 后台监听并按 Key 生命周期自动停止。">
+<meta name="description" content="拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle 与多页模板目录、编写渲染与 Checksheet 自查、通过 watch.sh 零空闲 Token 后台监听并按 Key 生命周期自动停止。">
 <meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -370,17 +370,17 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
 <main>
   <header>
     <p class="eyebrow">SKILL WIKI · L1 · ENTRY PROTOCOL</p>
-    <h1>四步闭环：先拉 bundle 写图自检，再用 watch.sh 零 Token 监听后汇报链接</h1>
-    <p class="lead"><code>webui/bootstrap-prompt.md</code> 是 WebUI 注入给所有远程 Agent 的操作手册，将 <b>拉规范、渲染校验、Wiki 下钻与零空闲 Token 评论唤醒</b> 统一为标准 HTTP 协议。</p>
-    <p class="meta">covers: webui/bootstrap-prompt.md · 4 Stages · Zero-Idle-Token watch.sh</p>
+    <h1>四步闭环：拉规范与模板、写图自检、挂 watch.sh 零 Token 监听再报链</h1>
+    <p class="lead"><code>webui/bootstrap-prompt.md</code> 是 WebUI 注入给所有远程 Agent 的操作手册，将 <b>拉规范、模板选型、渲染校验、Wiki 下钻与零空闲 Token 评论唤醒</b> 统一为标准 HTTP 协议。</p>
+    <p class="meta">covers: webui/bootstrap-prompt.md · 4 Stages · Templates Discovery · Zero-Idle-Token watch.sh</p>
   </header>
 
   <figure class="ve-steps">
-    <div class="frame"><svg class="ve-svg ve-flow" style="--min: 827px; --max: 1253px" viewBox="0 0 964 96" role="img" aria-label="Agent 遵循 bootstrap-prompt.md 执行的四阶段发布与零空闲 Token 评论闭环"><g><path class="ve-e" data-s="2" pathLength="1" d="M156 48H280"/><text class="ve-el" data-s="2" x="218" y="39">读完再写</text></g><g><path class="ve-e is-hot" data-s="3" pathLength="1" d="M420 48H544"/><text class="ve-el" data-s="3" x="482" y="39">零 ✗ 放行</text></g><g><path class="ve-e is-hot" data-s="4" pathLength="1" d="M684 36H808"/><text class="ve-el" data-s="4" x="746" y="27">comment.*</text></g><g><path class="ve-e is-async" data-s="4" pathLength="1" d="M808 60H684"/><text class="ve-el" data-s="4" x="746" y="77">--after id</text></g><circle class="ve-tok" data-s="2" r="5" style="offset-path: path('M156 48H280')"/><circle class="ve-tok" data-s="3" r="5" style="offset-path: path('M420 48H544')"/><circle class="ve-tok" data-s="4" r="5" style="offset-path: path('M684 36H808')"/><circle class="ve-tok" data-s="4" r="5" style="offset-path: path('M808 60H684')"/><g class="ve-n" data-ref="bundle" data-s="1" transform="translate(16 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">1. 单命令拉规范</text><text class="sub" x="70" y="46">GET /bundle</text></g><g class="ve-n is-key" data-ref="publish" data-s="2" transform="translate(280 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">2. 渲染与自查</text><text class="sub" x="70" y="46">PUT .src.html</text></g><g class="ve-n" data-ref="listen" data-s="3" transform="translate(544 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">3. 挂监听再报链</text><text class="sub" x="70" y="46">后台 watch.sh</text></g><g class="ve-n" data-ref="loop" data-s="4" transform="translate(808 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">4. 响应评论续挂</text><text class="sub" x="70" y="46">改图 + Resolve</text></g></svg></div>
+    <div class="frame"><svg class="ve-svg ve-flow" style="--min: 827px; --max: 1253px" viewBox="0 0 964 96" role="img" aria-label="Agent 遵循 bootstrap-prompt.md 执行的四阶段模板拉取、发布自检与零空闲 Token 评论闭环"><g><path class="ve-e" data-s="2" pathLength="1" d="M156 48H280"/><text class="ve-el" data-s="2" x="218" y="39">读完再写</text></g><g><path class="ve-e is-hot" data-s="3" pathLength="1" d="M420 48H544"/><text class="ve-el" data-s="3" x="482" y="39">零 ✗ 放行</text></g><g><path class="ve-e is-hot" data-s="4" pathLength="1" d="M684 36H808"/><text class="ve-el" data-s="4" x="746" y="27">comment.*</text></g><g><path class="ve-e is-async" data-s="4" pathLength="1" d="M808 60H684"/><text class="ve-el" data-s="4" x="746" y="77">--after id</text></g><circle class="ve-tok" data-s="2" r="5" style="offset-path: path('M156 48H280')"/><circle class="ve-tok" data-s="3" r="5" style="offset-path: path('M420 48H544')"/><circle class="ve-tok" data-s="4" r="5" style="offset-path: path('M684 36H808')"/><circle class="ve-tok" data-s="4" r="5" style="offset-path: path('M808 60H684')"/><g class="ve-n" data-ref="bundle" data-s="1" transform="translate(16 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">1. 拉规范与模板</text><text class="sub" x="70" y="46">/bundle + 模板</text></g><g class="ve-n is-key" data-ref="publish" data-s="2" transform="translate(280 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">2. 渲染与自查</text><text class="sub" x="70" y="46">PUT .src.html</text></g><g class="ve-n" data-ref="listen" data-s="3" transform="translate(544 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">3. 挂监听再报链</text><text class="sub" x="70" y="46">后台 watch.sh</text></g><g class="ve-n" data-ref="loop" data-s="4" transform="translate(808 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">4. 响应评论续挂</text><text class="sub" x="70" y="46">改图 + Resolve</text></g></svg></div>
     <div class="ve-player">
       <ol class="ve-cap">
-        <li data-n="1/4">执行单条 <code>curl /bundle</code> 拉取索引、<code>SKILL.md</code> 与核心规范，严禁直接上传随意 HTML。</li>
-        <li data-n="2/4">本地核实事实并写 <code>./diagram.src.html</code>，<code>PUT</code> 渲染后解码 Checksheet 截图，小步修到零 <code>✗</code>。</li>
+        <li data-n="1/4">执行单条 <code>curl /bundle</code> 拉取索引、<code>SKILL.md</code> 与核心规范，并按索引 <code>whenToUse</code> 拉取多页模板（默认 <code>GET /templates/default.md</code>），严禁直接上传随意 HTML。</li>
+        <li data-n="2/4">本地核实事实并按模板划分 L0/L1，写 <code>./diagram.src.html</code> 后 <code>PUT</code> 渲染，解码 Checksheet 截图小步修到零 <code>✗</code>。</li>
         <li data-n="3/4">在回复 <code>page.url</code> 前，先下载 <code>/watch.sh</code> 并以单实例后台进程监听整目录，本地静默吞掉 <code>204</code> 轮询。</li>
         <li data-n="4/4">收到任意 <code>comment.*</code> 事件后拉评改图、Resolve 并带 <code>--after &lt;id&gt;</code> 续挂；Key 过期或撤销时收到 <code>key_expired</code> 自动止停。</li>
       </ol>
@@ -389,16 +389,16 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
       <input type="range" aria-label="步骤">
       <button type="button" data-go="1" aria-label="下一步">›</button>
     </div>
-    <figcaption><span class="fig-n">Fig. 1</span>四阶段闭环把“一次性出图”升级为可长期在线、零空闲 Token 消耗的实时协作工作流。</figcaption>
+    <figcaption><span class="fig-n">Fig. 1</span>四阶段闭环把“一次性出图”升级为模板驱动、可长期在线且零空闲 Token 消耗的实时协作工作流。</figcaption>
   </figure>
 
   <section id="publish">
-    <div class="sec-head"><p class="ve-label caps">Stage 1–2</p><h2>上传阶段四条硬约束：传源码文本、查完 Checksheet、不伪造门户样式</h2></div>
+    <div class="sec-head"><p class="ve-label caps">Stage 1–2</p><h2>上传阶段三条硬约束：先拉规范与模板、传源码查体检、不伪造门户样式</h2></div>
     <div class="cases">
       <div class="case" data-st="ok">
-        <span class="chip ok">Bundle First</span>
-        <h3>先拉规范，按需追加</h3>
-        <p>默认 <code>/bundle</code> 一次返回 <code>SKILL.md</code> + <code>style-guide</code> + <code>kit</code> + <code>diagrams</code>；动效页追加 <code>?refs=motion</code>，亦可用 <code>POST /prepare</code> 或 <code>/prompts/&lt;name&gt;</code>。</p>
+        <span class="chip ok">Bundle + Templates</span>
+        <h3>先拉规范，按索引选模板</h3>
+        <p>默认 <code>/bundle</code> 一次返回索引 JSON 与 4 份核心规范（动效页追加 <code>?refs=motion</code>）；索引实时列出 <code>GET /templates</code> 目录，写多页 Wiki 或提案前默认拉取 <code>default.md</code>，详见 <span data-ve-child="templates/default">templates/default</span>。</p>
       </div>
       <div class="case" data-st="warn">
         <span class="chip warn">PUT Guard</span>
@@ -407,8 +407,8 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
       </div>
       <div class="case" data-st="ok">
         <span class="chip ok">Wiki Drill</span>
-        <h3>规范下钻与悬停摘要</h3>
-        <p>页面必含 <code>&lt;meta name="description"&gt;</code> 供悬停卡片展示；节点写 <code>data-ve-child="&lt;child&gt;"</code>（省略 <code>.html</code>），严禁手写假 Portal CSS，由查看器运行时注入。</p>
+        <h3>模板分区与下钻门户</h3>
+        <p>按所选模板组织 L0 总览与 L1 组件子页（同目录 Key 发布），页面必含 <code>&lt;meta name="description"&gt;</code>；节点写 <code>data-ve-child="&lt;child&gt;"</code>（省略 <code>.html</code>），严禁手写假 Portal CSS。</p>
       </div>
     </div>
   </section>
@@ -482,7 +482,7 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
   </section>
 
   <section id="endpoints">
-    <div class="sec-head"><p class="ve-label caps">API Map</p><h2>提示词第 4 节提供的完整协作端点速查</h2></div>
+    <div class="sec-head"><p class="ve-label caps">API Map</p><h2>提示词第 1–4 节提供的完整协作端点速查</h2></div>
     <div class="ve-table">
       <table>
         <thead>
@@ -494,9 +494,9 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
         </thead>
         <tbody>
           <tr>
-            <td>读取官方规范</td>
-            <td><code>GET /bundle</code> · <code>POST /prepare</code> · <code>POST /prompts/&lt;name&gt;</code></td>
-            <td>支持 <code>?refs=motion,…</code> 一次合拉多份参考</td>
+            <td>规范与多页模板</td>
+            <td><code>GET /bundle</code> · <code>GET /templates</code> · <code>GET /templates/&lt;id&gt;.md</code> · <code>POST /prepare</code></td>
+            <td><code>/bundle</code> 索引列出 <code>defaultTemplate</code> 与各模板 <code>whenToUse</code>；支持 <code>?refs=motion,…</code></td>
           </tr>
           <tr>
             <td>发布与读源码</td>
@@ -521,12 +521,12 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
         </tbody>
       </table>
     </div>
-    <p>拉完 bundle 后由 <span data-ve-child="SKILL">SKILL</span> 接管视觉形态与出图规则，或返回 <span data-ve-child="overview">overview</span> 查看全套体系。</p>
+    <p>拉完规范后由 <span data-ve-child="templates/default">templates/default</span> 规划多页与组件 Diff、由 <span data-ve-child="SKILL">SKILL</span> 接管单页视觉规则，或返回 <span data-ve-child="overview">overview</span> 查看全套体系。</p>
   </section>
 
   <section class="sources" aria-label="Sources">
     <p class="ve-label caps">Sources</p>
-    <p><code>webui/bootstrap-prompt.md</code> · <code>GET /api/visual-explainer/watch.sh</code></p>
+    <p><code>webui/bootstrap-prompt.md</code> · <code>templates/default.md</code> · <code>GET /api/visual-explainer/templates</code> · <code>GET /api/visual-explainer/watch.sh</code></p>
   </section>
 </main>
 <script data-ve-kit>

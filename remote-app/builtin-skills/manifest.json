@@ -3,7 +3,7 @@
     {
       "id": "overview",
       "title": "Visual Explainer Skill 体系总览（渐进式导航）",
-      "summary": "4 层渐进式 Skill 架构全景：接入层、主调度层、4 份核心规范与 16 份按需文档，并说明 WebUI 的 Git 3-Way Merge 与 SHA-256 哈希绑定。",
+      "summary": "5 层渐进式 Skill 与模板架构全景：接入层、Templates 模板层、主调度层、4 份核心规范与 16 份按需文档（共 23 份），并说明 Git 3-Way Merge 与 SHA-256 哈希绑定。",
       "layer": 0,
       "parentId": null,
       "covers": [
@@ -11,13 +11,27 @@
       ],
       "htmlFile": "explainers/overview.html",
       "sourceFile": "explainers/overview.src.html",
-      "skillHash": "874cacf8c9d517c8b74430cc7b42ef652adc1daba83ce0eb35d8fde6b18c96f5",
-      "updatedAt": "2026-11-27T03:00:00.000Z"
+      "skillHash": "6e667915acaf1ba014043164d4570743e75bd1382422185f65fcc65faed320bd",
+      "updatedAt": "2026-11-27T06:02:00.000Z"
+    },
+    {
+      "id": "templates/default",
+      "title": "默认模板：多页 Wiki 与组件变更 Diff（templates/default）",
+      "summary": "拆解 templates/default.md 的多页信息架构：L0 一屏全景与组件状态着色、L1 单组件深挖与 Before→After 结构 Diff、与上游 SKILL.md 零冲突边界及 Agent 自动发现流程。",
+      "layer": 1,
+      "parentId": "overview",
+      "covers": [
+        "templates/default.md"
+      ],
+      "htmlFile": "explainers/templates/default.html",
+      "sourceFile": "explainers/templates/default.src.html",
+      "skillHash": "9c25cb36b34995e1f79220da7cca48debae0430e831efe7c8dababfcc425c67c",
+      "updatedAt": "2026-11-27T06:02:00.000Z"
     },
     {
       "id": "bootstrap-prompt",
       "title": "WebUI 入口提示词（bootstrap-prompt）",
-      "summary": "拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle、编写渲染与 Checksheet 自查、通过 watch.sh 零空闲 Token 后台监听并按 Key 生命周期自动停止。",
+      "summary": "拆解 webui/bootstrap-prompt.md 的四阶段 Agent 闭环：拉取 /bundle 与多页模板目录、编写渲染与 Checksheet 自查、通过 watch.sh 零空闲 Token 后台监听并按 Key 生命周期自动停止。",
       "layer": 1,
       "parentId": "overview",
       "covers": [
@@ -25,8 +39,8 @@
       ],
       "htmlFile": "explainers/bootstrap-prompt.html",
       "sourceFile": "explainers/bootstrap-prompt.src.html",
-      "skillHash": "e2630b5156ecfc631fa331f322ccd04b4cb5f44d5ea21eed20a955560ab3da4c",
-      "updatedAt": "2026-11-27T03:00:00.000Z"
+      "skillHash": "ec426042d15542ad0df7a58fc2e3dffe298f4e60fa9e1f08c0960b9e84b7aa28",
+      "updatedAt": "2026-11-27T06:02:00.000Z"
     },
     {
       "id": "SKILL",

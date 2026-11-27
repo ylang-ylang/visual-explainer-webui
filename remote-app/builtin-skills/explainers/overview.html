@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Visual Explainer Skill 体系总览（渐进式导航）</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Cpath d='M18 40V24l14-8 14 8v16l-14 8-14-8Z' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%2338bdf8'/%3E%3C/svg%3E">
-<meta name="description" content="4 层渐进式 Skill 架构全景：接入层、主调度层、4 份核心规范与 16 份按需文档，并说明 WebUI 的 Git 3-Way Merge 与 SHA-256 哈希绑定。">
+<meta name="description" content="5 层渐进式 Skill 与模板架构全景：接入层、Templates 模板层、主调度层、4 份核心规范与 16 份按需文档（共 23 份），并说明 Git 3-Way Merge 与 SHA-256 哈希绑定。">
 <meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -368,131 +368,143 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
 </svg>
 <nav class="ve-toc" aria-label="Sections">
   <div>
-    <a href="#arch">四层架构</a>
+    <a href="#arch">分层架构</a>
     <a href="#load">渐进加载</a>
     <a href="#overlay">覆盖与哈希</a>
-    <a href="#catalog">22 份文档速查</a>
+    <a href="#catalog">23 份文档速查</a>
   </div>
   <span class="pos"></span>
 </nav>
 <main>
   <header>
     <p class="eyebrow">SKILL WIKI · L0 OVERVIEW · UPSTREAM v0.16.0</p>
-    <h1>22 份提示词分四层渐进加载，默认一次只拉 5 份核心文档</h1>
-    <p class="lead">WebUI 在不改动官方包源码的前提下，用 <b>Git 双分支覆盖</b> 与 <b>SHA-256 哈希绑定</b> 托管全部 Skill 文档与渐进式图解。</p>
-    <p class="meta">1 WebUI Prompt · 1 Core Skill · 10 References · 10 Commands · 8 Explainers</p>
+    <h1>23 份托管文档分五层渐进加载，默认仅取 6 份核心规范与模板</h1>
+    <p class="lead">WebUI 在不改动官方包源码的前提下，用 <b>Git 双分支覆盖</b> 与 <b>SHA-256 哈希绑定</b> 统一托管多页模板、接入协议、官方文档与渐进式图解。</p>
+    <p class="meta">1 Template · 1 WebUI Bootstrap · 1 SKILL.md · 10 References · 10 Commands · 9 Explainers</p>
   </header>
 
   <figure id="arch">
     <div class="frame">
-      <svg class="ve-svg arch-svg" viewBox="0 0 860 492" aria-label="Visual Explainer 四层渐进式 Skill 架构图，包含全部 7 个 L1 下钻模块" role="img" style="--ve-min: 738px">
-        <rect class="ve-bnd" x="20" y="16" width="820" height="86" rx="6"/>
+      <svg class="ve-svg arch-svg" viewBox="0 0 860 526" aria-label="Visual Explainer 五层渐进式 Skill 与 Templates 架构图，包含全部 8 个 L1 下钻模块" role="img" style="--ve-min: 738px">
+        <rect class="ve-bnd" x="20" y="16" width="820" height="88" rx="6"/>
         <text class="ve-bnd-t" x="34" y="36">L1 接入层 · ENTRY</text>
 
-        <rect class="ve-bnd" x="20" y="128" width="820" height="86" rx="6"/>
-        <text class="ve-bnd-t" x="34" y="148">L2 调度层 · ROUTER</text>
+        <rect class="ve-bnd" x="20" y="154" width="400" height="92" rx="6"/>
+        <text class="ve-bnd-t" x="34" y="174">L2 调度 · ROUTER</text>
 
-        <rect class="ve-bnd" x="20" y="240" width="820" height="122" rx="6"/>
-        <text class="ve-bnd-t" x="34" y="260">L3 高频规范 · CORE REFS</text>
+        <rect class="ve-bnd" x="440" y="154" width="400" height="92" rx="6"/>
+        <text class="ve-bnd-t" x="454" y="174">Templates · 多页模板层</text>
 
-        <rect class="ve-bnd" x="20" y="388" width="820" height="88" rx="6"/>
-        <text class="ve-bnd-t" x="34" y="408">L4 按需专项 · ON-DEMAND</text>
+        <rect class="ve-bnd" x="20" y="274" width="820" height="122" rx="6"/>
+        <text class="ve-bnd-t" x="34" y="294">L3 高频规范 · CORE REFS</text>
 
-        <path class="ve-e is-hot" d="M430 92 V154"/>
-        <text class="ve-el r" x="442" y="120">GET /bundle</text>
+        <rect class="ve-bnd" x="20" y="422" width="820" height="88" rx="6"/>
+        <text class="ve-bnd-t" x="34" y="442">L4 按需专项 · ON-DEMAND</text>
 
-        <path class="ve-e is-hot" d="M430 204 V276 H125 V294"/>
-        <path class="ve-e is-hot" d="M430 204 V276 H328 V294"/>
-        <path class="ve-e is-hot" d="M430 204 V276 H532 V294"/>
-        <path class="ve-e is-async" d="M430 204 V276 H735 V294"/>
-        <text class="ve-el r" x="442" y="232">默认拉 3 份，motion 按需</text>
+        <path class="ve-e is-hot" d="M430 94 V134 H260 V184"/>
+        <text class="ve-el" x="320" y="126">GET /bundle</text>
 
-        <path class="ve-e is-async" d="M430 350 V414"/>
-        <text class="ve-el r" x="442" y="381">专项任务按需加载</text>
+        <path class="ve-e is-hot" d="M430 94 V134 H680 V184"/>
+        <text class="ve-el" x="560" y="126">GET /templates</text>
+
+        <path class="ve-e is-hot" d="M328 234 V310 H125 V328"/>
+        <path class="ve-e is-hot" d="M328 234 V328"/>
+        <path class="ve-e is-hot" d="M328 234 V310 H532 V328"/>
+        <path class="ve-e is-async" d="M328 234 V310 H735 V328"/>
+        <text class="ve-el r" x="340" y="264">默认拉 3 份，motion 按需</text>
+
+        <path class="ve-e is-async" d="M430 384 V448"/>
+        <text class="ve-el r" x="442" y="415">专项任务按需加载</text>
 
         <g class="ve-n is-key" data-ve-child="bootstrap-prompt">
-          <rect class="sh" x="240" y="42" width="380" height="50" rx="6"/>
-          <text x="430" y="63">bootstrap-prompt</text>
-          <text class="sub" x="430" y="83">webui/bootstrap-prompt.md · watch.sh 闭环</text>
+          <rect class="sh" x="240" y="44" width="380" height="50" rx="6"/>
+          <text x="430" y="65">bootstrap-prompt</text>
+          <text class="sub" x="430" y="85">webui/bootstrap-prompt.md · watch.sh 闭环</text>
         </g>
 
         <g class="ve-n" data-ve-child="SKILL">
-          <rect class="sh" x="240" y="154" width="380" height="50" rx="6"/>
-          <text x="430" y="175">SKILL.md</text>
-          <text class="sub" x="430" y="195">v0.16.0 主控路由 · 形态与自检</text>
+          <rect class="sh" x="36" y="184" width="368" height="50" rx="6"/>
+          <text x="220" y="205">SKILL.md</text>
+          <text class="sub" x="220" y="225">v0.16.0 单页调度 · 视觉与自检</text>
+        </g>
+
+        <g class="ve-n is-key" data-ve-child="templates/default">
+          <rect class="sh" x="456" y="184" width="368" height="50" rx="6"/>
+          <text x="640" y="205">templates/default</text>
+          <text class="sub" x="640" y="225">L0 全景与四态 · L1 组件 Diff 模板</text>
         </g>
 
         <g class="ve-n" data-ve-child="style-guide">
-          <rect class="sh" x="36" y="294" width="178" height="54" rx="6"/>
-          <text x="125" y="317">style-guide</text>
-          <text class="sub" x="125" y="338">4 语域与反 Slop</text>
+          <rect class="sh" x="36" y="328" width="178" height="54" rx="6"/>
+          <text x="125" y="351">style-guide</text>
+          <text class="sub" x="125" y="372">4 语域与反 Slop</text>
         </g>
 
         <g class="ve-n" data-ve-child="kit">
-          <rect class="sh" x="239" y="294" width="178" height="54" rx="6"/>
-          <text x="328" y="317">kit</text>
-          <text class="sub" x="328" y="338">编译与内置组件</text>
+          <rect class="sh" x="239" y="328" width="178" height="54" rx="6"/>
+          <text x="328" y="351">kit</text>
+          <text class="sub" x="328" y="372">编译与内置组件</text>
         </g>
 
         <g class="ve-n" data-ve-child="diagrams">
-          <rect class="sh" x="443" y="294" width="178" height="54" rx="6"/>
-          <text x="532" y="317">diagrams</text>
-          <text class="sub" x="532" y="338">SVG 布局底线</text>
+          <rect class="sh" x="443" y="328" width="178" height="54" rx="6"/>
+          <text x="532" y="351">diagrams</text>
+          <text class="sub" x="532" y="372">SVG 布局底线</text>
         </g>
 
         <g class="ve-n" data-ve-child="motion">
-          <rect class="sh" x="646" y="294" width="178" height="54" rx="6"/>
-          <text x="735" y="317">motion</text>
-          <text class="sub" x="735" y="338">步进与退化规范</text>
+          <rect class="sh" x="646" y="328" width="178" height="54" rx="6"/>
+          <text x="735" y="351">motion</text>
+          <text class="sub" x="735" y="372">步进与退化规范</text>
         </g>
 
         <g class="ve-n" data-ve-child="commands-and-extras">
-          <rect class="sh" x="150" y="414" width="560" height="50" rx="6"/>
-          <text x="430" y="435">commands-and-extras</text>
-          <text class="sub" x="430" y="455">6 份专项 References + 10 份任务 Commands（共 16 份）</text>
+          <rect class="sh" x="150" y="448" width="560" height="50" rx="6"/>
+          <text x="430" y="469">commands-and-extras</text>
+          <text class="sub" x="430" y="489">6 份专项 References + 10 份任务 Commands（共 16 份）</text>
         </g>
 
-        <g class="ve-co" transform="translate(652 67)"><circle r="12"/><text>1</text></g>
-        <g class="ve-co" transform="translate(652 179)"><circle r="12"/><text>2</text></g>
-        <g class="ve-co" transform="translate(742 439)"><circle r="12"/><text>3</text></g>
+        <g class="ve-co" transform="translate(652 69)"><circle r="12"/><text>1</text></g>
+        <g class="ve-co" transform="translate(814 168)"><circle r="12"/><text>2</text></g>
+        <g class="ve-co" transform="translate(742 473)"><circle r="12"/><text>3</text></g>
       </svg>
     </div>
-    <figcaption><span class="fig-n">Fig. 1</span>点击图中任意模块节点即可下钻到对应 L1 详解页：① WebUI 接入协议、② 官方核心路由、③ 16 份按需专项文档目录。</figcaption>
+    <figcaption><span class="fig-n">Fig. 1</span>点击图中任意模块即可下钻到对应 L1 详解页：① WebUI 接入协议、② 与上游正交的多页 Templates 层、③ 16 份按需专项文档目录。</figcaption>
   </figure>
 
   <section id="load">
-    <div class="sec-head"><p class="ve-label caps">Budget</p><h2>默认上下文仅占 5 份核心文档，17 份按任务信号按需读取</h2></div>
+    <div class="sec-head"><p class="ve-label caps">Budget</p><h2>默认上下文仅占 6 份文档（含默认模板），17 份按任务信号按需读取</h2></div>
     <div class="kpis">
       <div class="kpi">
         <span class="ve-label">托管文档总数</span>
-        <span class="val"><span data-count="22">22</span><span class="unit">份</span></span>
-        <svg class="ve-bars" viewBox="0 0 240 108" role="img" aria-label="22 份文档的分类构成：10 份命令、10 份参考、1 份核心、1 份接入"><text y="12">Commands</text><rect x="84" y="5" width="100" height="14" rx="2"/><text x="192" y="12">10份</text><text y="40">Refs</text><rect x="84" y="33" width="100" height="14" rx="2"/><text x="192" y="40">10份</text><text y="68">SKILL</text><rect class="hot" x="84" y="61" width="10" height="14" rx="2"/><text x="102" y="68">1份</text><text y="96">WebUI</text><rect class="hot" x="84" y="89" width="10" height="14" rx="2"/><text x="102" y="96">1份</text></svg>
+        <span class="val"><span data-count="23">23</span><span class="unit">份</span></span>
+        <svg class="ve-bars" viewBox="0 0 240 136" role="img" aria-label="23 份文档构成：10 份命令、10 份参考、1 份核心、1 份接入、1 份模板"><text y="12">Commands</text><rect x="84" y="5" width="100" height="14" rx="2"/><text x="192" y="12">10份</text><text y="40">Refs</text><rect x="84" y="33" width="100" height="14" rx="2"/><text x="192" y="40">10份</text><text y="68">SKILL</text><rect class="hot" x="84" y="61" width="10" height="14" rx="2"/><text x="102" y="68">1份</text><text y="96">WebUI</text><rect class="hot" x="84" y="89" width="10" height="14" rx="2"/><text x="102" y="96">1份</text><text y="124">Templates</text><rect class="hot" x="84" y="117" width="10" height="14" rx="2"/><text x="102" y="124">1份</text></svg>
       </div>
       <div class="kpi">
-        <span class="ve-label">默认首拉占比</span>
-        <span class="val"><span data-count="23">23</span><span class="unit">%</span></span>
-        <svg class="ve-waffle" viewBox="0 0 170 100" role="img" aria-label="22 份托管文档中仅 5 份（约 23%）随接入与默认 bundle 下发"><rect x="0" y="0" width="100" height="20" fill="url(#ve-w-on)"/><rect x="0" y="20" width="30" height="10" fill="url(#ve-w-on)"/><rect x="30" y="20" width="70" height="10" fill="url(#ve-w-off)"/><rect x="0" y="30" width="100" height="70" fill="url(#ve-w-off)"/><path class="ann" d="M104 25H114"/><text x="118" y="25">17 份按需</text></svg>
+        <span class="ve-label">默认路径占比</span>
+        <span class="val"><span data-count="26">26</span><span class="unit">%</span></span>
+        <svg class="ve-waffle" viewBox="0 0 170 100" role="img" aria-label="23 份托管文档中默认仅加载 6 份（约 26%）：接入提示、4 份 bundle 核心与默认模板"><rect x="0" y="0" width="100" height="20" fill="url(#ve-w-on)"/><rect x="0" y="20" width="60" height="10" fill="url(#ve-w-on)"/><rect x="60" y="20" width="40" height="10" fill="url(#ve-w-off)"/><rect x="0" y="30" width="100" height="70" fill="url(#ve-w-off)"/><path class="ann" d="M104 25H114"/><text x="118" y="25">17 份按需</text></svg>
       </div>
       <div class="kpi">
         <span class="ve-label">内置图解覆盖</span>
-        <span class="val"><span data-count="8">8</span><span class="unit">页</span></span>
-        <svg class="ve-bars" viewBox="0 0 240 52" role="img" aria-label="1 页 L0 总览加 7 页 L1 详解覆盖全部 22 份文档"><text y="12">L0 总览</text><rect class="hot" x="84" y="5" width="14.29" height="14" rx="2"/><text x="106.28999999999999" y="12">1页</text><text y="40">L1 详解</text><rect x="84" y="33" width="100" height="14" rx="2"/><text x="192" y="40">7页</text></svg>
+        <span class="val"><span data-count="9">9</span><span class="unit">页</span></span>
+        <svg class="ve-bars" viewBox="0 0 240 52" role="img" aria-label="1 页 L0 总览加 8 页 L1 详解覆盖全部 23 份文档"><text y="12">L0 总览</text><rect class="hot" x="84" y="5" width="12.5" height="14" rx="2"/><text x="104.5" y="12">1页</text><text y="40">L1 详解</text><rect x="84" y="33" width="100" height="14" rx="2"/><text x="192" y="40">8页</text></svg>
       </div>
     </div>
-    <p>Agent 接入时只读 <span data-ve-child="bootstrap-prompt">bootstrap-prompt</span> 并执行一次 <code>GET /bundle</code>，立刻获得 <code>SKILL.md</code> 与 3 份核心参考（<span data-ve-child="style-guide">style-guide</span>、<span data-ve-child="kit">kit</span>、<span data-ve-child="diagrams">diagrams</span>）。涉及步进动效时追加 <code>?refs=motion</code>，涉及计划书、幻灯片、状态机或评审命令时再拉对应文件。</p>
+    <p>Agent 接入时读 <span data-ve-child="bootstrap-prompt">bootstrap-prompt</span> 并执行一次 <code>GET /bundle</code>，获得索引 JSON、<code>SKILL.md</code> 与 3 份核心参考（<span data-ve-child="style-guide">style-guide</span>、<span data-ve-child="kit">kit</span>、<span data-ve-child="diagrams">diagrams</span>）；随后按索引拉取适用模板（默认 <span data-ve-child="templates/default">templates/default</span>）。涉及步进动效时追加 <code>?refs=motion</code>，涉及计划书、幻灯片、状态机或评审命令时再拉对应文件。</p>
   </section>
 
   <section id="overlay">
     <div class="sec-head"><p class="ve-label caps">Sync Engine</p><h2>Git 双分支 3-Way Merge 保护线上版本，SHA-256 绑定图解时效</h2></div>
     <figure>
-      <div class="frame"><svg class="ve-svg ve-flow" style="--min: 827px; --max: 1253px" viewBox="0 0 964 216" role="img" aria-label="官方包源码通过 Git upstream 分支与本地 active 分支做 3-Way Merge，并由 SHA-256 校验图解是否同步"><g><path class="ve-e" d="M156 48H280"/><text class="ve-el" x="218" y="39">启动同步</text></g><g><path class="ve-e" d="M420 48H544"/><text class="ve-el" x="482" y="39">theirs</text></g><g><path class="ve-e is-hot" d="M684 48H808"/><text class="ve-el" x="746" y="39">干净合入</text></g><g><path class="ve-e is-async" d="M614 80V136"/><text class="ve-el r" x="622" y="113">保留旧版</text></g><g><path class="ve-e is-hot" d="M878 80V136"/><text class="ve-el r" x="886" y="113">SHA-256</text></g><g class="ve-n" transform="translate(16 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">官方包源码</text><text class="sub" x="70" y="46">v0.16.0 只读</text></g><g class="ve-n" transform="translate(280 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">基线分支</text><text class="sub" x="70" y="46">upstream</text></g><g class="ve-n is-key" transform="translate(544 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">三方合并</text><text class="sub" x="70" y="46">git merge-file</text></g><g class="ve-n" transform="translate(808 16)"><path class="sh" d="M0 8V56A70 8 0 0 0 140 56V8"/><ellipse class="sh lid" cx="70" cy="8" rx="70" ry="8"/><text x="70" y="31">生效分支</text><text class="sub" x="70" y="52">active</text></g><g class="ve-n" transform="translate(544 136)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">冲突登记池</text><text class="sub" x="70" y="46">零中断保底</text></g><g class="ve-n" transform="translate(808 136)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">图解校验</text><text class="sub" x="70" y="46">skillHash</text></g></svg></div>
-      <figcaption><span class="fig-n">Fig. 2</span>上游升级不会覆盖本地定制：无冲突自动快进或三方合入，遇冲突则保留原 <code>active</code> 内容零中断运行，并在 <code>.skills-state.json</code> 标记待裁决。</figcaption>
+      <div class="frame"><svg class="ve-svg ve-flow" style="--min: 827px; --max: 1253px" viewBox="0 0 964 216" role="img" aria-label="官方包源码与内置模板通过 Git upstream 分支与本地 active 分支做 3-Way Merge，并由 SHA-256 校验图解是否同步"><g><path class="ve-e" d="M156 48H280"/><text class="ve-el" x="218" y="39">启动同步</text></g><g><path class="ve-e" d="M420 48H544"/><text class="ve-el" x="482" y="39">theirs</text></g><g><path class="ve-e is-hot" d="M684 48H808"/><text class="ve-el" x="746" y="39">干净合入</text></g><g><path class="ve-e is-async" d="M614 80V136"/><text class="ve-el r" x="622" y="113">保留旧版</text></g><g><path class="ve-e is-hot" d="M878 80V136"/><text class="ve-el r" x="886" y="113">SHA-256</text></g><g class="ve-n" transform="translate(16 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">官方与内置基线</text><text class="sub" x="70" y="46">v0.16.0 + 模板</text></g><g class="ve-n" transform="translate(280 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">基线分支</text><text class="sub" x="70" y="46">upstream</text></g><g class="ve-n is-key" transform="translate(544 16)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">三方合并</text><text class="sub" x="70" y="46">git merge-file</text></g><g class="ve-n" transform="translate(808 16)"><path class="sh" d="M0 8V56A70 8 0 0 0 140 56V8"/><ellipse class="sh lid" cx="70" cy="8" rx="70" ry="8"/><text x="70" y="31">生效分支</text><text class="sub" x="70" y="52">active</text></g><g class="ve-n" transform="translate(544 136)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">冲突登记池</text><text class="sub" x="70" y="46">零中断保底</text></g><g class="ve-n" transform="translate(808 136)"><rect class="sh" width="140" height="64" rx="6"/><text x="70" y="25">图解校验</text><text class="sub" x="70" y="46">skillHash</text></g></svg></div>
+      <figcaption><span class="fig-n">Fig. 2</span>上游升级不会覆盖本地定制与自定义模板：无冲突自动快进或三方合入，遇冲突则保留原 <code>active</code> 内容零中断运行，并在 <code>.skills-state.json</code> 标记待裁决。</figcaption>
     </figure>
     <div class="cases">
       <div class="case" data-st="ok">
         <span class="chip ok">Synced</span>
         <h3>哈希精准绑定</h3>
-        <p>单文件图解直接取内容 <code>sha256</code>；聚合图解与 <code>["*"]</code> 按排序后的 <code>[docId, sha256]</code> 数组再求摘要，任一字节变动立刻标黄待更新。</p>
+        <p>单文件图解直接取内容 <code>sha256</code>；聚合图解与 <code>["*"]</code> 按排序后的 <code>[docId, sha256]</code> 数组再求摘要，任一文档或模板变动立刻标黄待更新。</p>
       </div>
       <div class="case" data-st="warn">
         <span class="chip warn">Conflict Safe</span>
@@ -501,14 +513,14 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
       </div>
       <div class="case" data-st="ok">
         <span class="chip ok">Rollback</span>
-        <h3>文档与图解同版本回滚</h3>
-        <p>每次文档修改与图解发布写入同一 <code>.skills-git</code> 裸仓库，回滚至任意 <code>vN</code> 时同步恢复对应文档与图解。</p>
+        <h3>模板、文档与图解同版本回滚</h3>
+        <p>每次模板增删、文档修改与图解发布写入同一 <code>.skills-git</code> 裸仓库，回滚至任意 <code>vN</code> 时同步恢复对应文档、模板、默认项与图解。</p>
       </div>
     </div>
   </section>
 
   <section id="catalog">
-    <div class="sec-head"><p class="ve-label caps">Inventory</p><h2>全部 22 份托管文档的层级、触发信号与归属图解</h2></div>
+    <div class="sec-head"><p class="ve-label caps">Inventory</p><h2>全部 23 份托管文档的层级、触发信号与归属图解</h2></div>
     <div class="ve-table">
       <table>
         <thead>
@@ -521,15 +533,21 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
         </thead>
         <tbody>
           <tr>
+            <td><span class="chip ok">Templates</span></td>
+            <td><code>templates/default.md</code></td>
+            <td>经 <code>/bundle</code> 索引与 <code>GET /templates</code> 暴露；多页 Wiki、架构全景与组件变更 Diff 默认拉取（支持新建自定义模板）</td>
+            <td><span data-ve-child="templates/default">templates/default</span></td>
+          </tr>
+          <tr>
             <td><span class="chip ok">L1 接入</span></td>
             <td><code>webui/bootstrap-prompt.md</code></td>
-            <td>生成连接提示词时始终注入，定义拉包、发布、<code>watch.sh</code> 零空闲 Token 监听与 Key 生命周期自动止停</td>
+            <td>生成连接提示词时始终注入，定义拉包、模板选型、发布、<code>watch.sh</code> 零空闲 Token 监听与 Key 生命周期自动止停</td>
             <td><span data-ve-child="bootstrap-prompt">bootstrap-prompt</span></td>
           </tr>
           <tr>
             <td><span class="chip ok">L2 调度</span></td>
             <td><code>SKILL.md</code></td>
-            <td>每次 <code>GET /bundle</code> 默认下发，统筹载体选择与质量底线</td>
+            <td>每次 <code>GET /bundle</code> 默认下发，统筹单页视觉载体与质量底线</td>
             <td><span data-ve-child="SKILL">SKILL</span></td>
           </tr>
           <tr>
@@ -575,7 +593,7 @@ summary { cursor: pointer; font: 500 var(--t-label) var(--font-mono); margin-bot
 
   <section class="sources" aria-label="Sources">
     <p class="ve-label caps">Sources</p>
-    <p><code>webui/bootstrap-prompt.md</code> · <code>SKILL.md</code> · <code>references/*.md</code> (10 files) · <code>commands/*.md</code> (10 files) · <code>remote-app/skills.mjs</code></p>
+    <p><code>templates/default.md</code> · <code>webui/bootstrap-prompt.md</code> · <code>SKILL.md</code> · <code>references/*.md</code> (10 files) · <code>commands/*.md</code> (10 files) · <code>remote-app/skills.mjs</code></p>
   </section>
 </main>
 <script data-ve-kit>

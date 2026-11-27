@@ -2,6 +2,7 @@
 
 {{ENDPOINT_LIST}}
 - Official skill & docs bundle: {{ORIGINAL_BASE}}/bundle
+- Page & child-page templates catalog: {{ORIGINAL_BASE}}/templates (default: {{ORIGINAL_BASE}}/templates/default.md)
 - Zero-idle-token comment watcher script: {{ORIGINAL_BASE}}/watch.sh
 
 ## 1. Read the official skill before writing HTML
@@ -15,6 +16,7 @@ curl --fail-with-body {{BUNDLE_URL_QUOTED}} -H "Authorization: Bearer $VE_KEY"
 ```
 
 Individual docs (`{{ORIGINAL_BASE}}/SKILL.md`, `{{ORIGINAL_BASE}}/references/style-guide.md`, `{{ORIGINAL_BASE}}/references/<name>.md`) also remain available separately, and `?refs=...` can include extra references like `motion` in one call.
+**Page & child-page templates:** The `/bundle` index JSON (and `GET {{ORIGINAL_BASE}}/templates`) lists available multi-page templates (`id`, `default`, `whenToUse`, `url`). Before structuring a diagram, proposal, or multi-page Wiki, fetch the matching template (default: `GET {{ORIGINAL_BASE}}/templates/default.md`, or another template from the catalog if the user asks for it or `whenToUse` fits better) with `Authorization: Bearer $VE_KEY`. Follow the template for parent/child page organization and component diffs, and upstream `SKILL.md` / `references/*` for single-page visual rendering & checksheet QA.
 Optional official helpers (`POST` JSON with `Authorization: Bearer $VE_KEY` and `Content-Type: application/json`):
 - Prepare: `POST {{ORIGINAL_BASE}}/prepare` (matches `visual_explainer_prepare.inputSchema`, e.g. `{"topic":"..."}`)
 - Prompt: `POST {{ORIGINAL_BASE}}/prompts/<name>` (e.g. `generate-web-diagram` with `{"request":"..."}`)
@@ -36,7 +38,7 @@ Inspect `./diagram.render.json`:
 - Check `render.structuredContent.report` and every diagnostic in `render.content`; decode any `type: "image"` base64 blocks to inspect the official checksheet screenshots.
 - Fix every `✗` diagnostic with small targeted edits to `./diagram.src.html` and re-PUT the same path until clean.
 - Include `<meta name="description" content="...">` for a concise 1-line hover preview summary (Light and Dark thumbnails are captured automatically on publish).
-- Wiki drill-down: publish child diagrams under `{{CHILD_PATH_EXAMPLE}}` (same scoped folder key) and add `data-ve-child="<child>"` (omit `.html`) on any SVG node (`<g class="ve-n" data-ve-child="...">`) or inline `<span>`. The WebUI viewer injects portal styling, stacked badges, hover previews, and click navigation at view time — plain appearance in standalone checksheets is expected, so do NOT add custom fake-portal CSS.
+- Wiki drill-down & templates: follow the selected template (default `{{ORIGINAL_BASE}}/templates/default.md`) for L0 overview vs L1 component child pages and change diffs; publish child diagrams under `{{CHILD_PATH_EXAMPLE}}` (same scoped folder key) and add `data-ve-child="<child>"` (omit `.html`) on any SVG node (`<g class="ve-n" data-ve-child="...">`) or inline `<span>`. The WebUI viewer injects portal styling, stacked badges, hover previews, and click navigation at view time — plain appearance in standalone checksheets is expected, so do NOT add custom fake-portal CSS.
 - **Before replying with `page.url`**, start the non-blocking background comment watcher in §3 by default (if your harness supports background/async execution), then share `page.url` from the response (also returns `page.filename`, `version`, `commentsUrl`, and `openComments`).
 
 ## 3. Live comment listener (default, zero idle tokens)

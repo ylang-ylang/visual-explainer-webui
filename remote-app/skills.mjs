@@ -16,6 +16,9 @@ const SKILL_KEY_ID_RE = /^sk_[0-9a-f]{16}$/;
 const SKILL_KEY_SECRET_RE = /^ve_sk_[A-Za-z0-9_-]{43}$/;
 const HEX_SHA256_RE = /^[0-9a-f]{64}$/;
 const EXPLAINER_ID_RE = /^[A-Za-z0-9][A-Za-z0-9/-]{0,80}$/;
+const TEMPLATE_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const TEMPLATE_DOC_RE = /^templates\/[a-z0-9][a-z0-9-]{0,63}\.md$/;
+const RESERVED_TEMPLATE_SLUGS = new Set(['html', 'source', 'thumb']);
 const MAX_KEY_NAME_LEN = 64;
 const MAX_TITLE_LEN = 160;
 const MAX_SUMMARY_LEN = 400;
@@ -28,12 +31,78 @@ export function sha256Hex(value) {
   return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
+export function validateTemplateId(slug) {
+  if (typeof slug !== 'string' || !TEMPLATE_SLUG_RE.test(slug)) {
+    throw new ApiError(400, 'Invalid template id (expected 1-64 lowercase alphanumeric or hyphen characters)');
+  }
+  if (RESERVED_TEMPLATE_SLUGS.has(slug)) {
+    throw new ApiError(400, 'Template id must not use reserved names: html, source, thumb');
+  }
+  return slug;
+}
+
+export function templateSlugFromDocId(docId) {
+  if (typeof docId !== 'string' || !TEMPLATE_DOC_RE.test(docId)) return null;
+  return docId.slice('templates/'.length, -'.md'.length);
+}
+
+export function parseTemplateFrontmatter(slug, markdown) {
+  const text = typeof markdown === 'string' ? markdown : '';
+  let title = '';
+  let whenToUse = '';
+  let body = text;
+  const fmMatch = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+  if (fmMatch) {
+    body = text.slice(fmMatch[0].length);
+    for (const rawLine of fmMatch[1].split(/\r?\n/)) {
+      const idx = rawLine.indexOf(':');
+      if (idx <= 0) continue;
+      const key = rawLine.slice(0, idx).trim();
+      let val = rawLine.slice(idx + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        if (val.length >= 2) val = val.slice(1, -1).trim();
+      }
+      if (key === 'title' && val) title = val;
+      else if ((key === 'whenToUse' || key === 'when_to_use') && val) whenToUse = val;
+    }
+  }
+  const cleanMeta = (val, max) => String(val || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\p{Cc}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+  if (!whenToUse) {
+    let inFence = false;
+    for (const rawLine of body.split(/\r?\n/)) {
+      const trimmed = rawLine.trim();
+      if (!trimmed) continue;
+      if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
+        inFence = !inFence;
+        continue;
+      }
+      if (inFence) continue;
+      if (trimmed.startsWith('#') || /^[-*_]{3,}$/.test(trimmed)) continue;
+      whenToUse = trimmed;
+      break;
+    }
+  }
+  return {
+    title: cleanMeta(title, MAX_TITLE_LEN) || slug,
+    whenToUse: cleanMeta(whenToUse, MAX_SUMMARY_LEN),
+  };
+}
+
 export function validateDocIdSyntax(id) {
   if (typeof id !== 'string' || !id || !id.isWellFormed() || id.includes('\\') || /\p{Cc}/u.test(id)) {
     throw new ApiError(400, 'Invalid skill document id');
   }
   if (id === 'SKILL.md' || id === 'webui/bootstrap-prompt.md') return id;
   if (/^(?:references|commands)\/[a-z0-9-]+\.md$/.test(id)) return id;
+  if (TEMPLATE_DOC_RE.test(id)) {
+    validateTemplateId(id.slice('templates/'.length, -'.md'.length));
+    return id;
+  }
   throw new ApiError(400, 'Invalid skill document id');
 }
 
@@ -43,6 +112,7 @@ export function docCategory(id) {
   if (id.startsWith('references/')) return 'reference';
   if (id.startsWith('commands/')) return 'command';
   if (id.startsWith('webui/')) return 'webui';
+  if (id.startsWith('templates/')) return 'template';
   throw new ApiError(400, 'Invalid skill document id');
 }
 
@@ -50,7 +120,13 @@ export function docIdFromUri(uri) {
   if (typeof uri !== 'string') return null;
   if (uri === 'visual-explainer://skill/SKILL.md') return 'SKILL.md';
   const match = /^visual-explainer:\/\/((?:references|commands)\/[a-z0-9-]+\.md)$/.exec(uri);
-  return match ? match[1] : null;
+  if (match) return match[1];
+  const tplMatch = /^visual-explainer:\/\/(templates\/[a-z0-9][a-z0-9-]{0,63}\.md)$/.exec(uri);
+  if (tplMatch) {
+    const slug = tplMatch[1].slice('templates/'.length, -'.md'.length);
+    if (!RESERVED_TEMPLATE_SLUGS.has(slug)) return tplMatch[1];
+  }
+  return null;
 }
 
 export function validateExplainerId(id) {
@@ -224,6 +300,7 @@ function assertContainedPath(rootDir, targetPath) {
 
 async function loadBuiltinResources(builtinDir, explicitExplainers = null) {
   let bootstrapPrompt = null;
+  const templates = new Map();
   const explainers = [];
   if (builtinDir) {
     const promptPath = join(builtinDir, 'bootstrap-prompt.md');
@@ -231,6 +308,24 @@ async function loadBuiltinResources(builtinDir, explicitExplainers = null) {
     if (promptStat) {
       if (!promptStat.isFile() || promptStat.isSymbolicLink()) throw new Error('Built-in bootstrap-prompt.md must be a regular file');
       bootstrapPrompt = await readFile(promptPath, 'utf8');
+    }
+    const templatesDir = join(builtinDir, 'templates');
+    const templatesStat = await statOrNull(templatesDir);
+    if (templatesStat) {
+      if (!templatesStat.isDirectory() || templatesStat.isSymbolicLink()) {
+        throw new Error('Built-in templates directory must be a regular directory');
+      }
+      const entries = (await readdir(templatesDir, { withFileTypes: true }))
+        .filter(entry => entry.name.endsWith('.md'))
+        .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+      for (const entry of entries) {
+        if (!entry.isFile() || entry.isSymbolicLink()) {
+          throw new Error(`Built-in template ${entry.name} must be a regular file`);
+        }
+        const docId = validateDocIdSyntax(`templates/${entry.name}`);
+        const tplPath = assertContainedPath(builtinDir, join(templatesDir, entry.name));
+        templates.set(docId, await readFile(tplPath, 'utf8'));
+      }
     }
   }
   if (Array.isArray(explicitExplainers)) {
@@ -250,7 +345,7 @@ async function loadBuiltinResources(builtinDir, explicitExplainers = null) {
         sourceHtml: typeof item.sourceHtml === 'string' ? item.sourceHtml : item.html,
       });
     }
-    return { bootstrapPrompt, explainers };
+    return { bootstrapPrompt, templates, explainers };
   }
   if (builtinDir) {
     const manifestPath = join(builtinDir, 'manifest.json');
@@ -284,7 +379,7 @@ async function loadBuiltinResources(builtinDir, explicitExplainers = null) {
       }
     }
   }
-  return { bootstrapPrompt, explainers };
+  return { bootstrapPrompt, templates, explainers };
 }
 
 function normalizeExplainerEntry(entry) {
@@ -474,7 +569,7 @@ export async function createSkills(outputDir, {
   }
 
   // Load or initialize .skills-state.json
-  let state = { version: 1, editEnabled: false, keys: [], conflicts: {} };
+  let state = { version: 1, editEnabled: false, defaultTemplate: 'default', keys: [], conflicts: {} };
   const stateStat = await statOrNull(statePath);
   if (stateStat) {
     if (!stateStat.isFile() || stateStat.isSymbolicLink()) {
@@ -484,6 +579,9 @@ export async function createSkills(outputDir, {
     if (!isObject(raw) || raw.version !== 1 || typeof raw.editEnabled !== 'boolean' ||
         !Array.isArray(raw.keys) || !isObject(raw.conflicts)) {
       throw new Error('Malformed skills state store');
+    }
+    if (raw.defaultTemplate !== undefined && (typeof raw.defaultTemplate !== 'string' || !TEMPLATE_SLUG_RE.test(raw.defaultTemplate) || RESERVED_TEMPLATE_SLUGS.has(raw.defaultTemplate))) {
+      throw new Error('Malformed defaultTemplate in skills state store');
     }
     const seenKeyIds = new Set();
     for (const entry of raw.keys) {
@@ -501,6 +599,7 @@ export async function createSkills(outputDir, {
     state = {
       version: 1,
       editEnabled: raw.editEnabled,
+      defaultTemplate: typeof raw.defaultTemplate === 'string' ? raw.defaultTemplate : 'default',
       keys: raw.keys.map(entry => ({ ...entry })),
       conflicts,
     };
@@ -703,11 +802,12 @@ export async function createSkills(outputDir, {
   function formatDocSummary(docId) {
     requireManagedDoc(docId);
     const content = activeDocsMap.get(docId) ?? '';
-    const upstreamContent = upstreamDocsMap.get(docId) ?? '';
+    const isCustom = !upstreamDocsMap.has(docId);
+    const upstreamContent = isCustom ? null : upstreamDocsMap.get(docId);
     const sha256 = sha256Hex(content);
-    const upstreamSha256 = sha256Hex(upstreamContent);
+    const upstreamSha256 = isCustom ? null : sha256Hex(upstreamContent);
     const hasConflict = Boolean(state.conflicts[docId]);
-    const status = hasConflict ? 'conflict' : (sha256 !== upstreamSha256 ? 'overridden' : 'upstream');
+    const status = hasConflict ? 'conflict' : (isCustom ? 'custom' : (sha256 !== upstreamSha256 ? 'overridden' : 'upstream'));
     const explainer = findExplainerForDoc(docId);
     const explainerMeta = explainer ? formatExplainer(explainer) : null;
     return {
@@ -721,6 +821,56 @@ export async function createSkills(outputDir, {
       explainerSynced: Boolean(explainerMeta?.synced),
       hasConflict,
     };
+  }
+
+  function templateSlugsInDocsMap(docsMap = activeDocsMap) {
+    const slugs = [];
+    for (const docId of docsMap.keys()) {
+      const slug = templateSlugFromDocId(docId);
+      if (slug) slugs.push(slug);
+    }
+    return slugs.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  }
+
+  function resolveDefaultTemplateId(docsMap = activeDocsMap) {
+    const slugs = templateSlugsInDocsMap(docsMap);
+    if (!slugs.length) return null;
+    if (state.defaultTemplate && slugs.includes(state.defaultTemplate)) return state.defaultTemplate;
+    if (slugs.includes('default')) return 'default';
+    return slugs[0];
+  }
+
+  function formatTemplateSummary(slug) {
+    validateTemplateId(slug);
+    const docId = `templates/${slug}.md`;
+    if (!activeDocsMap.has(docId)) throw new ApiError(404, `Template not found: ${slug}`);
+    const content = activeDocsMap.get(docId);
+    const meta = parseTemplateFrontmatter(slug, content);
+    const summary = formatDocSummary(docId);
+    const currentDefault = resolveDefaultTemplateId();
+    return {
+      id: slug,
+      docId,
+      title: meta.title,
+      whenToUse: meta.whenToUse,
+      isDefault: slug === currentDefault,
+      builtIn: upstreamDocsMap.has(docId),
+      status: summary.status,
+      sha256: summary.sha256,
+      explainerId: summary.explainerId,
+      explainerSynced: summary.explainerSynced,
+    };
+  }
+
+  function listTemplates() {
+    const slugs = templateSlugsInDocsMap(activeDocsMap);
+    const items = slugs.map(formatTemplateSummary);
+    return items.sort((a, b) => {
+      if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+      if (a.id === 'default') return -1;
+      if (b.id === 'default') return 1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
   }
 
   function latestVersionSummary() {
@@ -797,6 +947,9 @@ export async function createSkills(outputDir, {
     const builtIn = await loadBuiltinResources(nextBuiltinDir, nextBuiltinExplainers);
     if (!nextDocs.has('webui/bootstrap-prompt.md') && builtIn.bootstrapPrompt !== null) {
       nextDocs.set('webui/bootstrap-prompt.md', builtIn.bootstrapPrompt);
+    }
+    for (const [docId, tplContent] of builtIn.templates.entries()) {
+      if (!nextDocs.has(docId)) nextDocs.set(docId, tplContent);
     }
     const sortedDocs = new Map([...nextDocs.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 
@@ -989,6 +1142,16 @@ export async function createSkills(outputDir, {
       }
     }
 
+    // Preserve runtime-created custom templates (and locally modified templates removed upstream) on active branch
+    for (const [path, ours] of activeFiles.entries()) {
+      if (!path.startsWith('docs/templates/')) continue;
+      const docId = path.slice(5);
+      if (sortedDocs.has(docId)) continue;
+      const oldBase = oldUpstreamFiles.get(path);
+      if (oldBase !== undefined && ours === oldBase) continue;
+      nextActiveFiles.set(path, ours);
+    }
+
     // Merge explainers: take upstream updates if active did not customize that explainer; keep customized/custom active explainers
     const oldUpManifest = parseManifestFromFiles(oldUpstreamFiles);
     const nextUpManifest = parseManifestFromFiles(nextUpstreamFiles);
@@ -1067,8 +1230,20 @@ export async function createSkills(outputDir, {
       await updateRef('refs/heads/active', finalActiveHead, currentActiveHead);
     }
 
+    const nextActiveTemplateSlugs = [];
+    for (const path of nextActiveFiles.keys()) {
+      if (!path.startsWith('docs/')) continue;
+      const slug = templateSlugFromDocId(path.slice(5));
+      if (slug) nextActiveTemplateSlugs.push(slug);
+    }
+    nextActiveTemplateSlugs.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    const nextDefaultTemplate = nextActiveTemplateSlugs.includes(state.defaultTemplate)
+      ? state.defaultTemplate
+      : (nextActiveTemplateSlugs.includes('default') ? 'default' : (nextActiveTemplateSlugs[0] ?? 'default'));
+
     await persistState({
       ...state,
+      defaultTemplate: nextDefaultTemplate,
       conflicts: nextConflicts,
     });
     for (const id of changedThumbIds) await removeThumbFiles(id);
@@ -1097,7 +1272,9 @@ export async function createSkills(outputDir, {
     docIdFromUri,
     validateDocId: requireManagedDoc,
     validateExplainerId,
+    validateTemplateId,
     isEditEnabled() { return state.editEnabled; },
+    defaultTemplate() { return resolveDefaultTemplateId(); },
     upstreamInfo() {
       return {
         version: currentUpstreamMeta.upstreamVersion,
@@ -1114,7 +1291,7 @@ export async function createSkills(outputDir, {
     },
     getUpstreamDoc(docId) {
       requireManagedDoc(docId);
-      return upstreamDocsMap.get(docId);
+      return upstreamDocsMap.get(docId) ?? null;
     },
     expectedSkillHash(covers) {
       const normalized = normalizeCovers(covers);
@@ -1134,6 +1311,7 @@ export async function createSkills(outputDir, {
       }
       return { expectedSkillHash: expected, covers: resolvedCovers };
     },
+    listTemplates,
     listDocs() {
       return managedDocIdsSorted().map(formatDocSummary);
     },
@@ -1169,10 +1347,12 @@ export async function createSkills(outputDir, {
       const latest = latestVersionSummary();
       return {
         editEnabled: state.editEnabled,
+        defaultTemplate: resolveDefaultTemplateId(),
         upstream: {
           version: currentUpstreamMeta.upstreamVersion,
           revision: currentUpstreamMeta.upstreamRevision,
         },
+        templates: listTemplates(),
         docs: managedDocIdsSorted().map(formatDocSummary),
         explainers: activeExplainers.map(formatExplainer),
         conflicts: this.conflicts(),
@@ -1189,7 +1369,7 @@ export async function createSkills(outputDir, {
     async getDoc(docId) {
       const summary = formatDocSummary(docId);
       const content = activeDocsMap.get(docId);
-      const upstreamContent = upstreamDocsMap.get(docId);
+      const upstreamContent = upstreamDocsMap.get(docId) ?? null;
       const diff = await this.diffDoc(docId);
       const conflict = state.conflicts[docId] ? { ...state.conflicts[docId] } : null;
       return {
@@ -1406,9 +1586,145 @@ export async function createSkills(outputDir, {
         };
       });
     },
+    async createTemplate(slug, content, { note = '', actor = 'Owner' } = {}) {
+      return enqueue(async () => {
+        validateTemplateId(slug);
+        if (typeof content !== 'string' || !content.isWellFormed() || !content.trim()) {
+          throw new ApiError(400, 'Template content must be a non-empty UTF-8 string');
+        }
+        if (Buffer.byteLength(content, 'utf8') > MAX_DOC_BYTES) {
+          throw new ApiError(413, 'Template document exceeds 2 MiB limit');
+        }
+        const docId = `templates/${slug}.md`;
+        if (activeDocsMap.has(docId)) {
+          throw new ApiError(409, `Template already exists: ${slug}`);
+        }
+        const cleanNote = cleanNoteText(note);
+        const cleanActor = cleanSingleLine(actor, 'actor', 80, 'Owner');
+        const nextFiles = new Map(activeFilesCache);
+        nextFiles.set(`docs/${docId}`, content);
+
+        const currentHead = await revParse('refs/heads/active');
+        const nextTree = await writeTreeFromFiles(nextFiles);
+        const msg = `Create template ${slug}${cleanNote ? `: ${cleanNote}` : ''} (by ${cleanActor})`;
+        const nextHead = await commitTree(nextTree, [currentHead], msg);
+        await updateRef('refs/heads/active', nextHead, currentHead);
+        await refreshCaches();
+
+        const affectedExplainers = activeExplainers
+          .filter(entry => entry.covers.length === 1 && entry.covers[0] === '*')
+          .map(formatExplainer)
+          .filter(entry => !entry.synced)
+          .map(({ id, title, covers, skillHash, expectedSkillHash: expected, synced }) => ({
+            id, title, covers, skillHash, expectedSkillHash: expected, synced,
+          }));
+
+        return {
+          template: formatTemplateSummary(slug),
+          doc: formatDocSummary(docId),
+          version: latestVersionSummary(),
+          skillHash: sha256Hex(content),
+          affectedExplainers,
+        };
+      });
+    },
+    async deleteTemplate(slug, { note = '', actor = 'Owner' } = {}) {
+      return enqueue(async () => {
+        validateTemplateId(slug);
+        const docId = `templates/${slug}.md`;
+        if (!activeDocsMap.has(docId)) {
+          throw new ApiError(404, `Template not found: ${slug}`);
+        }
+        if (upstreamDocsMap.has(docId)) {
+          throw new ApiError(409, 'Cannot delete built-in template; reset to upstream instead');
+        }
+        if (resolveDefaultTemplateId() === slug) {
+          throw new ApiError(409, 'Set another default template before deleting');
+        }
+        const cleanNote = cleanNoteText(note);
+        const cleanActor = cleanSingleLine(actor, 'actor', 80, 'Owner');
+        const nextFiles = new Map(activeFilesCache);
+        nextFiles.delete(`docs/${docId}`);
+
+        const dedicatedId = `templates/${slug}`;
+        const deletedExplainerIds = [];
+        const nextExplainers = [];
+        let manifestChanged = false;
+        for (const entry of activeExplainers) {
+          const isDedicated = entry.id === dedicatedId || (entry.covers.length === 1 && entry.covers[0] === docId);
+          if (isDedicated) {
+            deletedExplainerIds.push(entry.id);
+            nextFiles.delete(`explainers/${entry.id}.html`);
+            nextFiles.delete(`explainers/${entry.id}.src.html`);
+            manifestChanged = true;
+            continue;
+          }
+          if (!(entry.covers.length === 1 && entry.covers[0] === '*') && entry.covers.includes(docId)) {
+            const remaining = entry.covers.filter(item => item !== docId);
+            if (!remaining.length) {
+              deletedExplainerIds.push(entry.id);
+              nextFiles.delete(`explainers/${entry.id}.html`);
+              nextFiles.delete(`explainers/${entry.id}.src.html`);
+            } else {
+              nextExplainers.push({ ...entry, covers: remaining });
+            }
+            manifestChanged = true;
+            continue;
+          }
+          nextExplainers.push(entry);
+        }
+        if (manifestChanged) {
+          nextFiles.set('explainers/manifest.json', JSON.stringify({ explainers: nextExplainers }, null, 2) + '\n');
+        }
+
+        if (state.conflicts[docId]) {
+          const nextConflicts = { ...state.conflicts };
+          delete nextConflicts[docId];
+          await persistState({ ...state, conflicts: nextConflicts });
+        }
+
+        const currentHead = await revParse('refs/heads/active');
+        const nextTree = await writeTreeFromFiles(nextFiles);
+        const msg = `Delete template ${slug}${cleanNote ? `: ${cleanNote}` : ''} (by ${cleanActor})`;
+        const nextHead = await commitTree(nextTree, [currentHead], msg);
+        await updateRef('refs/heads/active', nextHead, currentHead);
+        for (const expId of deletedExplainerIds) await removeThumbFiles(expId);
+        await refreshCaches();
+
+        return {
+          deleted: true,
+          id: slug,
+          docId,
+          deletedExplainerIds,
+          version: latestVersionSummary(),
+          defaultTemplate: resolveDefaultTemplateId(),
+          templates: listTemplates(),
+        };
+      });
+    },
+    async setDefaultTemplate(slug) {
+      return enqueue(async () => {
+        validateTemplateId(slug);
+        const docId = `templates/${slug}.md`;
+        if (!activeDocsMap.has(docId)) {
+          throw new ApiError(404, `Template not found: ${slug}`);
+        }
+        if (state.defaultTemplate !== slug) {
+          await persistState({ ...state, defaultTemplate: slug });
+        }
+        return {
+          defaultTemplate: resolveDefaultTemplateId(),
+          template: formatTemplateSummary(slug),
+          templates: listTemplates(),
+        };
+      });
+    },
     async resetDoc(docId, { note = '', actor = 'Owner' } = {}) {
       return enqueue(async () => {
         requireManagedDoc(docId);
+        if (!upstreamDocsMap.has(docId)) {
+          throw new ApiError(409, 'Cannot reset custom template; it has no upstream version');
+        }
         const cleanNote = cleanNoteText(note);
         const cleanActor = cleanSingleLine(actor, 'actor', 80, 'Owner');
         const upstreamContent = upstreamDocsMap.get(docId);
@@ -1494,17 +1810,32 @@ export async function createSkills(outputDir, {
         const nextHead = await commitTree(nextTree, [currentHead], msg);
         await updateRef('refs/heads/active', nextHead, currentHead);
 
-        // Clear any conflicts whose restored doc now matches upstream
-        let conflictsChanged = false;
+        // Clear any conflicts whose restored doc now matches upstream or no longer exists,
+        // and safely reset defaultTemplate if the previous default does not exist in this snapshot.
+        let stateChanged = false;
         const nextConflicts = { ...state.conflicts };
         for (const docId of Object.keys(nextConflicts)) {
-          if (nextFiles.get(`docs/${docId}`) === upstreamDocsMap.get(docId)) {
+          if (!nextFiles.has(`docs/${docId}`) || nextFiles.get(`docs/${docId}`) === upstreamDocsMap.get(docId)) {
             delete nextConflicts[docId];
-            conflictsChanged = true;
+            stateChanged = true;
           }
         }
-        if (conflictsChanged) {
-          await persistState({ ...state, conflicts: nextConflicts });
+        const restoredTemplateSlugs = [];
+        for (const path of nextFiles.keys()) {
+          if (!path.startsWith('docs/')) continue;
+          const slug = templateSlugFromDocId(path.slice(5));
+          if (slug) restoredTemplateSlugs.push(slug);
+        }
+        restoredTemplateSlugs.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+        let nextDefaultTemplate = state.defaultTemplate;
+        if (!restoredTemplateSlugs.includes(nextDefaultTemplate)) {
+          nextDefaultTemplate = restoredTemplateSlugs.includes('default')
+            ? 'default'
+            : (restoredTemplateSlugs[0] ?? 'default');
+          if (nextDefaultTemplate !== state.defaultTemplate) stateChanged = true;
+        }
+        if (stateChanged) {
+          await persistState({ ...state, defaultTemplate: nextDefaultTemplate, conflicts: nextConflicts });
         }
 
         await clearAllThumbs();
@@ -1513,6 +1844,8 @@ export async function createSkills(outputDir, {
         return {
           version: latestVersionSummary(),
           rolledBackTo: { version: target.version, label: target.label, revision: target.revision },
+          defaultTemplate: resolveDefaultTemplateId(),
+          templates: listTemplates(),
           docs: managedDocIdsSorted().map(formatDocSummary),
           explainers: activeExplainers.map(formatExplainer),
         };

@@ -1148,7 +1148,7 @@ const skills = await createSkills(outputDir, {
   },
   builtinDir: builtinSkillsDir,
 });
-const originalIndex = {
+const originalIndexBase = {
   package: { name: 'visual-explainer', version: upstream.getServerVersion().version, revision: originalRevision, source: originalSource },
   resources: [...originalDocuments].map(([path, resource]) => ({ ...resource, url: new URL(originalPrefix + path, publicUrl).href })),
   prompts: originalPrompts.prompts.map(prompt => ({ ...prompt, url: new URL(`${originalPrefix}/prompts/${encodeURIComponent(prompt.name)}`, publicUrl).href })),
@@ -1157,6 +1157,28 @@ const originalIndex = {
   watchUrl: new URL(`${originalPrefix}/watch.sh`, publicUrl).href,
   publish: { method: 'PUT', path: '/api/entities/:id/files/<path>.html', contentType: 'text/html; charset=utf-8' },
 };
+function publicTemplateCatalog() {
+  const defaultTemplate = skills.defaultTemplate();
+  const templates = skills.listTemplates().map(tpl => ({
+    id: tpl.id,
+    docId: tpl.docId,
+    title: tpl.title,
+    whenToUse: tpl.whenToUse,
+    default: tpl.isDefault,
+    sha256: tpl.sha256,
+    url: new URL(`${originalPrefix}/templates/${encodeURIComponent(tpl.id)}.md`, publicUrl).href,
+  }));
+  return { defaultTemplate, templates };
+}
+function buildOriginalIndex() {
+  const catalog = publicTemplateCatalog();
+  return {
+    ...originalIndexBase,
+    templatesUrl: new URL(`${originalPrefix}/templates`, publicUrl).href,
+    defaultTemplate: catalog.defaultTemplate,
+    templates: catalog.templates,
+  };
+}
 function originalReadonly(parts, method) {
   return parts[0] === 'visual-explainer' && (method === 'GET' || (method === 'POST' &&
     ((parts.length === 2 && parts[1] === 'prepare') || (parts.length === 3 && parts[1] === 'prompts'))));
@@ -1166,7 +1188,7 @@ async function originalRequest(call) {
   catch (error) { throw new ApiError(502, `Official visual-explainer request failed: ${error.message}`); }
 }
 async function serveOriginal(req, res, parts, url) {
-  if (parts.length === 1 && req.method === 'GET') return json(res, 200, originalIndex);
+  if (parts.length === 1 && req.method === 'GET') return json(res, 200, buildOriginalIndex());
   if (parts.length === 2 && parts[1] === 'watch.sh' && req.method === 'GET') {
     return send(res, 200, watchScript, 'text/x-shellscript; charset=utf-8');
   }
@@ -1177,6 +1199,18 @@ async function serveOriginal(req, res, parts, url) {
       sha256: skills.expectedSkillHash(['webui/bootstrap-prompt.md']),
       content,
     });
+  }
+  if (parts.length === 2 && parts[1] === 'templates' && req.method === 'GET') {
+    return json(res, 200, publicTemplateCatalog());
+  }
+  if (parts.length === 3 && parts[1] === 'templates' && req.method === 'GET') {
+    const fileName = parts[2];
+    if (!/^[a-z0-9][a-z0-9-]{0,63}\.md$/.test(fileName)) {
+      throw new ApiError(404, 'Template not found');
+    }
+    const docId = `templates/${fileName}`;
+    if (!skills.hasDoc(docId)) throw new ApiError(404, 'Template not found');
+    return send(res, 200, skills.getEffectiveDoc(docId), 'text/markdown; charset=utf-8');
   }
   if (parts.length === 2 && parts[1] === 'bundle' && req.method === 'GET') {
     const skillRes = originalDocuments.get('/SKILL.md');
@@ -1211,7 +1245,7 @@ async function serveOriginal(req, res, parts, url) {
       return [docPath, result.contents[0].text];
     }));
     const sections = [
-      `=== ${originalPrefix} ===\n${JSON.stringify(originalIndex)}`,
+      `=== ${originalPrefix} ===\n${JSON.stringify(buildOriginalIndex())}`,
       ...docs.map(([docPath, text]) => `=== ${originalPrefix}${docPath} ===\n${text}`),
     ];
     return send(res, 200, sections.join('\n\n') + '\n', 'text/plain; charset=utf-8');
@@ -1649,6 +1683,35 @@ const http = createServer(async (req, res) => {
               await skills.revokeKey(parts[2]);
               skillEvents.disconnectByToken(parts[2], 'Skill editor key revoked');
               return send(res, 204, '');
+            }
+          }
+          if (id === 'templates') {
+            if (parts.length === 2 && req.method === 'GET') {
+              return json(res, 200, {
+                defaultTemplate: skills.defaultTemplate(),
+                templates: skills.listTemplates(),
+              });
+            }
+            if (parts.length === 2 && req.method === 'POST') {
+              requireSkillsEditEnabled();
+              const body = await readJson(req, 2 * 1024 * 1024);
+              fields(body, ['id', 'content', 'note'], ['id', 'content']);
+              const note = cleanNote(body.note ?? url.searchParams.get('note') ?? req.headers['x-ve-note']);
+              const result = await skills.createTemplate(body.id, body.content, { note, actor: auth.name || 'Owner' });
+              return json(res, 201, result);
+            }
+            if (parts.length === 4 && parts[3] === 'default' && req.method === 'PATCH') {
+              requireSkillsEditEnabled();
+              const body = await readOptionalJson(req, 4096);
+              fields(body, [], []);
+              return json(res, 200, await skills.setDefaultTemplate(parts[2]));
+            }
+            if (parts.length === 3 && req.method === 'DELETE') {
+              requireSkillsEditEnabled();
+              const body = await readOptionalJson(req, 4096);
+              fields(body, ['note'], []);
+              const note = cleanNote(body.note ?? url.searchParams.get('note') ?? req.headers['x-ve-note']);
+              return json(res, 200, await skills.deleteTemplate(parts[2], { note, actor: auth.name || 'Owner' }));
             }
           }
           if (id === 'docs' && parts.length >= 3) {

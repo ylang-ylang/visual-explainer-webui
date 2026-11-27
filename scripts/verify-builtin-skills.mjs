@@ -133,10 +133,11 @@ const builtinDir = join(opts.repoDir, 'remote-app/builtin-skills');
 const rawManifest = JSON.parse(await readFile(join(builtinDir, 'manifest.json'), 'utf8'));
 
 assert.ok(Array.isArray(rawManifest.explainers), 'manifest.json must contain an explainers array');
-assert.equal(rawManifest.explainers.length, 8, `Expected exactly 8 built-in explainers, got ${rawManifest.explainers.length}`);
+assert.equal(rawManifest.explainers.length, 9, `Expected exactly 9 built-in explainers, got ${rawManifest.explainers.length}`);
 
 const expectedIds = [
   'overview',
+  'templates/default',
   'bootstrap-prompt',
   'SKILL',
   'style-guide',
@@ -148,7 +149,7 @@ const expectedIds = [
 assert.deepEqual(
   rawManifest.explainers.map(item => item.id).sort(),
   [...expectedIds].sort(),
-  'manifest.json explainer ids must match the 8 progressive explainers',
+  'manifest.json explainer ids must match the 9 progressive explainers',
 );
 
 const scratchOutputDir = await mkdtemp(join(tmpdir(), 've-verify-skills-'));
@@ -164,8 +165,8 @@ try {
   const explainers = overview.explainers;
   const conflicts = Object.keys(overview.conflicts);
 
-  assert.equal(docs.length, 22, `Expected 22 managed skill docs, got ${docs.length}`);
-  assert.equal(explainers.length, 8, `Expected 8 loaded explainers, got ${explainers.length}`);
+  assert.equal(docs.length, 23, `Expected 23 managed skill docs, got ${docs.length}`);
+  assert.equal(explainers.length, 9, `Expected 9 loaded explainers, got ${explainers.length}`);
   assert.equal(conflicts.length, 0, `Expected 0 conflicts, got ${conflicts.length}: ${conflicts.join(', ')}`);
 
   for (const doc of docs) {
@@ -202,8 +203,8 @@ try {
   }
 
   console.log(`PASS verify-builtin-skills (upstream v${loaded.version} via ${loaded.source})`);
-  console.log(`  Managed docs: ${docs.length}/22 covered & synced`);
-  console.log(`  Explainers:   ${explainers.length}/8 loaded, synced=true, SHA-256 exact match`);
+  console.log(`  Managed docs: ${docs.length}/23 covered & synced`);
+  console.log(`  Explainers:   ${explainers.length}/9 loaded, synced=true, SHA-256 exact match`);
   console.log(`  Conflicts:    ${conflicts.length}`);
   for (const exp of explainers) {
     console.log(`  - [L${exp.layer}] ${exp.id.padEnd(20)} covers=${String(exp.covers.length).padStart(2)} synced=${exp.synced} sha256=${exp.skillHash.slice(0, 12)}…`);

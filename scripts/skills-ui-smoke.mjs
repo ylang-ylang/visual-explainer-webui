@@ -45,7 +45,11 @@ if (phase === 'persistence') {
   const boot = await req('/api/visual-explainer/bootstrap-prompt');
   assert.equal(boot.status, 200);
   assert.ok(!boot.data.content.includes('CUSTOM_BOOTSTRAP_MARKER_E2E'), 'Rolled-back bootstrap prompt must remain restored after restart');
-  console.log('PASS skills UI persistence across restart (edit lock OFF, 22 docs & 8 synced explainers, rolled-back skill & bootstrap prompt persisted)');
+  const tpls = await req('/api/visual-explainer/templates');
+  assert.equal(tpls.status, 200);
+  assert.equal(tpls.data.defaultTemplate, 'default', 'Default template must remain default after rollback & restart');
+  assert.equal(tpls.data.templates.length, 1, 'Custom template must remain removed after rollback & restart');
+  console.log('PASS skills UI persistence across restart (edit lock OFF, 23 docs & 9 synced explainers, default template + rolled-back skill & bootstrap prompt persisted)');
   process.exit(0);
 }
 
@@ -68,9 +72,11 @@ const initialOverview = await req('/api/skills');
 assert.equal(initialOverview.status, 200);
 const totalDocs = initialOverview.data.docs.length;
 const totalExplainers = initialOverview.data.explainers.length;
-assert.equal(totalDocs, 22, `Expected exactly 22 managed skill docs, got ${totalDocs}`);
-assert.equal(totalExplainers, 8, `Expected exactly 8 built-in progressive explainers, got ${totalExplainers}`);
-assert.equal(initialOverview.data.explainers.every(e => e.synced === true), true, 'All 8 built-in explainers must start synced');
+assert.equal(totalDocs, 23, `Expected exactly 23 managed skill docs, got ${totalDocs}`);
+assert.equal(totalExplainers, 9, `Expected exactly 9 built-in progressive explainers, got ${totalExplainers}`);
+assert.equal(initialOverview.data.defaultTemplate, 'default', 'Default template must start as default');
+assert.equal(initialOverview.data.templates.length, 1, 'Expected 1 built-in template on fresh init');
+assert.equal(initialOverview.data.explainers.every(e => e.synced === true), true, 'All 9 built-in explainers must start synced');
 assert.equal(Object.keys(initialOverview.data.conflicts || {}).length, 0, 'Expected 0 conflicts on fresh init');
 assert.equal(initialOverview.data.editEnabled, false, 'Skill editing must start locked (false)');
 
@@ -137,13 +143,29 @@ try {
   assert.ok((await page.locator('#skills-lock-status').innerText()).includes('Locked'));
   assert.equal(await page.locator('#skills-api-open').isDisabled(), true, 'Skill Editor API button must be disabled when locked');
   assert.equal(await page.locator('#skills-docs-count').innerText(), String(totalDocs));
+
+  // Verify Templates list at top of sidebar shows built-in default template with Default badge & Synced dot.
+  assert.equal(await page.locator('#skills-templates-count').innerText(), '1');
+  const defaultTplCard = page.locator('#skills-templates-list .skill-tpl-card[data-template-id="default"]');
+  assert.equal(await defaultTplCard.isVisible(), true, 'Built-in default template card must be visible in #skills-templates-list');
+  assert.ok((await defaultTplCard.innerText()).includes('Default'), 'Built-in default template card must show Default badge');
+  assert.equal(await defaultTplCard.locator('.skill-sync-dot.synced').isVisible(), true, 'Built-in default template card must show synced green dot');
+
+  // Verify Templates & Core/WebUI groups start expanded while References & Commands groups start collapsed.
+  assert.equal(await page.locator('#skills-docs-list details[data-group-key="template"]').evaluate(el => el.open), true, 'Templates doc group must start expanded');
+  assert.equal(await page.locator('#skills-docs-list details[data-group-key="core-webui"]').evaluate(el => el.open), true, 'Core & WebUI doc group must start expanded');
+  assert.equal(await page.locator('#skills-docs-list details[data-group-key="reference"]').evaluate(el => el.open), false, 'References doc group must start collapsed');
+  assert.equal(await page.locator('#skills-docs-list details[data-group-key="command"]').evaluate(el => el.open), false, 'Commands doc group must start collapsed');
+  assert.ok(await page.locator('#skills-docs-list .skill-doc-row[data-doc-id="templates/default.md"]').isVisible());
   assert.ok(await page.locator('#skills-docs-list .skill-doc-row[data-doc-id="SKILL.md"]').isVisible());
   assert.ok(await page.locator('#skills-docs-list .skill-doc-row[data-doc-id="webui/bootstrap-prompt.md"]').isVisible());
+  await page.click('#skills-docs-list details[data-group-key="reference"] > summary');
+  assert.equal(await page.locator('#skills-docs-list details[data-group-key="reference"]').evaluate(el => el.open), true, 'References doc group must expand on click');
   assert.ok(await page.locator('#skills-docs-list .skill-doc-row[data-doc-id="references/kit.md"]').isVisible());
 
-  // Verify all 8 pre-populated built-in progressive explainers render out-of-the-box and are Synced.
+  // Verify all 9 pre-populated built-in progressive explainers render out-of-the-box and are Synced.
   const expectedExplainerIds = [
-    'overview', 'bootstrap-prompt', 'SKILL', 'style-guide',
+    'overview', 'templates/default', 'bootstrap-prompt', 'SKILL', 'style-guide',
     'kit', 'diagrams', 'motion', 'commands-and-extras',
   ];
   assert.equal(await page.locator('#skills-explainers-count').innerText(), String(totalExplainers));
@@ -156,6 +178,16 @@ try {
   }
   await page.waitForSelector('#preview:not([hidden])');
   await page.waitForFunction(() => document.querySelector('#skills-hash-status')?.textContent?.includes('Synced'));
+
+  // Click templates/default in #skills-templates-list -> verify compiled Blueprint explainer renders with Synced badge.
+  await defaultTplCard.locator('.skill-tpl-main').click();
+  await page.waitForFunction(() => document.querySelector('#skills-explainers-tree .report[data-explainer-id="templates/default"]')?.getAttribute('aria-current') === 'page');
+  await page.waitForSelector('#preview:not([hidden])');
+  assert.equal(await defaultTplCard.evaluate(el => el.classList.contains('is-active')), true, 'Default template card must highlight active when selected');
+  assert.ok((await page.locator('#skills-hash-status').innerText()).includes('Synced'), 'Built-in templates/default explainer must show Synced');
+  const tplFrame = page.frameLocator('#preview');
+  await tplFrame.locator('h1').waitFor({ state: 'visible', timeout: 10000 });
+  assert.ok((await tplFrame.locator('h1').innerText()).includes('Before'), 'templates/default visual explainer must render in #preview');
 
   // Out-of-the-box L0 overview -> L1 SKILL Wiki drill-down & #wiki-up navigation while read-only locked!
   await page.click('#skills-explainers-tree .report[data-explainer-id="overview"]');
@@ -198,6 +230,7 @@ try {
   const promptText = await page.locator('#skill-editor-prompt').inputValue();
   assert.ok(promptText.includes(skillKeySecret), 'Skill Editor Prompt must embed minted ve_sk_ key');
   assert.ok(promptText.includes('/api/skills'), 'Skill Editor Prompt must reference /api/skills');
+  assert.ok(promptText.includes('/api/skills/templates'), 'Skill Editor Prompt must reference /api/skills/templates');
   assert.ok(promptText.includes('/api/skills/docs/'), 'Skill Editor Prompt must reference /api/skills/docs/<id>');
   assert.ok(promptText.includes('/api/skills/explainers/'), 'Skill Editor Prompt must reference /api/skills/explainers/<id>');
   assert.ok(promptText.includes('X-VE-Skill-Hash'), 'Skill Editor Prompt must document mandatory X-VE-Skill-Hash header');
@@ -286,6 +319,13 @@ try {
   });
   assert.equal(putBoot.status, 200, putBoot.text);
 
+  // Also test custom template creation via Skill Editor key, then UI set-default & delete lifecycle!
+  const customTplContent = `---\ntitle: RFC Proposal\nwhenToUse: Structured RFC proposals with trade-offs and alternatives.\n---\n\n# RFC Proposal\n\n- Compare options explicitly.\n`;
+  const createdTpl = await req('/api/skills/templates', {
+    method: 'POST', token: skillKeySecret, body: { id: 'rfc-proposal', content: customTplContent, note: 'Create custom RFC template' },
+  });
+  assert.equal(createdTpl.status, 201, createdTpl.text);
+
   // Switch back to Library -> open File API -> verify overridden bootstrap-prompt.md is used!
   await page.click('#skills-back');
   await page.waitForSelector('#skills-sidebar', { state: 'hidden' });
@@ -298,13 +338,43 @@ try {
   await page.click('[data-close="api-dialog"]');
   await page.waitForSelector('#api-dialog', { state: 'hidden' });
 
-  // Return to Skills mode -> verify Overridden + Synced badges, stale overview drift detection, Wiki drill-down, Diff modal, Screenshots!
+  // Return to Skills mode -> verify custom template UI lifecycle (Set default / Delete), Overridden + Synced badges, stale overview drift detection, Wiki drill-down, Diff modal, Screenshots!
   await page.click('#skills-open');
   await page.waitForSelector('#skills-sidebar:not([hidden])');
   await page.waitForSelector('#skills-explainers-tree .report[data-explainer-id="overview"]');
   await page.waitForSelector('#skills-explainers-tree .report[data-explainer-id="kit"]');
 
-  // Verify references/kit.md shows Overridden + Synced badges in sidebar.
+  // Verify custom template appears in #skills-templates-list, set it default, switch back, and delete via UI.
+  assert.equal(await page.locator('#skills-templates-count').innerText(), '2');
+  const rfcCard = page.locator('#skills-templates-list .skill-tpl-card[data-template-id="rfc-proposal"]');
+  await rfcCard.waitFor({ state: 'visible' });
+  assert.ok((await rfcCard.innerText()).includes('Custom'), 'Custom template card must display Custom badge');
+  await rfcCard.locator('[data-set-default-template="rfc-proposal"]').click();
+  await page.waitForFunction(() => {
+    const card = document.querySelector('#skills-templates-list .skill-tpl-card[data-template-id="rfc-proposal"]');
+    return card && card.textContent.includes('Default');
+  });
+  assert.equal((await req('/api/visual-explainer/templates')).data.defaultTemplate, 'rfc-proposal');
+  assert.equal(await rfcCard.locator('[data-delete-template="rfc-proposal"]').isDisabled(), true, 'Active default custom template Delete button must be disabled');
+  await page.locator('#skills-templates-list .skill-tpl-card[data-template-id="default"] [data-set-default-template="default"]').click();
+  await page.waitForFunction(() => {
+    const card = document.querySelector('#skills-templates-list .skill-tpl-card[data-template-id="default"]');
+    return card && card.textContent.includes('Default');
+  });
+  assert.equal((await req('/api/visual-explainer/templates')).data.defaultTemplate, 'default');
+  await rfcCard.locator('[data-delete-template="rfc-proposal"]').click();
+  await page.waitForSelector('#confirm-dialog[open]');
+  await page.click('#confirm-submit');
+  await page.waitForSelector('#confirm-dialog', { state: 'hidden' });
+  await rfcCard.waitFor({ state: 'detached' });
+  assert.equal(await page.locator('#skills-templates-count').innerText(), '1');
+  assert.equal((await req('/api/visual-explainer/templates')).data.templates.length, 1);
+
+  // Verify references/kit.md shows Overridden + Synced badges in sidebar (ensure reference group is expanded).
+  const refDetails = page.locator('#skills-docs-list details[data-group-key="reference"]');
+  if (!(await refDetails.evaluate(el => el.open))) {
+    await refDetails.locator('> summary').click();
+  }
   const kitRow = page.locator('#skills-docs-list .skill-doc-row[data-doc-id="references/kit.md"]');
   await kitRow.waitFor({ state: 'visible' });
   const kitRowText = await kitRow.innerText();
@@ -398,8 +468,10 @@ try {
     return row && row.textContent.includes('Upstream') && !row.textContent.includes('Overridden');
   });
   const afterRollback = (await req('/api/skills')).data;
-  assert.equal(afterRollback.explainers.length, totalExplainers, 'Rollback to v1 must restore all 8 built-in explainers');
-  assert.equal(afterRollback.explainers.every(e => e.synced === true), true, 'Rollback to v1 must restore synced=true on all 8 built-in explainers');
+  assert.equal(afterRollback.explainers.length, totalExplainers, 'Rollback to v1 must restore all 9 built-in explainers');
+  assert.equal(afterRollback.explainers.every(e => e.synced === true), true, 'Rollback to v1 must restore synced=true on all 9 built-in explainers');
+  assert.equal(afterRollback.defaultTemplate, 'default', 'Rollback to v1 must restore default template');
+  assert.equal(afterRollback.templates.length, 1, 'Rollback to v1 must restore built-in template count');
 
   // 7. Toggle #skills-edit-toggle OFF -> verify UI re-locks and API returns 423!
   await page.click('#skills-edit-toggle');
@@ -412,6 +484,11 @@ try {
   });
   assert.equal(lockedPut.status, 423, 'Write API must return 423 Locked after Admin turns Skill Editing OFF');
 
+  const lockedTpl = await req('/api/skills/templates', {
+    method: 'POST', token: skillKeySecret, body: { id: 'locked-tpl', content: '# Locked\n' },
+  });
+  assert.equal(lockedTpl.status, 423, 'Template POST must return 423 Locked after Admin turns Skill Editing OFF');
+
   const lockedPostComment = await req('/api/skills/comments', {
     method: 'POST', body: { explainerId: 'kit', body: 'Should be blocked' },
   });
@@ -421,7 +498,7 @@ try {
 
   assert.deepEqual(errors, [], `Browser errors: ${errors.join('; ')}`);
   await ctx.close();
-  console.log(`PASS Admin Skills UI E2E: strict RBAC (user/viewer 403 & hidden), ${totalDocs} docs & ${totalExplainers} synced built-in explainers (out-of-the-box L0 overview -> L1 SKILL drill-down + wiki-up), default edit lock, unlock + ve_sk_ key + prompt, dynamic bootstrap-prompt.md override, stale detection + hash-bound explainer + Wiki drill-down, diff modal, pick-element comment + SSE dispatch, history diff + rollback to v1, re-lock (423), zero console errors`);
+  console.log(`PASS Admin Skills UI E2E: strict RBAC (user/viewer 403 & hidden), ${totalDocs} docs & ${totalExplainers} synced built-in explainers (Templates card click + out-of-the-box L0 overview -> L1 SKILL drill-down + wiki-up), collapsed References/Commands, default edit lock, unlock + ve_sk_ key + prompt, custom template create/set-default/delete, dynamic bootstrap-prompt.md override, stale detection + hash-bound explainer + Wiki drill-down, diff modal, pick-element comment + SSE dispatch, history diff + rollback to v1, re-lock (423), zero console errors`);
 } finally {
   await browser.close();
 }
